@@ -1,0 +1,445 @@
+import React, { useState, useEffect } from 'react';
+import { MainLayout } from '../layouts/MainLayout';
+import { Eye, X, FileCheck, Trash2, Loader2, Clock } from 'lucide-react';
+import { Button } from '../components/Button';
+import api from '../api/client';
+import { useLocation } from 'react-router-dom';
+
+const RefundsAdjustments = () => {
+  const [records, setRecords] = useState([]);
+  const [tenants, setTenants] = useState([]);
+  const [units, setUnits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [selected, setSelected] = useState(null);
+
+  const [calcData, setCalcData] = useState(null);
+  const [loadingCalc, setLoadingCalc] = useState(false);
+  const [amountValue, setAmountValue] = useState('');
+
+  const location = useLocation();
+
+  // Auto-selection state
+  const [selectedTenantId, setSelectedTenantId] = useState('');
+  const [selectedUnitId, setSelectedUnitId] = useState('');
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const urlTenantId = queryParams.get('tenantId');
+    const urlUnitId = queryParams.get('unitId');
+    if (urlTenantId) setSelectedTenantId(urlTenantId);
+    if (urlUnitId) setSelectedUnitId(urlUnitId);
+    if (urlTenantId) setShowModal(true);
+
+    fetchInitialData();
+  }, [location.search]);
+
+  const fetchInitialData = async () => {
+    setLoading(true);
+    await Promise.all([fetchRecords(), fetchTenants(), fetchUnits()]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (selectedTenantId) {
+      fetchCalculation(selectedTenantId);
+    } else {
+      setCalcData(null);
+    }
+  }, [selectedTenantId]);
+
+  const fetchCalculation = async (tid) => {
+    setLoadingCalc(true);
+    try {
+      const res = await api.get(`/api/admin/refunds/calculate/${tid}`);
+      setCalcData(res.data);
+      if (res.data?.finalRefundAmount !== undefined) {
+        setAmountValue(res.data.finalRefundAmount.toString());
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingCalc(false);
+    }
+  };
+
+  const fetchRecords = async () => {
+    try {
+      const response = await api.get('/api/admin/refunds');
+      setRecords(response.data);
+    } catch (error) { console.error('Error fetching refunds:', error); }
+  };
+
+  const fetchTenants = async () => {
+    try {
+      const res = await api.get('/api/admin/tenants?limit=1000');
+      setTenants(res.data?.data || res.data || []);
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchUnits = async () => {
+    try {
+      const res = await api.get('/api/admin/units?limit=1000');
+      setUnits(res.data.data || res.data);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      // Handle Deductions as negative numbers so analytics treats them as income additions
+      const processedData = { ...data };
+      if (data.type === 'Deduction (Income)') {
+        processedData.amount = -Math.abs(parseFloat(data.amount));
+      }
+
+      if (editingRecord) {
+        await api.put(`/api/admin/refunds/${editingRecord.id}`, processedData);
+      } else {
+        await api.post('/api/admin/refunds', processedData);
+      }
+      setShowModal(false);
+      setEditingRecord(null);
+      await fetchRecords();
+    } catch (e) {
+      alert('Error saving refund');
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this record?')) return;
+    try {
+      await api.delete(`/api/admin/refunds/${id}`);
+      fetchRecords();
+    } catch (e) { console.error(e); }
+  };
+
+  return (
+    <MainLayout title="Refunds & Adjustments">
+      <div className="flex flex-col gap-6">
+
+        <div className="flex justify-end pt-2">
+          <Button variant="primary" onClick={() => {
+            setEditingRecord(null);
+            setSelectedTenantId('');
+            setSelectedUnitId('');
+            setCalcData(null);
+            setAmountValue('');
+            setShowModal(true);
+          }}>
+            + Create Refund
+          </Button>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden border border-gray-100">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">ID</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Type</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Reason</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Tenant</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Unit</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Amount</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Date</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Status</th>
+                  <th className="p-4 bg-slate-50 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="9" className="p-12 text-center text-slate-400">
+                      <Loader2 className="animate-spin mx-auto mb-2" />
+                      Loading records...
+                    </td>
+                  </tr>
+                ) : records.map((r) => (
+                  <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-4 border-b border-gray-100 text-sm text-slate-700 font-mono whitespace-nowrap">{r.id}</td>
+                    <td className="p-4 border-b border-gray-100 text-sm">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${r.type.toLowerCase().includes('refund')
+                        ? 'bg-cyan-50 text-cyan-700 border-cyan-100'
+                        : 'bg-yellow-50 text-yellow-700 border-yellow-100'
+                        }`}>
+                        {r.type}
+                      </span>
+                    </td>
+                    <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.reason}</td>
+                    <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.tenant}</td>
+                    <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.unit}</td>
+                    <td className={`p-4 border-b border-gray-100 text-sm font-medium font-mono whitespace-nowrap ${r.amount < 0 ? 'text-amber-700' : 'text-slate-700'}`}>
+                      ${Math.abs(r.amount).toLocaleString('en-CA')}
+                    </td>
+                    <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.date}</td>
+                    <td className="p-4 border-b border-gray-100 text-sm">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${r.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                        r.status === 'Applied' ? 'bg-yellow-50 text-yellow-700 border-yellow-100' :
+                          'bg-orange-50 text-orange-700 border-orange-100' // Pending
+                        }`}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="p-4 border-b border-gray-100 text-sm text-right flex justify-end gap-2 text-nowrap whitespace-nowrap">
+                      <button onClick={() => setSelected(r)} className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-slate-100 rounded-md transition-colors">
+                        <Eye size={16} />
+                      </button>
+                      <button onClick={() => { 
+                        setEditingRecord(r); 
+                        setAmountValue(Math.abs(r.amount).toString());
+                        setSelectedTenantId(r.tenantId);
+                        setSelectedUnitId(r.unitId);
+                        setShowModal(true); 
+                      }} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors">
+                        <FileCheck size={16} />
+                      </button>
+                      <button onClick={() => handleDelete(r.id)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded-md transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!loading && records.length === 0 && (
+                  <tr>
+                    <td colSpan="9" className="p-8 text-center text-slate-400 italic">No refund records found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* CREATE/EDIT MODAL */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
+            <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 flex flex-col max-h-[95vh] sm:max-h-[90vh]">
+              <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                  <h3 className="text-xl font-bold text-slate-800">{editingRecord ? 'Edit Refund' : 'Create Refund/Adjustment'}</h3>
+                  <button type="button" onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600"><X size={24} /></button>
+                </div>
+
+                <div className="p-6 space-y-4 flex-1 overflow-y-auto custom-scrollbar">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Type</label>
+                      <select name="type" defaultValue={editingRecord?.type || 'Security Deposit'} className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white">
+                        <option value="Security Deposit">Security Deposit</option>
+                        <option value="Deduction (Income)">Deduction (Income)</option>
+                        <option value="Rent Refund">Rent Refund</option>
+                        <option value="Adjustment">Adjustment</option>
+                        <option value="Overcharge">Overcharge</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Status</label>
+                      <select name="status" defaultValue={editingRecord?.status || 'Completed'} className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white">
+                        <option value="Completed">Completed</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Issued">Issued</option>
+                        <option value="Received">Received</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Issued Date</label>
+                      <input name="issuedDate" type="date" defaultValue={editingRecord?.issuedDate || ''} className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Method</label>
+                      <select name="method" defaultValue={editingRecord?.method || ''} className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white">
+                        <option value="">Select Method</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Cheque">Cheque</option>
+                        <option value="Credit Adjust">Credit Adjust</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Reference #</label>
+                      <input name="referenceNumber" placeholder="e.g. TXN-9876" defaultValue={editingRecord?.referenceNumber || ''} className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium" />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Proof Document URL</label>
+                      <input name="proofUrl" placeholder="Cloudinary/DropBox Link" defaultValue={editingRecord?.proofUrl || ''} className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium" />
+                    </div>
+                  </div>
+
+                  {!editingRecord && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Tenant</label>
+                        <select
+                          name="tenantId"
+                          required
+                          value={selectedTenantId}
+                          onChange={(e) => {
+                            const tid = e.target.value;
+                            setSelectedTenantId(tid);
+                            const tenant = tenants.find(t => t.id === parseInt(tid));
+                            const unitIdToUse = tenant?.unitId || tenant?.bedroomLease?.unitId || '';
+                            setSelectedUnitId(unitIdToUse);
+                          }}
+                          className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white"
+                        >
+                          <option value="">Select Tenant</option>
+                          {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Unit</label>
+                        <div className="relative">
+                          <select
+                            name="unitId"
+                            required
+                            value={selectedUnitId}
+                            onChange={(e) => setSelectedUnitId(e.target.value)}
+                            className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white"
+                          >
+                            <option value="">Select Unit</option>
+                            {units.map(u => (
+                              <option key={u.id} value={u.id}>{u.unitNumber || u.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {loadingCalc && <div className="text-center text-xs text-slate-400 font-bold animate-pulse">Calculating refund recommendations...</div>}
+
+                  {calcData && (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 animate-in fade-in duration-300">
+                      <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest mb-3 border-b border-slate-200 pb-1 flex items-center gap-1">
+                        <Clock size={14} className="text-slate-500" /> System Calculation
+                      </h4>
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center text-xs font-bold text-slate-600">
+                          <span>Paid Deposit Total:</span>
+                          <span className="text-emerald-600 font-mono tracking-tight">$ {calcData.totalDepositPaid.toLocaleString('en-CA')}</span>
+                        </div>
+                        {calcData.totalServiceCharges > 0 && (
+                          <div className="flex justify-between items-center text-xs font-bold text-slate-600">
+                            <span>Service Invoice Deductions:</span>
+                            <span className="text-rose-600 font-mono tracking-tight">- $ {calcData.totalServiceCharges.toLocaleString('en-CA')}</span>
+                          </div>
+                        )}
+                        <div className="border-t border-dashed border-slate-200 pt-2 flex justify-between items-center font-black text-slate-800">
+                          <span className="text-xs uppercase">Payable Refund Amount:</span>
+                          <span className="text-sm font-black text-indigo-600 font-mono">
+                            $ {calcData.finalRefundAmount.toLocaleString('en-CA')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-[10px] text-slate-400 font-semibold italic">Based on paid invoices. Pre-fills automatically, but you can override below.</div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Amount</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                      <input 
+                        name="amount" 
+                        type="number" 
+                        step="0.01" 
+                        value={amountValue} 
+                        onChange={(e) => setAmountValue(e.target.value)} 
+                        required 
+                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium" 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Refund Outcome / Reason</label>
+                    <select 
+                      name="outcomeReason" 
+                      defaultValue={editingRecord?.outcomeReason || 'Pending review'} 
+                      className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white"
+                    >
+                      <option value="Pending review">Pending review</option>
+                      <option value="Full refund">Full refund</option>
+                      <option value="Partial refund after service charges">Partial refund after service charges</option>
+                      <option value="No refund – charges exceeded deposit">No refund – charges exceeded deposit</option>
+                      <option value="Cancelled – lease renewed">Cancelled – lease renewed</option>
+                      <option value="Cancelled – deposit transferred to new lease">Cancelled – deposit transferred to new lease</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Notes / Description</label>
+                    <textarea name="reason" rows="3" defaultValue={editingRecord?.reason || ''} required className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium resize-none" placeholder="Add custom notes here..."></textarea>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-slate-50 flex justify-end gap-3 shrink-0 border-t border-slate-100">
+                  <button className="px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 font-bold transition-all disabled:opacity-50" type="button" onClick={() => setShowModal(false)} disabled={saving}>Cancel</button>
+                  <Button variant="primary" type="submit" disabled={saving}>
+                    {saving ? 'Processing...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* VIEW MODAL (Enhanced) */}
+        {selected && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white p-6 rounded-xl w-[520px] shadow-2xl animate-in zoom-in-95">
+              <div className="flex items-center justify-between mb-6 pb-3 border-b border-slate-100">
+                <h3 className="text-lg font-bold text-slate-800">{selected.type} Details</h3>
+                <button onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-6">
+                <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Request ID</label><span className="text-md font-mono font-medium text-slate-900">{selected.id}</span></div>
+                <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status</label><span className="w-fit mt-1"><span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${['Completed', 'Issued', 'Received'].includes(selected.status) ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-orange-50 text-orange-700 border-orange-100'}`}>{selected.status}</span></span></div>
+                <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tenant</label><span className="text-sm font-medium text-slate-900">{selected.tenant}</span></div>
+                <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Unit</label><span className="text-sm font-medium text-slate-900">{selected.unit}</span></div>
+                <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Outcome / Reason</label><span className="text-sm font-semibold text-indigo-600 mt-1">{selected.outcomeReason}</span></div>
+                <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Request Date</label><span className="text-sm font-medium text-slate-900">{selected.date}</span></div>
+                
+                <div className="flex flex-col border-t border-slate-100 pt-3"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Issued Date</label><span className="text-sm font-medium text-slate-900">{selected.issuedDate || '—'}</span></div>
+                <div className="flex flex-col border-t border-slate-100 pt-3"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Method</label><span className="text-sm font-medium text-slate-900">{selected.method || '—'}</span></div>
+                <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Reference #</label><span className="text-sm font-medium text-slate-900">{selected.referenceNumber || '—'}</span></div>
+                <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Proof Link</label>{selected.proofUrl ? <a href={selected.proofUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline truncate">{selected.proofUrl}</a> : <span className="text-sm text-slate-400">—</span>}</div>
+
+                <div className="flex flex-col col-span-2 border-t border-slate-100 pt-3"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Notes / Description</label><span className="text-sm text-slate-700 mt-1">{selected.reason || '—'}</span></div>
+
+                <div className={`col-span-2 mt-2 p-4 rounded-xl text-center text-2xl font-black border ${selected.amount < 0 ? 'bg-amber-50 text-amber-800 border-amber-100' : 'bg-cyan-50 text-cyan-800 border-cyan-100'}`}>
+                  ${Math.abs(selected.amount).toLocaleString('en-CA')}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button variant="secondary" onClick={() => setSelected(null)}>Close</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </MainLayout>
+  );
+};
+
+export default RefundsAdjustments;
