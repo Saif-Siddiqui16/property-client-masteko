@@ -147,11 +147,11 @@ const RefundsAdjustments = () => {
                 <tr>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">ID</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Type</th>
-                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Reason</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Tenant</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Unit</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Amount</th>
-                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Date</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Req. Date</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Issue Date</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Status</th>
                   <th className="p-4 bg-slate-50 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Action</th>
                 </tr>
@@ -176,13 +176,13 @@ const RefundsAdjustments = () => {
                         {r.type}
                       </span>
                     </td>
-                    <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.reason}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.tenant}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.unit}</td>
                     <td className={`p-4 border-b border-gray-100 text-sm font-medium font-mono whitespace-nowrap ${r.amount < 0 ? 'text-amber-700' : 'text-slate-700'}`}>
                       ${Math.abs(r.amount).toLocaleString('en-CA')}
                     </td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.date}</td>
+                    <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap font-medium text-indigo-600">{r.issuedDate || '—'}</td>
                     <td className="p-4 border-b border-gray-100 text-sm">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${r.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
                         r.status === 'Applied' ? 'bg-yellow-50 text-yellow-700 border-yellow-100' :
@@ -192,7 +192,7 @@ const RefundsAdjustments = () => {
                       </span>
                     </td>
                     <td className="p-4 border-b border-gray-100 text-sm text-right flex justify-end gap-2 text-nowrap whitespace-nowrap">
-                      <button onClick={() => setSelected(r)} className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-slate-100 rounded-md transition-colors">
+                      <button onClick={() => setSelected(r)} className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-slate-100 rounded-md transition-colors" title="View Details">
                         <Eye size={16} />
                       </button>
                       <button onClick={() => { 
@@ -201,10 +201,10 @@ const RefundsAdjustments = () => {
                         setSelectedTenantId(r.tenantId);
                         setSelectedUnitId(r.unitId);
                         setShowModal(true); 
-                      }} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors">
+                      }} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors" title="Edit Refund">
                         <FileCheck size={16} />
                       </button>
-                      <button onClick={() => handleDelete(r.id)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded-md transition-colors">
+                      <button onClick={() => handleDelete(r.id)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded-md transition-colors" title="Delete Refund">
                         <Trash2 size={16} />
                       </button>
                     </td>
