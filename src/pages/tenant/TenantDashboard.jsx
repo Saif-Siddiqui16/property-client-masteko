@@ -64,9 +64,9 @@ export const TenantDashboard = () => {
                     {
                         title: 'Insurance',
                         value: stats.insuranceStatus,
-                        subValue: 'Compliance Status',
+                        subValue: stats.insuranceStatus === 'Expiring Soon' ? 'Update Required' : 'Compliance Status',
                         icon: ShieldCheck,
-                        color: 'bg-purple-500',
+                        color: stats.insuranceStatus === 'Expiring Soon' ? 'bg-amber-500' : (stats.insuranceStatus === 'Compliant' ? 'bg-emerald-500' : 'bg-red-500'),
                         path: '/tenant/insurance'
                     },
                     {

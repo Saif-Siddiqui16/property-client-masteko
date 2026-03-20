@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TenantLayout } from '../../layouts/TenantLayout';
-import { ShieldCheck, AlertTriangle, Calendar, Info, Eye, X, FileText, Upload, Download } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Calendar, Info, Eye, X, FileText, Upload, Download, Clock } from 'lucide-react';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import api from '../../api/client';
@@ -98,7 +98,7 @@ export const TenantInsurance = () => {
     };
 
     const statusConfig = getStatusConfig(insurance?.status || 'N/A');
-    const canEdit = !insurance || insurance.status === 'REJECTED' || insurance.status === 'EXPIRED';
+    const canEdit = false; // Uploads are strictly managed by Admin at this stage
 
     return (
         <TenantLayout title="Insurance Compliance">
@@ -139,13 +139,9 @@ export const TenantInsurance = () => {
                             <h2 className="text-3xl font-black text-slate-800 tracking-tight">Protect Your Home</h2>
                             <p className="text-slate-500 font-medium leading-relaxed">
                                 Renters insurance is mandatory for all tenants to protect your personal property and liability.
-                                Please upload your active policy document to comply.
+                                Please provide your policy documents to your Property Administrator to comply.
                             </p>
                         </div>
-                        <Button variant="primary" size="lg" onClick={() => setShowUploadModal(true)} className="px-10 h-16 rounded-2xl text-lg shadow-xl shadow-primary-100">
-                            Upload Insurance Policy
-                            <Upload size={20} className="ml-2" />
-                        </Button>
                     </section>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -356,22 +352,15 @@ export const TenantInsurance = () => {
                                             ? `/api/tenant/documents/${insurance.uploadedDocumentId}/download`
                                             : (insurance.documentUrl.startsWith('http') ? insurance.documentUrl : `${api.defaults.baseURL.replace(/\/+$/, '')}/${insurance.documentUrl.replace(/^\/+/, '')}`);
 
-                                        if (!insurance.uploadedDocumentId) {
-                                            window.open(downloadUrl, '_blank');
-                                            return;
+                                        let finalUrl = downloadUrl;
+                                        if (insurance.uploadedDocumentId) {
+                                            const token = localStorage.getItem('accessToken');
+                                            // Ensure we hit the full backend URL instead of relative path
+                                            const baseUrl = api.defaults.baseURL.replace(/\/+$/, '');
+                                            finalUrl = `${baseUrl}${downloadUrl}?token=${token}`;
                                         }
 
-                                        const res = await api.get(downloadUrl, {
-                                            responseType: 'blob'
-                                        });
-                                        const url = window.URL.createObjectURL(new Blob([res.data]));
-                                        const link = document.createElement('a');
-                                        link.href = url;
-                                        link.setAttribute('download', `Insurance_Policy_${insurance.policyNumber || 'Document'}.pdf`);
-                                        document.body.appendChild(link);
-                                        link.click();
-                                        link.remove();
-                                        window.URL.revokeObjectURL(url);
+                                        window.location.href = finalUrl;
                                     } catch (e) {
                                         console.error('Download failed', e);
                                         alert('Could not download certificate');

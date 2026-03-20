@@ -264,14 +264,18 @@ export const Dashboard = () => {
                   <ShieldAlert size={16} className="text-red-500" />
                   Insurance Alerts
                 </span>
-                <div className="mt-3 space-y-2">
+                <div className="mt-2 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-red-600 uppercase tracking-tight">Expired</span>
-                    <span className="text-lg font-black text-red-700">{insuranceAlerts.expired}</span>
+                    <span className="text-[10px] font-bold text-rose-600 uppercase tracking-tight">Missing Setup</span>
+                    <span className="text-sm font-black text-rose-700">{insuranceAlerts.missing || 0}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-amber-600 uppercase tracking-tight">Expiring Soon</span>
-                    <span className="text-lg font-black text-amber-700">{insuranceAlerts.expiringSoon}</span>
+                    <span className="text-[10px] font-bold text-red-600 uppercase tracking-tight">Expired</span>
+                    <span className="text-sm font-black text-red-700">{insuranceAlerts.expired || 0}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-tight">Expiring Soon</span>
+                    <span className="text-sm font-black text-amber-700">{insuranceAlerts.expiringSoon || 0}</span>
                   </div>
                 </div>
               </Card>
