@@ -25,8 +25,14 @@ export const Login = () => {
       localStorage.setItem('user', JSON.stringify(user));
 
       // Role-based logic
-      if (user.role === 'ADMIN') {
+      if (user.role === 'ADMIN' || user.role === 'COWORKER') {
         localStorage.setItem('isLoggedIn', 'true');
+        if (user.role === 'COWORKER') {
+          try {
+            const permRes = await api.get(`/api/admin/coworkers/${user.id}/permissions`);
+            localStorage.setItem('permissions', JSON.stringify(permRes.data));
+          } catch (e) { console.error('Error fetching coworker permissions:', e); }
+        }
         navigate('/dashboard');
       }
       else if (user.role === 'TENANT') {

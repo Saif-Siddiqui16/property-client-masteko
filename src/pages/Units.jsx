@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Plus, Search, Filter, Eye, Edit2, Trash2, X, ChevronDown, Loader2, CheckCircle, AlertCircle, Settings } from 'lucide-react';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
 
 export const Units = () => {
   const [units, setUnits] = useState([]);
@@ -360,14 +361,18 @@ export const Units = () => {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setShowTypesModal(true)}>
-              <Settings size={18} />
-              Manage Types
-            </Button>
-            <Button variant="primary" onClick={openAddModal}>
-              <Plus size={18} />
-              Add Unit
-            </Button>
+            {hasPermission('Units', 'edit') && (
+              <Button variant="secondary" onClick={() => setShowTypesModal(true)}>
+                <Settings size={18} />
+                Manage Types
+              </Button>
+            )}
+            {hasPermission('Units', 'add') && (
+              <Button variant="primary" onClick={openAddModal}>
+                <Plus size={18} />
+                Add Unit
+              </Button>
+            )}
           </div>
         </section>
 
@@ -418,16 +423,20 @@ export const Units = () => {
                             className="text-slate-400 hover:text-indigo-600 transition-colors"
                           />
                         </Link>
-                        <Edit2
-                          size={16}
-                          className="cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
-                          onClick={() => openEditModal(unit)}
-                        />
-                        <Trash2
-                          size={16}
-                          className="cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
-                          onClick={() => setDeleteConfirm(unit)}
-                        />
+                        {hasPermission('Units', 'edit') && (
+                          <Edit2
+                            size={16}
+                            className="cursor-pointer text-slate-400 hover:text-blue-600 transition-colors"
+                            onClick={() => openEditModal(unit)}
+                          />
+                        )}
+                        {hasPermission('Units', 'delete') && (
+                          <Trash2
+                            size={16}
+                            className="cursor-pointer text-slate-400 hover:text-red-600 transition-colors"
+                            onClick={() => setDeleteConfirm(unit)}
+                          />
+                        )}
                       </div>
                     </div>
                   ))

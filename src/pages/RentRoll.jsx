@@ -2,11 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import { OwnerLayout } from '../layouts/owner/OwnerLayout';
 import { Button } from '../components/Button';
-import { Search, Filter, Building2, Download, Building, Users, Wallet, KeySquare, DoorOpen, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Edit2, X, Trash2 } from 'lucide-react';
+import { Search, Filter, Building2, Download, Building, Users, Wallet, KeySquare, DoorOpen, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Edit2, X, Trash2, ShieldAlert } from 'lucide-react';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
 import clsx from 'clsx';
 
 export const RentRoll = () => {
+    if (!hasPermission('Rent Roll', 'view')) {
+        return (
+            <MainLayout title="Access Denied">
+                <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-2xl border border-slate-100 shadow-sm p-8 text-center">
+                    <ShieldAlert size={64} className="text-red-500 mb-4" />
+                    <h2 className="text-2xl font-black text-slate-800 mb-2">Access Restricted</h2>
+                    <p className="text-slate-500 max-w-md mx-auto">You do not have permission to view the Rent Roll report.</p>
+                </div>
+            </MainLayout>
+        );
+    }
+
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState({ summary: {}, rentRoll: [] });
     const [buildings, setBuildings] = useState([]);

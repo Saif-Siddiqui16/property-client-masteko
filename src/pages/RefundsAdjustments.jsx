@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
-import { Eye, X, FileCheck, Trash2, Loader2, Clock } from 'lucide-react';
+import {
+  Plus, AlertCircle, Calendar, DollarSign, User, Building,
+  Trash2, Edit2, History, ChevronRight, Eye, ShieldCheck,
+  ArrowRight, FileText, Search, Filter, X,
+  ArrowUpRight, ArrowDownRight, Info, PieChart, Receipt,
+  FileCheck, Loader2, Clock, Download, CheckCircle2, Upload
+} from 'lucide-react';
 import { Button } from '../components/Button';
 import api from '../api/client';
 import { useLocation } from 'react-router-dom';
@@ -18,6 +24,9 @@ const RefundsAdjustments = () => {
   const [calcData, setCalcData] = useState(null);
   const [loadingCalc, setLoadingCalc] = useState(false);
   const [amountValue, setAmountValue] = useState('');
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const location = useLocation();
 
@@ -93,19 +102,54 @@ const RefundsAdjustments = () => {
     const data = Object.fromEntries(formData.entries());
 
     try {
-      // Handle Deductions as negative numbers so analytics treats them as income additions
-      const processedData = { ...data };
-      if (data.type === 'Deduction (Income)') {
-        processedData.amount = -Math.abs(parseFloat(data.amount));
+      setSaving(true);
+      let proofUrl = editingRecord?.proofUrl || '';
+
+      // 1. If there's a file, upload it to Cloudinary first
+      if (file) {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('type', 'Refund Proof');
+        fd.append('tenantId', selectedTenantId);
+
+        // Add links meta to document vault
+        const links = [];
+        if (selectedTenantId) links.push({ entityType: 'USER', entityId: selectedTenantId });
+        if (selectedUnitId) links.push({ entityType: 'UNIT', entityId: selectedUnitId });
+
+        fd.append('links', JSON.stringify(links));
+
+        const uploadRes = await api.post('/api/admin/documents/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        proofUrl = uploadRes.data.fileUrl || (uploadRes.data.document?.fileUrl);
       }
 
-      if (editingRecord) {
-        await api.put(`/api/admin/refunds/${editingRecord.id}`, processedData);
+      const formData = new FormData(e.target);
+      const payload = Object.fromEntries(formData.entries());
+
+      // 2. Handle Deductions calculation
+      if (payload.type === 'Deduction (Income)') {
+        payload.amount = -Math.abs(parseFloat(payload.amount));
       } else {
-        await api.post('/api/admin/refunds', processedData);
+        payload.amount = parseFloat(payload.amount);
       }
+
+      // Add the final proof URL to payload
+      payload.proofUrl = proofUrl;
+
+      const isEdit = !!editingRecord;
+      if (editingRecord) {
+        await api.put(`/api/admin/refunds/${editingRecord.id}`, payload);
+      } else {
+        await api.post('/api/admin/refunds', payload);
+      }
+
+      setSuccess(isEdit ? 'updated' : 'created');
+      setTimeout(() => setSuccess(false), 5000);
       setShowModal(false);
       setEditingRecord(null);
+      setFile(null);
       await fetchRecords();
     } catch (e) {
       alert('Error saving refund');
@@ -126,6 +170,13 @@ const RefundsAdjustments = () => {
   return (
     <MainLayout title="Refunds & Adjustments">
       <div className="flex flex-col gap-6">
+
+        {success && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 p-4 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
+            <CheckCircle2 className="text-emerald-500" />
+            <span className="font-bold">Refund record {success} successfully!</span>
+          </div>
+        )}
 
         <div className="flex justify-end pt-2">
           <Button variant="primary" onClick={() => {
@@ -195,12 +246,12 @@ const RefundsAdjustments = () => {
                       <button onClick={() => setSelected(r)} className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-slate-100 rounded-md transition-colors" title="View Details">
                         <Eye size={16} />
                       </button>
-                      <button onClick={() => { 
-                        setEditingRecord(r); 
+                      <button onClick={() => {
+                        setEditingRecord(r);
                         setAmountValue(Math.abs(r.amount).toString());
                         setSelectedTenantId(r.tenantId);
                         setSelectedUnitId(r.unitId);
-                        setShowModal(true); 
+                        setShowModal(true);
                       }} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors" title="Edit Refund">
                         <FileCheck size={16} />
                       </button>
@@ -277,51 +328,101 @@ const RefundsAdjustments = () => {
                       <input name="referenceNumber" placeholder="e.g. TXN-9876" defaultValue={editingRecord?.referenceNumber || ''} className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium" />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Proof Document URL</label>
-                      <input name="proofUrl" placeholder="Cloudinary/DropBox Link" defaultValue={editingRecord?.proofUrl || ''} className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium" />
+                      <label className="text-xs font-bold text-slate-500 uppercase">Proof (Cloudinary URL - Auto Set)</label>
+                      <div className="flex gap-2">
+                        <input readOnly name="proofUrl" placeholder="Upload file below..." value={file ? "Document Attached (Ready to Upload)" : (editingRecord?.proofUrl || '')} className="flex-1 px-4 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-400 outline-none font-medium text-[10px] truncate" />
+                        {editingRecord?.proofUrl && !file && (
+                            <button 
+                              type="button"
+                              onClick={() => {
+                                const token = localStorage.getItem('accessToken');
+                                const base = (api.defaults.baseURL || '').replace(/\/$/, '');
+                                const viewUrl = `${base}/api/admin/documents/download-proof?url=${encodeURIComponent(editingRecord.proofUrl)}&token=${token}&disposition=inline`;
+                                window.open(viewUrl, '_blank');
+                              }}
+                              className="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 flex items-center gap-1 border-none cursor-pointer"
+                            >
+                              <Eye size={14} /> View
+                            </button>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {!editingRecord && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Tenant</label>
-                        <select
-                          name="tenantId"
-                          required
-                          value={selectedTenantId}
-                          onChange={(e) => {
-                            const tid = e.target.value;
-                            setSelectedTenantId(tid);
-                            const tenant = tenants.find(t => t.id === parseInt(tid));
-                            const unitIdToUse = tenant?.unitId || tenant?.bedroomLease?.unitId || '';
-                            setSelectedUnitId(unitIdToUse);
-                          }}
-                          className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white"
-                        >
-                          <option value="">Select Tenant</option>
-                          {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Unit</label>
-                        <div className="relative">
-                          <select
-                            name="unitId"
-                            required
-                            value={selectedUnitId}
-                            onChange={(e) => setSelectedUnitId(e.target.value)}
-                            className="w-full px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white"
-                          >
-                            <option value="">Select Unit</option>
-                            {units.map(u => (
-                              <option key={u.id} value={u.id}>{u.unitNumber || u.name}</option>
-                            ))}
-                          </select>
-                        </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Upload Proof Document</label>
+                    <div className={`border-2 border-dashed rounded-xl p-4 transition-all text-center cursor-pointer relative bg-slate-50/50 hover:bg-white hover:border-indigo-300 ${file ? 'border-indigo-500 bg-indigo-50/20' : 'border-slate-200'}`}>
+                      <input
+                        type="file"
+                        onChange={(e) => setFile(e.target.files[0])}
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                      />
+                      <div className="flex flex-col items-center gap-1.5">
+                        {file ? (
+                          <>
+                            <FileCheck size={28} className="text-indigo-600" />
+                            <div className="text-[11px] font-bold text-indigo-700 truncate max-w-full px-2">{file.name}</div>
+                            <button onClick={(e) => { e.stopPropagation(); setFile(null); }} className="text-[10px] text-rose-500 hover:underline font-black uppercase tracking-widest">Remove File</button>
+                          </>
+                        ) : editingRecord?.proofUrl ? (
+                          <>
+                            <CheckCircle2 size={28} className="text-emerald-500" />
+                            <div className="text-[11px] font-bold text-emerald-700">Proof Already Attached</div>
+                            <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">Select New to Replace</p>
+                          </>
+                        ) : (
+                          <>
+                            <Upload size={24} className="text-slate-300 mx-auto" />
+                            <p className="text-[11px] text-slate-500 font-bold">PDF, JPG, PNG up to 10MB</p>
+                            <p className="text-[9px] text-slate-300 font-black uppercase tracking-[0.2em]">Click to Select Proof</p>
+                          </>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Tenant</label>
+                      <select
+                        name="tenantId"
+                        required
+                        value={selectedTenantId}
+                        onChange={(e) => {
+                          const tid = e.target.value;
+                          setSelectedTenantId(tid);
+                          const tenant = tenants.find(t => t.id === parseInt(tid));
+                          const unitIdToUse = tenant?.unitId || tenant?.bedroomLease?.unitId || '';
+                          setSelectedUnitId(unitIdToUse);
+                        }}
+                        className={`px-4 py-2 rounded-lg border outline-none focus:border-indigo-500 font-medium bg-white ${editingRecord ? 'bg-slate-50 text-slate-500 border-slate-100' : 'border-slate-200'}`}
+                        disabled={!!editingRecord}
+                      >
+                        <option value="">Select Tenant</option>
+                        {tenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                      {editingRecord && <input type="hidden" name="tenantId" value={selectedTenantId} />}
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase">Unit</label>
+                      <div className="relative">
+                        <select
+                          name="unitId"
+                          required
+                          value={selectedUnitId}
+                          onChange={(e) => setSelectedUnitId(e.target.value)}
+                          className={`w-full px-4 py-2 rounded-lg border outline-none focus:border-indigo-500 font-medium bg-white ${editingRecord ? 'bg-slate-50 text-slate-500 border-slate-100' : 'border-slate-200'}`}
+                          disabled={!!editingRecord}
+                        >
+                          <option value="">Select Unit</option>
+                          {units.map(u => (
+                            <option key={u.id} value={u.id}>{u.unitNumber || u.name}</option>
+                          ))}
+                        </select>
+                        {editingRecord && <input type="hidden" name="unitId" value={selectedUnitId} />}
+                      </div>
+                    </div>
+                  </div>
 
                   {loadingCalc && <div className="text-center text-xs text-slate-400 font-bold animate-pulse">Calculating refund recommendations...</div>}
 
@@ -356,23 +457,23 @@ const RefundsAdjustments = () => {
                     <label className="text-xs font-bold text-slate-500 uppercase">Amount</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                      <input 
-                        name="amount" 
-                        type="number" 
-                        step="0.01" 
-                        value={amountValue} 
-                        onChange={(e) => setAmountValue(e.target.value)} 
-                        required 
-                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium" 
+                      <input
+                        name="amount"
+                        type="number"
+                        step="0.01"
+                        value={amountValue}
+                        onChange={(e) => setAmountValue(e.target.value)}
+                        required
+                        className="w-full pl-8 pr-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium"
                       />
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-slate-500 uppercase">Refund Outcome / Reason</label>
-                    <select 
-                      name="outcomeReason" 
-                      defaultValue={editingRecord?.outcomeReason || 'Pending review'} 
+                    <select
+                      name="outcomeReason"
+                      defaultValue={editingRecord?.outcomeReason || 'Pending review'}
                       className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white"
                     >
                       <option value="Pending review">Pending review</option>
@@ -417,11 +518,29 @@ const RefundsAdjustments = () => {
                 <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Unit</label><span className="text-sm font-medium text-slate-900">{selected.unit}</span></div>
                 <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Outcome / Reason</label><span className="text-sm font-semibold text-indigo-600 mt-1">{selected.outcomeReason}</span></div>
                 <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Request Date</label><span className="text-sm font-medium text-slate-900">{selected.date}</span></div>
-                
+
                 <div className="flex flex-col border-t border-slate-100 pt-3"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Issued Date</label><span className="text-sm font-medium text-slate-900">{selected.issuedDate || '—'}</span></div>
                 <div className="flex flex-col border-t border-slate-100 pt-3"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Method</label><span className="text-sm font-medium text-slate-900">{selected.method || '—'}</span></div>
                 <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Reference #</label><span className="text-sm font-medium text-slate-900">{selected.referenceNumber || '—'}</span></div>
-                <div className="flex flex-col"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Proof Link</label>{selected.proofUrl ? <a href={selected.proofUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-500 underline truncate">{selected.proofUrl}</a> : <span className="text-sm text-slate-400">—</span>}</div>
+                <div className="flex flex-col">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Proof Link</label>
+                  {selected.proofUrl ? (
+                    <button
+                      onClick={() => {
+                        const token = localStorage.getItem('accessToken');
+                        const base = (api.defaults.baseURL || '').replace(/\/$/, '');
+                        const downloadUrl = `${base}/api/admin/documents/download-proof?url=${encodeURIComponent(selected.proofUrl)}&token=${token}&disposition=inline`;
+                        window.open(downloadUrl, '_blank');
+                      }}
+                      className="text-xs text-indigo-600 font-bold hover:underline underline-offset-4 truncate mt-1 text-left flex items-center gap-1.5 bg-transparent border-none cursor-pointer p-0 group"
+                    >
+                      <Download size={14} className="group-hover:-translate-y-0.5 transition-transform" /> 
+                      Click to Download / View
+                    </button>
+                  ) : (
+                    <span className="text-sm text-slate-400 font-medium">— No proof attached</span>
+                  )}
+                </div>
 
                 <div className="flex flex-col col-span-2 border-t border-slate-100 pt-3"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Notes / Description</label><span className="text-sm text-slate-700 mt-1">{selected.reason || '—'}</span></div>
 

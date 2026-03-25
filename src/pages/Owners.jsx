@@ -3,6 +3,8 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Button } from '../components/Button';
 import { Plus, Search, User, Eye, Trash2, Pencil, Calendar, AlertCircle, Building, Building2, UserPlus, Mail, Smartphone, Send, CheckCircle } from 'lucide-react';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
+import { AccessControl } from '../components/AccessControl';
 
 const initialOwners = [
     {
@@ -196,15 +198,17 @@ export const Owners = () => {
                         />
                     </div>
 
-                    <Button variant="primary" onClick={() => {
-                        setEditingOwner(null);
-                        setSelectedProperties([]);
-                        fetchAvailableProperties();
-                        setShowModal(true);
-                    }}>
-                        <Plus size={18} />
-                        Add New Owner
-                    </Button>
+                    {hasPermission('Owners', 'add') && (
+                        <Button variant="primary" onClick={() => {
+                            setEditingOwner(null);
+                            setSelectedProperties([]);
+                            fetchAvailableProperties();
+                            setShowModal(true);
+                        }}>
+                            <Plus size={18} />
+                            Add New Owner
+                        </Button>
+                    )}
                 </section>
 
                 {/* TABLE */}
@@ -250,25 +254,31 @@ export const Owners = () => {
                                         >
                                             <Eye size={16} />
                                         </button>
-                                        <button
-                                            onClick={() => handleSendInvite(owner)}
-                                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 ${owner.isInviteSent ? 'text-green-600 hover:bg-green-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
-                                            title={owner.isInviteSent ? "Resend Invite" : "Send Invite"}
-                                        >
-                                            {owner.isInviteSent ? <CheckCircle size={16} /> : <Send size={16} />}
-                                        </button>
-                                        <button
-                                            onClick={() => handleEditOwner(owner)}
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                                        >
-                                            <Pencil size={16} />
-                                        </button>
-                                        <button
-                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                                            onClick={() => deleteOwner(owner.id)}
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                        <AccessControl module="Owners" action="edit">
+                                            <button
+                                                onClick={() => handleSendInvite(owner)}
+                                                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 ${owner.isInviteSent ? 'text-green-600 hover:bg-green-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
+                                                title={owner.isInviteSent ? "Resend Invite" : "Send Invite"}
+                                            >
+                                                {owner.isInviteSent ? <CheckCircle size={16} /> : <Send size={16} />}
+                                            </button>
+                                        </AccessControl>
+                                        <AccessControl module="Owners" action="edit">
+                                            <button
+                                                onClick={() => handleEditOwner(owner)}
+                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                            >
+                                                <Pencil size={16} />
+                                            </button>
+                                        </AccessControl>
+                                        <AccessControl module="Owners" action="delete">
+                                            <button
+                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                                                onClick={() => deleteOwner(owner.id)}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </AccessControl>
                                     </span>
                                 </div>
 
@@ -310,35 +320,41 @@ export const Owners = () => {
                                             <Eye size={14} />
                                             View
                                         </button>
-                                        <button
-                                            onClick={() => handleSendInvite(owner)}
-                                            className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-xs font-semibold ${owner.isInviteSent ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-amber-600 bg-amber-50 hover:bg-amber-100'}`}
-                                        >
-                                            {owner.isInviteSent ? (
-                                                <>
-                                                    <CheckCircle size={14} />
-                                                    Resend
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Send size={14} />
-                                                    Invite
-                                                </>
-                                            )}
-                                        </button>
-                                        <button
-                                            onClick={() => handleEditOwner(owner)}
-                                            className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all text-xs font-semibold"
-                                        >
-                                            <Pencil size={14} />
-                                            Edit
-                                        </button>
-                                        <button
-                                            onClick={() => deleteOwner(owner.id)}
-                                            className="flex items-center justify-center px-3 py-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-all"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
+                                        <AccessControl module="Owners" action="edit">
+                                            <button
+                                                onClick={() => handleSendInvite(owner)}
+                                                className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-xs font-semibold ${owner.isInviteSent ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-amber-600 bg-amber-50 hover:bg-amber-100'}`}
+                                            >
+                                                {owner.isInviteSent ? (
+                                                    <>
+                                                        <CheckCircle size={14} />
+                                                        Resend
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Send size={14} />
+                                                        Invite
+                                                    </>
+                                                )}
+                                            </button>
+                                        </AccessControl>
+                                        <AccessControl module="Owners" action="edit">
+                                            <button
+                                                onClick={() => handleEditOwner(owner)}
+                                                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all text-xs font-semibold"
+                                            >
+                                                <Pencil size={14} />
+                                                Edit
+                                            </button>
+                                        </AccessControl>
+                                        <AccessControl module="Owners" action="delete">
+                                            <button
+                                                onClick={() => deleteOwner(owner.id)}
+                                                className="flex items-center justify-center px-3 py-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-all"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </AccessControl>
                                     </div>
                                 </div>
                             </div>

@@ -139,6 +139,16 @@ const Settings = () => {
             </label>
 
             <label className="flex flex-col gap-1.5 text-[13px] mb-3.5 text-slate-700">
+              Global Email Signature (HTML)
+              <textarea
+                value={settings.GLOBAL_EMAIL_SIGNATURE || ''}
+                onChange={(e) => saveSetting('GLOBAL_EMAIL_SIGNATURE', e.target.value)}
+                placeholder="<p>Best regards,<br><b>Masteko Team</b></p>"
+                className="px-2.5 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono text-xs text-slate-900 min-h-[100px] bg-slate-50"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1.5 text-[13px] mb-3.5 text-slate-700">
               Default Currency
               <select
                 value={settings.currency}

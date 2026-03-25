@@ -111,8 +111,13 @@ const NAV_ITEMS = [
   },
   {
     icon: Mail,
-    label: "Email Logs",
-    path: "/emails"
+    label: "Email",
+    path: "/admin/email/composer",
+    children: [
+      { label: "Send Email", path: "/admin/email/composer" },
+      { label: "Email Templates", path: "/admin/email/templates" },
+      { label: "Sent Emails", path: "/admin/email/history" }
+    ]
   },
   {
     icon: ClipboardList,
@@ -123,6 +128,11 @@ const NAV_ITEMS = [
     icon: Wrench,
     label: "Tickets",
     path: "/tickets"
+  },
+  {
+    icon: Users,
+    label: "Team Access Control",
+    path: "/team-management"
   },
   {
     icon: SettingsIcon,
@@ -269,9 +279,49 @@ export const Sidebar = ({ isOpen, onClose }) => {
           <div className="px-4 mb-2 mt-2">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Main Menu</p>
           </div>
-          {NAV_ITEMS.map(item => (
-            <NavItem key={item.label} item={item} onClose={onClose} />
-          ))}
+          {(() => {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
+
+            return NAV_ITEMS.filter(item => {
+              const user = JSON.parse(localStorage.getItem('user') || '{}');
+              const permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
+              
+              if (user.role === 'ADMIN') return true;
+              if (user.role !== 'COWORKER') return true;
+
+              // Map sidebar labels to exactly match the MODULES array in TeamManagement.jsx
+              const labelToModule = {
+                'Dashboard': 'Dashboard',
+                'Properties': 'Buildings',
+                'Tenants': 'Tenants',
+                'Owners': 'Owners',
+                'Leases': 'Leases',
+                'Rent Roll': 'Rent Roll',
+                'Documents': 'Documents',
+                'Payments': 'Payments',
+                'Accounting': 'Accounting',
+                'Reports': 'Reports',
+                'Communication': 'Communication',
+                'Email Logs': 'Email Logs',
+                'Maintenance': 'Maintenance',
+                'Tickets': 'Tickets',
+                'Team Access Control': 'Settings',
+                'Settings': 'Settings',
+                'Insurance Alerts': 'Insurance'
+              };
+
+              // Identify module name for both main labels and specific child paths logic
+              const moduleName = labelToModule[item.label];
+              
+              if (!moduleName) return true; // Show by default if not mapped
+
+              const perm = permissions.find(p => p.moduleName === moduleName);
+              return perm ? perm.canView : false;
+            }).map(item => (
+              <NavItem key={item.label} item={item} onClose={onClose} />
+            ));
+          })()}
         </nav>
 
         <div className="p-6 border-t border-slate-50 shrink-0">
@@ -286,8 +336,8 @@ export const Sidebar = ({ isOpen, onClose }) => {
                   )}
                 </div>
                 <div className="overflow-hidden">
-                  <p className="text-sm font-black text-slate-800 truncate">{JSON.parse(localStorage.getItem('user') || '{}').name || 'Admin User'}</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide truncate">Super Admin</p>
+                  <p className="text-sm font-black text-slate-800 truncate">{JSON.parse(localStorage.getItem('user') || '{}').firstName ? `${JSON.parse(localStorage.getItem('user') || '{}').firstName} ${JSON.parse(localStorage.getItem('user') || '{}').lastName || ''}` : 'Admin User'}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide truncate">{JSON.parse(localStorage.getItem('user') || '{}').title || (JSON.parse(localStorage.getItem('user') || '{}').role === 'ADMIN' ? 'Super Admin' : 'Staff')}</p>
                 </div>
               </div>
             </div>

@@ -16,7 +16,11 @@ import {
     ExternalLink,
     Download,
     Plus,
-    Edit
+    Edit,
+    Calendar,
+    Building,
+    User,
+    CheckCircle2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
@@ -35,6 +39,7 @@ export const InsuranceAlerts = () => {
         userId: '', provider: '', policyNumber: '', startDate: '', endDate: '', notes: '', file: null, unitId: '', leaseId: '', insuranceId: '', documentUrl: '', uploadedDocumentId: ''
     });
     const [uploading, setUploading] = useState(false);
+    const [selectedInsurance, setSelectedInsurance] = useState(null);
 
     const fetchData = async () => {
         try {
@@ -60,10 +65,6 @@ export const InsuranceAlerts = () => {
     const openEditModal = (item) => {
         setFormData({
             userId: item.tenantId,
-            provider: item.provider !== 'N/A' ? item.provider : '',
-            policyNumber: item.policyNumber !== 'N/A' ? item.policyNumber : '',
-            startDate: item.startDate !== 'N/A' ? item.startDate : '',
-            endDate: item.expiryDate !== 'N/A' ? item.expiryDate : '',
             notes: item.notes || '',
             file: null,
             unitId: item.unitId,
@@ -87,7 +88,13 @@ export const InsuranceAlerts = () => {
                 const fd = new FormData();
                 fd.append('file', formData.file);
                 fd.append('type', 'Insurance');
-                fd.append('tenantId', formData.userId);
+                fd.append('expiryDate', formData.endDate);
+                
+                // Add formal links meta so the document library knows ownership
+                const links = [];
+                if (formData.userId) links.push({ entityType: 'USER', entityId: formData.userId });
+                if (formData.unitId) links.push({ entityType: 'UNIT', entityId: formData.unitId });
+                fd.append('links', JSON.stringify(links));
                 
                 const uploadRes = await api.post('/api/admin/documents/upload', fd, {
                     headers: { 'Content-Type': 'multipart/form-data' }
@@ -98,8 +105,6 @@ export const InsuranceAlerts = () => {
 
             const payload = {
                 userId: formData.userId,
-                provider: formData.provider,
-                policyNumber: formData.policyNumber,
                 endDate: formData.endDate,
                 startDate: formData.startDate || new Date().toISOString().split('T')[0],
                 notes: formData.notes,
@@ -135,6 +140,10 @@ export const InsuranceAlerts = () => {
     const handleTenantSelect = (e) => {
         const tId = e.target.value;
         const tenantInfo = insuranceData.find(t => t.tenantId.toString() === tId);
+        
+        // Find all units for this tenant
+        const unitsForTenant = insuranceData.filter(t => t.tenantId.toString() === tId);
+
         setFormData({
             ...formData,
             userId: tId,
@@ -147,8 +156,15 @@ export const InsuranceAlerts = () => {
     const filteredData = insuranceData.filter(item => {
         const matchesSearch = item.tenantName.toLowerCase().includes(search.toLowerCase()) ||
             (item.policyNumber && item.policyNumber.toLowerCase().includes(search.toLowerCase()));
-        const matchesStatus = statusFilter === 'All' || item.status === statusFilter ||
-            (statusFilter === 'EXPIRING_SOON' && item.status === 'EXPIRING_SOON') || (statusFilter === 'MISSING' && item.status === 'MISSING');
+        
+        // Hide ARCHIVED by default if statusFilter is 'All'
+        let matchesStatus = false;
+        if (statusFilter === 'All') {
+            matchesStatus = item.status !== 'ARCHIVED';
+        } else {
+            matchesStatus = item.status === statusFilter;
+        }
+
         const matchesProperty = propertyFilter === 'All' || item.building === propertyFilter;
         return matchesSearch && matchesStatus && matchesProperty;
     });
@@ -162,12 +178,12 @@ export const InsuranceAlerts = () => {
     const handleViewDocument = (e) => {
         e.preventDefault();
         const token = localStorage.getItem('accessToken');
-        const baseUrl = api.defaults.baseURL || '';
+        const baseUrl = (api.defaults.baseURL || '').replace(/\/$/, '');
         let url = formData.documentUrl;
         if (formData.uploadedDocumentId) {
             url = `${baseUrl}/api/admin/documents/${formData.uploadedDocumentId}/download?disposition=inline&token=${token}`;
         } else if (url && !url.startsWith('http')) {
-            url = `${baseUrl}${url}`;
+            url = `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
         }
         if (url) window.open(url, '_blank');
     };
@@ -273,6 +289,17 @@ export const InsuranceAlerts = () => {
                         <option value="ARCHIVED">Archived History</option>
                     </select>
 
+                    <select
+                        value={propertyFilter}
+                        onChange={(e) => setPropertyFilter(e.target.value)}
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-medium bg-white"
+                    >
+                        <option value="All">All Buildings</option>
+                        {Array.from(new Set(insuranceData.map(i => i.building).filter(b => b && b !== 'N/A'))).map(building => (
+                            <option key={building} value={building}>{building}</option>
+                        ))}
+                    </select>
+
                     <button onClick={clearFilters} className="text-sm font-bold text-slate-400 hover:text-rose-500 px-2 flex items-center gap-1">
                         <X size={16} /> Reset
                     </button>
@@ -284,27 +311,23 @@ export const InsuranceAlerts = () => {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-100">
-                                    <th className="p-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Tenant Name</th>
-                                    <th className="p-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Property / Unit</th>
-                                    <th className="p-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Provider</th>
-                                    <th className="p-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest">Policy #</th>
-                                    <th className="p-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Expiry</th>
-                                    <th className="p-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                                    <th className="p-4 px-6 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                                        <th className="p-4 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Tenant</th>
+                                        <th className="p-4 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Property</th>
+                                        <th className="p-4 px-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Expiry Date</th>
+                                        <th className="p-4 px-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
+                                        <th className="p-4 px-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {filteredData.length > 0 ? filteredData.map((item) => (
-                                    <tr key={item.tenantId} className="group hover:bg-slate-50/50 transition-colors">
+                                    <tr key={item.insuranceId || `missing-${item.tenantId}`} className="group hover:bg-slate-50/50 transition-colors">
                                         <td className="p-4 px-6">
                                             <div className="font-bold text-slate-800 tracking-tight text-sm">{item.tenantName}</div>
                                         </td>
-                                        <td className="p-4 px-6 text-sm">
+                                        <td className="p-4 px-6">
                                             <div className="font-bold text-slate-600">{item.building}</div>
                                             <div className="text-[11px] text-slate-400 font-bold uppercase tracking-wide">Unit {item.unitNumber}</div>
                                         </td>
-                                        <td className="p-4 px-6 text-sm font-medium text-slate-500">{item.provider}</td>
-                                        <td className="p-4 px-6 text-[12px] font-mono text-slate-400">{item.policyNumber}</td>
                                         <td className="p-4 px-6 text-center text-sm font-bold text-slate-600">
                                             {item.expiryDate !== 'N/A' ? item.expiryDate : '-'}
                                         </td>
@@ -322,20 +345,29 @@ export const InsuranceAlerts = () => {
                                         <td className="p-4 px-6 text-right">
                                             <div className="flex justify-end gap-1">
                                                 {item.status !== 'MISSING' && (
-                                                    <button
-                                                        onClick={() => openEditModal(item)}
-                                                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100 shadow-none hover:shadow-sm"
-                                                        title="Edit / Replace Details"
-                                                    >
-                                                        <Edit size={16} />
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            onClick={() => setSelectedInsurance(item)}
+                                                            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100 shadow-none hover:shadow-sm"
+                                                            title="View Details"
+                                                        >
+                                                            <Eye size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openEditModal(item)}
+                                                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100 shadow-none hover:shadow-sm"
+                                                            title="Edit / Replace Details"
+                                                        >
+                                                            <Edit size={16} />
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan="7" className="p-20 text-center text-slate-300 font-bold">No records found.</td>
+                                        <td colSpan="5" className="p-20 text-center text-slate-300 font-bold">No records found.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -383,27 +415,33 @@ export const InsuranceAlerts = () => {
                                                 </select>
                                             </div>
                                             
-                                            {/* Auto-filled Building & Unit */}
+                                            {/* Selectable Building & Unit for Multi-unit support */}
                                             {formData.userId && (
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-1.5">
-                                                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left block">Building</label>
-                                                        <input
-                                                            type="text"
-                                                            disabled
-                                                            value={insuranceData.find(t => t.tenantId.toString() === formData.userId.toString())?.building || ''}
-                                                            className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-sm font-medium"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left block">Unit / Bedroom</label>
-                                                        <input
-                                                            type="text"
-                                                            disabled
-                                                            value={insuranceData.find(t => t.tenantId.toString() === formData.userId.toString())?.unitNumber || ''}
-                                                            className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-sm font-medium"
-                                                        />
-                                                    </div>
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex gap-1">Select Unit / Building <span className="text-rose-500">*</span></label>
+                                                    <select
+                                                        required
+                                                        value={`${formData.unitId}-${formData.leaseId}`}
+                                                        onChange={(e) => {
+                                                            const [uId, lId] = e.target.value.split('-');
+                                                            setFormData({ ...formData, unitId: uId, leaseId: lId });
+                                                        }}
+                                                        className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 bg-white font-medium text-sm transition-all"
+                                                    >
+                                                        {insuranceData
+                                                            .filter(t => t.tenantId.toString() === formData.userId.toString())
+                                                            .reduce((acc, current) => {
+                                                                const x = acc.find(item => item.unitId === current.unitId && item.leaseId === current.leaseId);
+                                                                if (!x) return acc.concat([current]);
+                                                                return acc;
+                                                            }, [])
+                                                            .map(u => (
+                                                                <option key={`${u.unitId}-${u.leaseId}`} value={`${u.unitId}-${u.leaseId}`}>
+                                                                    {u.building} - Unit {u.unitNumber}
+                                                                </option>
+                                                            ))
+                                                        }
+                                                    </select>
                                                 </div>
                                             )}
                                         </div>
@@ -411,57 +449,17 @@ export const InsuranceAlerts = () => {
                                         <div className="space-y-4">
                                             <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Updating Record For</p>
-                                                <p className="font-bold text-slate-700">{insuranceData.find(t => t.tenantId === formData.userId)?.tenantName}</p>
+                                                <p className="font-bold text-slate-700">
+                                                    {insuranceData.find(t => t.tenantId.toString() === formData.userId.toString())?.tenantName} 
+                                                    <span className="text-slate-400 ml-1">
+                                                        ({insuranceData.find(t => t.unitId?.toString() === formData.unitId?.toString())?.building} - {insuranceData.find(t => t.unitId?.toString() === formData.unitId?.toString())?.unitNumber})
+                                                    </span>
+                                                </p>
                                             </div>
-                                            {/* Auto-filled Building & Unit */}
-                                            {formData.userId && (
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-1.5">
-                                                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left block">Building</label>
-                                                        <input
-                                                            type="text"
-                                                            disabled
-                                                            value={insuranceData.find(t => t.tenantId.toString() === formData.userId.toString())?.building || ''}
-                                                            className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-sm font-medium"
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                        <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left block">Unit / Bedroom</label>
-                                                        <input
-                                                            type="text"
-                                                            disabled
-                                                            value={insuranceData.find(t => t.tenantId.toString() === formData.userId.toString())?.unitNumber || ''}
-                                                            className="w-full p-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-sm font-medium"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
                                         </div>
                                     )}
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left block">Provider</label>
-                                            <input
-                                                type="text"
-                                                value={formData.provider}
-                                                onChange={(e) => setFormData({...formData, provider: e.target.value})}
-                                                placeholder="e.g. StateFarm"
-                                                className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-medium transition-all"
-                                            />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left block">Policy #</label>
-                                            <input
-                                                type="text"
-                                                value={formData.policyNumber}
-                                                onChange={(e) => setFormData({...formData, policyNumber: e.target.value})}
-                                                placeholder="POL-123456"
-                                                className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-mono transition-all"
-                                            />
-                                        </div>
-                                    </div>
-
+                                    {/* Expiry and Start Date only */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1.5">
                                             <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left block">Start Date</label>
@@ -473,10 +471,10 @@ export const InsuranceAlerts = () => {
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left block flex gap-1">Expiry Date {modalMode === 'add' && <span className="text-rose-500">*</span>}</label>
+                                            <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left block flex gap-1">Expiry Date <span className="text-rose-500">*</span></label>
                                             <input
                                                 type="date"
-                                                required={modalMode === 'add'}
+                                                required
                                                 value={formData.endDate}
                                                 onChange={(e) => setFormData({...formData, endDate: e.target.value})}
                                                 className="w-full p-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-medium transition-all"
@@ -486,13 +484,12 @@ export const InsuranceAlerts = () => {
 
                                     <div className="space-y-1.5">
                                         <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest text-left block flex gap-1">Policy Document {modalMode === 'add' && <span className="text-rose-500">*</span>}</label>
-                                        <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-center bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                                        <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 flex flex-col items-center justify-center text-center bg-slate-50/50 hover:bg-slate-50 transition-colors relative">
                                             <input 
                                                 type="file" 
                                                 accept=".pdf,.jpg,.jpeg,.png"
                                                 onChange={(e) => setFormData({...formData, file: e.target.files[0]})}
-                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                                style={{position: 'relative'}}
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                             />
                                             <FileText className="text-slate-300 mb-2" size={32} />
                                             {formData.file ? (
@@ -533,6 +530,111 @@ export const InsuranceAlerts = () => {
                                     </Button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                )}
+
+                {/* MODAL FOR VIEW INSURANCE DETAILS */}
+                {selectedInsurance && (
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-in fade-in">
+                        <div className="bg-white rounded-[24px] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95">
+                            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                        <ShieldCheck size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-slate-800 tracking-tight">Insurance Details</h3>
+                                        <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Compliance Record</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setSelectedInsurance(null)} className="p-2 text-slate-400 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-8 space-y-8">
+                                <div className="grid grid-cols-2 gap-y-6 gap-x-8">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block">Tenant</label>
+                                        <div className="flex items-center gap-2 text-slate-700">
+                                            <User size={14} className="text-slate-400" />
+                                            <span className="font-bold text-sm tracking-tight">{selectedInsurance.tenantName}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1 text-right md:text-left">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block">Building / Unit</label>
+                                        <div className="flex items-center justify-end md:justify-start gap-2 text-slate-700">
+                                            <Building size={14} className="text-slate-400" />
+                                            <span className="font-semibold text-sm tracking-tight">{selectedInsurance.building} - {selectedInsurance.unitNumber}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block">Start Date</label>
+                                        <div className="flex items-center gap-2 text-slate-700">
+                                            <Calendar size={14} className="text-slate-400" />
+                                            <span className="font-bold text-sm">{selectedInsurance.startDate}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-1 text-right md:text-left">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block">Expiry Date</label>
+                                        <div className="flex items-center justify-end md:justify-start gap-2 text-slate-700">
+                                            <Clock size={14} className="text-rose-400" />
+                                            <span className="font-bold text-sm text-rose-600">{selectedInsurance.expiryDate}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="col-span-2 space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block">Policy Proof Document</label>
+                                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 bg-white rounded-lg shadow-sm flex items-center justify-center text-indigo-600 border border-slate-100">
+                                                    <FileText size={18} />
+                                                </div>
+                                                <span className="text-sm font-bold text-slate-600">Insurance-Policy.pdf</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    const token = localStorage.getItem('accessToken');
+                                                    const baseUrl = (api.defaults.baseURL || '').replace(/\/$/, '');
+                                                    let url = selectedInsurance.documentUrl;
+                                                    if (selectedInsurance.uploadedDocumentId) {
+                                                        url = `${baseUrl}/api/admin/documents/${selectedInsurance.uploadedDocumentId}/download?disposition=inline&token=${token}`;
+                                                    } else if (url && !url.startsWith('http')) {
+                                                        url = `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+                                                    }
+                                                    if (url) window.open(url, '_blank');
+                                                }}
+                                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-md hover:shadow-lg transition-all flex items-center gap-2 group"
+                                            >
+                                                <Download size={14} strokeWidth={3} className="group-hover:-translate-y-0.5 transition-transform" /> 
+                                                View Policy File
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {selectedInsurance.notes && (
+                                        <div className="col-span-2 space-y-1.5">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block">Special Notes</label>
+                                            <div className="bg-slate-50/50 p-4 rounded-xl text-xs font-medium text-slate-500 leading-relaxed border border-slate-100 italic">
+                                                "{selectedInsurance.notes}"
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="pt-4 flex justify-center">
+                                    <button 
+                                        onClick={() => setSelectedInsurance(null)}
+                                        className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
+                                    >
+                                        Close Details
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

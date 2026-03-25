@@ -49,10 +49,13 @@ import { QuickBooksSettings } from "./pages/QuickBooksSettings";
 import Reports from "./pages/Reports";
 import { Maintenance } from "./pages/Maintenance";
 import { Tickets } from "./pages/Tickets";
-import Communication from "./pages/Communication"; // Added
-import { Emails } from "./pages/Emails"; // Added
+import Communication from "./pages/Communication";
+import EmailComposer from "./pages/EmailComposer";
+import EmailTemplates from "./pages/EmailTemplates";
+import EmailHistory from "./pages/EmailHistory";
 import Settings from "./pages/Settings";
 import { Owners } from "./pages/Owners";
+import { TeamManagement } from "./pages/TeamManagement";
 
 /* TENANT PORTAL */
 import { TenantProtectedRoute } from "./components/TenantProtectedRoute";
@@ -137,8 +140,11 @@ function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/maintenance" element={<Maintenance />} />
           <Route path="/communication" element={<Communication />} />
-          <Route path="/emails" element={<Emails />} />
+          <Route path="/admin/email/composer" element={<EmailComposer />} />
+          <Route path="/admin/email/templates" element={<EmailTemplates />} />
+          <Route path="/admin/email/history" element={<EmailHistory />} />
           <Route path="/tickets" element={<Tickets />} />
+          <Route path="/team-management" element={<TeamManagement />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/profile" element={<Profile />} />
         </Route>

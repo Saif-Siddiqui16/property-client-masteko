@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "../layouts/MainLayout";
 import {
     FileText,
@@ -16,11 +16,15 @@ import {
     X,
     Upload,
     CheckCircle2,
-    RefreshCw
+    RefreshCw,
+    ChevronLeft,
+    ChevronRight,
+    Edit
 } from "lucide-react";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import api from "../api/client";
+import { hasPermission } from "../utils/permissions";
 
 export const DocumentLibrary = () => {
     const [typeFilter, setTypeFilter] = useState("All");
@@ -29,6 +33,11 @@ export const DocumentLibrary = () => {
     const [loading, setLoading] = useState(true);
     const [documents, setDocuments] = useState([]);
     const [search, setSearch] = useState("");
+    const [expiryFilter, setExpiryFilter] = useState("All");
+    const [currentPage, setCurrentPage] = useState(1);
+    const docsPerPage = 10;
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     // Form State
     const [uploadFile, setUploadFile] = useState(null);
@@ -88,6 +97,8 @@ export const DocumentLibrary = () => {
 
     const handleUpload = async (e) => {
         e.preventDefault();
+        
+        if (isEditing) return handleUpdate(e);
         if (!uploadFile) return alert("Please select a file");
 
         try {
@@ -118,7 +129,52 @@ export const DocumentLibrary = () => {
         }
     };
 
+    const handleUpdate = async (e) => {
+        e.preventDefault();
+        try {
+            setUploading(true);
+            await api.put(`/api/admin/documents/${editingId}`, {
+                type: uploadType,
+                name: uploadName,
+                expiryDate,
+                links: selectedLinks.map(l => ({ entityType: l.entityType, entityId: l.entityId }))
+            });
+
+            alert("Document updated successfully");
+            setShowUploadModal(false);
+            resetUploadForm();
+            fetchDocuments();
+        } catch (error) {
+            console.error(error);
+            alert("Update failed");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const openEditModal = (doc) => {
+        setIsEditing(true);
+        setEditingId(doc.id);
+        setUploadName(doc.name);
+        setUploadType(doc.type);
+        setExpiryDate(doc.expiryDate ? new Date(doc.expiryDate).toISOString().split('T')[0] : "");
+        
+        // Map backend links to label-inclusive state
+        const links = (doc.links || []).map(l => {
+            let label = `ID: ${l.entityId}`;
+            if (l.entityType === 'USER' && doc.user) label = doc.user.firstName + ' ' + doc.user.lastName;
+            else if (l.entityType === 'PROPERTY' && doc.property) label = doc.property.name;
+            else if (l.entityType === 'UNIT' && doc.unit) label = doc.unit.unitNumber || doc.unit.name;
+            else if (l.entityType === 'LEASE') label = `Lease #${l.entityId}`;
+            return { entityType: l.entityType, entityId: l.entityId, label };
+        });
+        setSelectedLinks(links);
+        setShowUploadModal(true);
+    };
+
     const resetUploadForm = () => {
+        setIsEditing(false);
+        setEditingId(null);
         setUploadFile(null);
         setUploadType("Other");
         setUploadName("");
@@ -136,8 +192,29 @@ export const DocumentLibrary = () => {
             doc.user?.firstName?.toLowerCase().includes(search.toLowerCase()) ||
             doc.user?.lastName?.toLowerCase().includes(search.toLowerCase());
         const matchesType = typeFilter === "All" || doc.type === typeFilter;
-        return matchesSearch && matchesType;
+        
+        const today = new Date().setHours(0,0,0,0);
+        const isExpired = doc.expiryDate && new Date(doc.expiryDate) < today;
+        let matchesExpiry = true;
+        if (expiryFilter === "Expired") matchesExpiry = isExpired;
+        else if (expiryFilter === "Active") matchesExpiry = !isExpired && doc.expiryDate;
+        else if (expiryFilter === "No Expiry") matchesExpiry = !doc.expiryDate;
+
+        return matchesSearch && matchesType && matchesExpiry;
     });
+
+    const sortedDocuments = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return [...filteredDocuments].sort((a, b) => {
+            const aExpired = a.expiryDate && new Date(a.expiryDate) < today;
+            const bExpired = b.expiryDate && new Date(b.expiryDate) < today;
+            if (aExpired && !bExpired) return -1;
+            if (!aExpired && bExpired) return 1;
+            if (a.expiryDate && b.expiryDate) return new Date(a.expiryDate) - new Date(b.expiryDate);
+            return 0;
+        });
+    }, [filteredDocuments]);
 
     const getIcon = (type) => {
         switch (type) {
@@ -158,10 +235,12 @@ export const DocumentLibrary = () => {
                         <p className="text-slate-500 font-medium">Access and manage all system-wide documents and tenant uploads.</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Button variant="primary" className="h-12 px-6 rounded-2xl shadow-lg shadow-indigo-100" onClick={() => setShowUploadModal(true)}>
-                            <Plus size={20} className="mr-2" />
-                            Upload Document
-                        </Button>
+                        {hasPermission('Documents', 'add') && (
+                            <Button variant="primary" className="h-12 px-6 rounded-2xl shadow-lg shadow-indigo-100" onClick={() => setShowUploadModal(true)}>
+                                <Plus size={20} className="mr-2" />
+                                Upload Document
+                            </Button>
+                        )}
                         <div className="px-5 py-3 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
                             <FileText className="text-indigo-600" size={20} />
                             <div>
@@ -198,10 +277,23 @@ export const DocumentLibrary = () => {
                                 <option value="Invoice">Invoices</option>
                             </select>
                         </div>
+                        <div className="flex items-center gap-2 px-4 py-3.5 rounded-[18px] border border-slate-200 bg-white font-bold text-slate-600 text-sm">
+                            <Clock size={16} className="text-slate-400" />
+                            <select
+                                value={expiryFilter}
+                                onChange={(e) => { setExpiryFilter(e.target.value); setCurrentPage(1); }}
+                                className="outline-none bg-transparent cursor-pointer"
+                            >
+                                <option value="All">All Expiry States</option>
+                                <option value="Active">Active (Has Date)</option>
+                                <option value="Expired">Expired</option>
+                                <option value="No Expiry">No Expiry Date</option>
+                            </select>
+                        </div>
                         <Button
                             variant="secondary"
                             className="h-14 px-6 rounded-[18px]"
-                            onClick={() => { setSearch(""); setTypeFilter("All"); }}
+                            onClick={() => { setSearch(""); setTypeFilter("All"); setExpiryFilter("All"); setCurrentPage(1); }}
                         >
                             Reset
                         </Button>
@@ -230,8 +322,11 @@ export const DocumentLibrary = () => {
                                             </div>
                                         </td>
                                     </tr>
-                                ) : filteredDocuments.length > 0 ? (
-                                    filteredDocuments.map(doc => {
+                                ) : sortedDocuments.length > 0 ? (
+                                    sortedDocuments
+                                        .slice((currentPage - 1) * docsPerPage, currentPage * docsPerPage)
+                                        .map(doc => {
+                                        const isExpired = doc.expiryDate && new Date(doc.expiryDate) < new Date().setHours(0,0,0,0);
                                         // Determine linked entity display
                                         let linkedEntity = '-';
                                         if (doc.user) {
@@ -268,8 +363,9 @@ export const DocumentLibrary = () => {
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     {doc.expiryDate ? (
-                                                        <span className="text-sm font-medium text-slate-700">
+                                                        <span className={`text-sm font-black ${isExpired ? 'text-rose-600' : 'text-slate-700'}`}>
                                                             {new Date(doc.expiryDate).toLocaleDateString()}
+                                                            {isExpired && <span className="ml-2 px-1.5 py-0.5 bg-rose-50 text-[8px] rounded uppercase tracking-tighter">Expired</span>}
                                                         </span>
                                                     ) : (
                                                         <span className="text-sm text-slate-400">-</span>
@@ -277,19 +373,15 @@ export const DocumentLibrary = () => {
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                if (!doc.fileUrl) return alert("File URL missing");
-                                                                const token = localStorage.getItem('accessToken');
-                                                                const base = api.defaults.baseURL.replace(/\/$/, '');
-                                                                const viewUrl = `${base}/api/admin/documents/${doc.id}/download?disposition=inline&token=${token}`;
-                                                                window.open(viewUrl, '_blank');
-                                                            }}
-                                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
-                                                            title="Open"
-                                                        >
-                                                            <ExternalLink size={16} />
-                                                        </button>
+                                                        {hasPermission('Documents', 'edit') && (
+                                                            <button
+                                                                onClick={() => openEditModal(doc)}
+                                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                                                                title="Edit Details"
+                                                            >
+                                                                <Edit size={16} />
+                                                            </button>
+                                                        )}
                                                         <button
                                                             onClick={async () => {
                                                                 if (!doc.fileUrl) return alert("File URL missing");
@@ -305,13 +397,15 @@ export const DocumentLibrary = () => {
                                                         >
                                                             <Download size={16} />
                                                         </button>
-                                                        <button
-                                                            onClick={() => handleDelete(doc.id)}
-                                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                        {hasPermission('Documents', 'delete') && (
+                                                            <button
+                                                                onClick={() => handleDelete(doc.id)}
+                                                                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -337,6 +431,43 @@ export const DocumentLibrary = () => {
                     </div>
                 </Card>
 
+                {/* PAGINATION */}
+                {sortedDocuments.length > docsPerPage && (
+                    <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                            Showing <span className="text-slate-800">{Math.min(sortedDocuments.length, (currentPage - 1) * docsPerPage + 1)}</span> to <span className="text-slate-800">{Math.min(sortedDocuments.length, currentPage * docsPerPage)}</span> of <span className="text-slate-800">{sortedDocuments.length}</span> Results
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            >
+                                <ChevronLeft size={18} />
+                            </button>
+                            {Array.from({ length: Math.ceil(sortedDocuments.length / docsPerPage) }).map((_, i) => (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => setCurrentPage(i + 1)}
+                                    className={`w-10 h-10 flex items-center justify-center rounded-xl text-xs font-black transition-all ${currentPage === i + 1 ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setCurrentPage(prev => Math.min(Math.ceil(sortedDocuments.length / docsPerPage), prev + 1))}
+                                disabled={currentPage === Math.ceil(sortedDocuments.length / docsPerPage)}
+                                className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            >
+                                <ChevronRight size={18} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* UPLOAD MODAL */}
                 {
                     showUploadModal && (
@@ -344,8 +475,8 @@ export const DocumentLibrary = () => {
                             <div className="bg-white rounded-[40px] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
                                 <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
                                     <div>
-                                        <h3 className="text-2xl font-black text-slate-800 tracking-tight">Upload Document</h3>
-                                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Add a new file and link it to entities</p>
+                                        <h3 className="text-2xl font-black text-slate-800 tracking-tight">{isEditing ? 'Update Document' : 'Upload Document'}</h3>
+                                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">{isEditing ? 'Modify existing document metadata' : 'Add a new file and link it to entities'}</p>
                                     </div>
                                     <button onClick={() => { setShowUploadModal(false); resetUploadForm(); }} className="p-2 text-slate-400 hover:text-slate-800 rounded-2xl bg-white shadow-sm border border-slate-100">
                                         <X size={20} />
@@ -392,17 +523,18 @@ export const DocumentLibrary = () => {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select File</label>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{isEditing ? "File (Read Only)" : "Select File"}</label>
                                             <div className="relative">
                                                 <input
                                                     type="file"
                                                     onChange={(e) => setUploadFile(e.target.files[0])}
-                                                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
-                                                    required
+                                                    className={`absolute inset-0 opacity-0 ${isEditing ? 'cursor-not-allowed' : 'cursor-pointer'} z-10`}
+                                                    required={!isEditing}
+                                                    disabled={isEditing}
                                                 />
                                                 <div className="w-full px-4 py-3 rounded-2xl border border-slate-200 border-dashed bg-slate-50 flex items-center gap-3 text-slate-500 font-bold text-sm">
                                                     <Upload size={18} className="text-indigo-500" />
-                                                    {uploadFile ? uploadFile.name : "Choose PDF or Image..."}
+                                                    {isEditing ? "File cannot be changed here" : (uploadFile ? uploadFile.name : "Choose PDF or Image...")}
                                                 </div>
                                             </div>
                                         </div>
@@ -477,7 +609,7 @@ export const DocumentLibrary = () => {
                                             type="submit"
                                             disabled={uploading}
                                         >
-                                            {uploading ? "Uploading..." : "Finish Upload"}
+                                            {uploading ? (isEditing ? "Updating..." : "Uploading...") : (isEditing ? "Save Changes" : "Finish Upload")}
                                         </Button>
                                     </div>
                                 </form>

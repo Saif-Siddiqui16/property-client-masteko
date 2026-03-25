@@ -331,7 +331,8 @@ export const Profile = () => {
                                         name="city"
                                         value={profile.city || ''}
                                         onChange={handleProfileChange}
-                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                        disabled={profile.role !== 'ADMIN'}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Toronto"
                                     />
                                 </div>
@@ -342,7 +343,8 @@ export const Profile = () => {
                                         name="state"
                                         value={profile.state || ''}
                                         onChange={handleProfileChange}
-                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                        disabled={profile.role !== 'ADMIN'}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Ontario"
                                     />
                                 </div>
@@ -353,7 +355,8 @@ export const Profile = () => {
                                         name="country"
                                         value={profile.country || ''}
                                         onChange={handleProfileChange}
-                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                        disabled={profile.role !== 'ADMIN'}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Canada"
                                     />
                                 </div>
@@ -374,7 +377,8 @@ export const Profile = () => {
                                         name="companyName"
                                         value={profile.companyName || ''}
                                         onChange={handleProfileChange}
-                                        className="w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900"
+                                        disabled={profile.role !== 'ADMIN'}
+                                        className={`w-full h-11 px-4 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="e.g. Masteko Properties"
                                     />
                                 </div>
@@ -384,8 +388,9 @@ export const Profile = () => {
                                         name="companyDetails"
                                         value={profile.companyDetails || ''}
                                         onChange={handleProfileChange}
+                                        disabled={profile.role !== 'ADMIN'}
                                         rows={3}
-                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 min-h-[100px]"
+                                        className={`w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 transition-all font-medium text-slate-900 min-h-[100px] ${profile.role !== 'ADMIN' ? 'bg-slate-50 cursor-not-allowed opacity-75' : ''}`}
                                         placeholder="Mention your company address, registration number, tax details, or mission statement..."
                                     />
                                 </div>

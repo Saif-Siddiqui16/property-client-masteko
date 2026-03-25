@@ -4,6 +4,7 @@ import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Plus, Search, Filter, Eye, Pencil, Trash2, Building2, Home, X } from 'lucide-react';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
 
 export const Buildings = () => {
   const [buildings, setBuildings] = useState([]);
@@ -212,13 +213,15 @@ export const Buildings = () => {
               />
             </div>
           </div>
-          <Button variant="primary" onClick={() => {
-            setSelectedOwnerIds([]);
-            setShowModal(true);
-          }} className="whitespace-nowrap">
-            <Plus size={18} />
-            Add Building
-          </Button>
+          {hasPermission('Buildings', 'add') && (
+            <Button variant="primary" onClick={() => {
+              setSelectedOwnerIds([]);
+              setShowModal(true);
+            }} className="whitespace-nowrap">
+              <Plus size={18} />
+              Add Building
+            </Button>
+          )}
         </div>
 
         {/* Table Card */}
@@ -297,20 +300,24 @@ export const Buildings = () => {
                       >
                         <Eye size={12} />
                       </button>
-                      <button
-                        className="w-7 h-7 border-none rounded-lg flex items-center justify-center cursor-pointer transition-all duration-300 bg-emerald-50 text-emerald-600 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(22,163,74,0.2)] hover:scale-110"
-                        title="Edit Building"
-                        onClick={() => editBuilding(building)}
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        className="w-7 h-7 border-none rounded-lg flex items-center justify-center cursor-pointer transition-all duration-300 bg-red-50 text-red-600 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(220,38,38,0.2)] hover:scale-110"
-                        title="Delete Building"
-                        onClick={() => deleteBuilding(building.id)}
-                      >
-                        <Trash2 size={12} />
-                      </button>
+                      {hasPermission('Buildings', 'edit') && (
+                        <button
+                          className="w-7 h-7 border-none rounded-lg flex items-center justify-center cursor-pointer transition-all duration-300 bg-emerald-50 text-emerald-600 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(22,163,74,0.2)] hover:scale-110"
+                          title="Edit Building"
+                          onClick={() => editBuilding(building)}
+                        >
+                          <Pencil size={12} />
+                        </button>
+                      )}
+                      {hasPermission('Buildings', 'delete') && (
+                        <button
+                          className="w-7 h-7 border-none rounded-lg flex items-center justify-center cursor-pointer transition-all duration-300 bg-red-50 text-red-600 hover:-translate-y-1 hover:shadow-[0_5px_15px_rgba(220,38,38,0.2)] hover:scale-110"
+                          title="Delete Building"
+                          onClick={() => deleteBuilding(building.id)}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 )))}

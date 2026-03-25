@@ -5,6 +5,7 @@ import { Button } from '../components/Button';
 import { Plus, Search, User, Eye, Trash2, FileText, Shield, Download, Upload, ArrowLeft, Calendar, FileCheck, AlertCircle, Pencil, Mail, Smartphone, Send, CheckCircle, Building2 } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
+import { AccessControl } from '../components/AccessControl';
 
 const initialTenants = [];
 
@@ -471,10 +472,12 @@ export const Tenants = () => {
                 </select>
               </div>
 
-              <Button variant="primary" onClick={() => { setEditingTenant(null); setShowModal(true); }}>
-                <Plus size={18} />
-                Add Tenant
-              </Button>
+              <AccessControl module="Tenants" action="add">
+                <Button variant="primary" onClick={() => { setEditingTenant(null); setShowModal(true); }}>
+                  <Plus size={18} />
+                  Add Tenant
+                </Button>
+              </AccessControl>
             </section>
 
             {/* TABLE */}
@@ -566,28 +569,36 @@ export const Tenants = () => {
                           >
                             <Eye size={16} />
                           </button>
-                          <button
-                            onClick={() => handleEditTenant(tenant)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
-                            title="Edit Tenant"
-                          >
-                            <Pencil size={16} />
-                          </button>
+                          
+                          <AccessControl module="Tenants" action="edit">
+                            <button
+                              onClick={() => handleEditTenant(tenant)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
+                              title="Edit Tenant"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                          </AccessControl>
 
-                          <button
-                            onClick={() => handleSendInvite(tenant)}
-                            className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 ${tenant.isInviteSent ? 'text-green-600 hover:bg-green-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
-                            title={tenant.isInviteSent ? "Resend Invite" : "Send Invite"}
-                          >
-                            {tenant.isInviteSent ? <CheckCircle size={16} /> : <Send size={16} />}
-                          </button>
-                          <button
-                            onClick={() => deleteTenant(tenant.id)}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
-                            title="Delete Tenant"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          <AccessControl module="Tenants" action="edit">
+                            <button
+                              onClick={() => handleSendInvite(tenant)}
+                              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 ${tenant.isInviteSent ? 'text-green-600 hover:bg-green-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
+                              title={tenant.isInviteSent ? "Resend Invite" : "Send Invite"}
+                            >
+                              {tenant.isInviteSent ? <CheckCircle size={16} /> : <Send size={16} />}
+                            </button>
+                          </AccessControl>
+
+                          <AccessControl module="Tenants" action="delete">
+                            <button
+                              onClick={() => deleteTenant(tenant.id)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+                              title="Delete Tenant"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </AccessControl>
                         </span>
                       </div>
 
@@ -658,35 +669,44 @@ export const Tenants = () => {
                             <Eye size={14} />
                             View
                           </button>
-                          <button
-                            onClick={() => handleEditTenant(tenant)}
-                            className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all text-xs font-semibold"
-                          >
-                            <Pencil size={14} />
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleSendInvite(tenant)}
-                            className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-xs font-semibold ${tenant.isInviteSent ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-amber-600 bg-amber-50 hover:bg-amber-100'}`}
-                          >
-                            {tenant.isInviteSent ? (
-                              <>
-                                <CheckCircle size={14} />
-                                Resend
-                              </>
-                            ) : (
-                              <>
-                                <Send size={14} />
-                                Invite
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => deleteTenant(tenant.id)}
-                            className="flex items-center justify-center px-3 py-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-all"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          
+                          <AccessControl module="Tenants" action="edit">
+                            <button
+                              onClick={() => handleEditTenant(tenant)}
+                              className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all text-xs font-semibold"
+                            >
+                              <Pencil size={14} />
+                              Edit
+                            </button>
+                          </AccessControl>
+
+                          <AccessControl module="Tenants" action="edit">
+                            <button
+                              onClick={() => handleSendInvite(tenant)}
+                              className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-xs font-semibold ${tenant.isInviteSent ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-amber-600 bg-amber-50 hover:bg-amber-100'}`}
+                            >
+                              {tenant.isInviteSent ? (
+                                <>
+                                  <CheckCircle size={14} />
+                                  Resend
+                                </>
+                              ) : (
+                                <>
+                                  <Send size={14} />
+                                  Invite
+                                </>
+                              )}
+                            </button>
+                          </AccessControl>
+
+                          <AccessControl module="Tenants" action="delete">
+                            <button
+                              onClick={() => deleteTenant(tenant.id)}
+                              className="flex items-center justify-center px-3 py-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-all"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </AccessControl>
                         </div>
                       </div>
                     </div>

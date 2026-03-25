@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import { Card } from '../components/Card';
 import api from '../api/client';
-import {
-  BarChart,
+import { hasPermission } from '../utils/permissions';
+import { 
+  BarChart, 
+
   Bar,
   XAxis,
   YAxis,
@@ -23,16 +25,37 @@ import {
   Car, 
   Clock,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 import { OwnerSelector } from '../components/OwnerSelector';
 
 export const Dashboard = () => {
+    if (!hasPermission('Dashboard', 'view')) {
+      return (
+        <MainLayout title="Access Denied">
+          <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-[32px] border border-slate-100 shadow-2xl p-16 text-center">
+            <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center text-rose-500 mb-6 shadow-xl shadow-rose-100/50">
+              <ShieldAlert size={40} />
+            </div>
+            <h2 className="text-3xl font-black text-slate-800 mb-3 tracking-tight uppercase italic">Access Restricted</h2>
+            <p className="text-slate-500 max-w-sm mx-auto font-medium leading-relaxed">
+              You do not have the necessary permissions to view the unified Dashboard. Please contact your property administrator.
+            </p>
+          </div>
+        </MainLayout>
+      );
+    }
+
   const [stats, setStats] = useState(null);
   const [revenueStats, setRevenueStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedOwnerId, setSelectedOwnerId] = useState('');
+  const [leaseAlertPage, setLeaseAlertPage] = useState(1);
+  const leaseAlertsPerPage = 5;
+
 
   const fetchStats = async (ownerId = '') => {
     try {
@@ -93,6 +116,11 @@ export const Dashboard = () => {
   const { totalProperties, totalUnits, occupancy, projectedRevenue, actualRevenue, outstandingRent, outstandingDeposits, insuranceAlerts, leaseAlerts, leaseAlertList, recentActivity, vehicleStats, pendingRefunds } = data;
 
   const sortedLeaseAlertList = leaseAlertList ? [...leaseAlertList].sort((a, b) => a.daysLeft - b.daysLeft) : [];
+  const totalLeaseAlertPages = Math.ceil(sortedLeaseAlertList.length / leaseAlertsPerPage);
+  const paginatedLeaseAlerts = sortedLeaseAlertList.slice(
+    (leaseAlertPage - 1) * leaseAlertsPerPage,
+    leaseAlertPage * leaseAlertsPerPage
+  );
 
   // Build revenue chart from real monthly data (sorted chronologically)
   const revenueData = [...(revenueStats?.monthlyRevenue || [])]
@@ -348,7 +376,7 @@ export const Dashboard = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {sortedLeaseAlertList?.map((alert) => (
+                      {paginatedLeaseAlerts?.map((alert) => (
                         <tr key={alert.id} className="group transition-colors hover:bg-gray-50/50">
                           <td className="py-5 pl-2">
                             <div className="flex flex-col">
@@ -392,6 +420,30 @@ export const Dashboard = () => {
                     </tbody>
                   </table>
                 </div>
+                
+                {totalLeaseAlertPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-50">
+                    <button
+                      onClick={() => setLeaseAlertPage(p => Math.max(1, p - 1))}
+                      disabled={leaseAlertPage === 1}
+                      className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400 transition-all uppercase tracking-widest cursor-pointer"
+                    >
+                      <ChevronLeft size={16} /> Previous
+                    </button>
+                    <div className="flex items-center gap-2">
+                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Page</span>
+                       <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 text-xs font-black ring-1 ring-indigo-100 italic">{leaseAlertPage}</span>
+                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">of {totalLeaseAlertPages}</span>
+                    </div>
+                    <button
+                      onClick={() => setLeaseAlertPage(p => Math.min(totalLeaseAlertPages, p + 1))}
+                      disabled={leaseAlertPage === totalLeaseAlertPages}
+                      className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400 transition-all uppercase tracking-widest cursor-pointer"
+                    >
+                      Next <ChevronRight size={16} />
+                    </button>
+                  </div>
+                )}
               </Card>
             </section>
 

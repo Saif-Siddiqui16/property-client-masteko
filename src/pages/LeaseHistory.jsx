@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Eye, Pencil, Trash2, X, FileText, Calendar, User, Home, Bed, AlertTriangle, CheckCircle, Search } from 'lucide-react';
 import { Button } from '../components/Button';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
 
 // DUMMY_LEASES removed
 export const LeaseHistory = () => {
@@ -156,14 +157,18 @@ export const LeaseHistory = () => {
                     </div>
 
                     <div className="flex gap-2">
-                        <Button variant="secondary" onClick={() => navigate('/leases/new-bedroom')}>
-                            <Bed size={18} />
-                            Bedroom Lease
-                        </Button>
-                        <Button variant="primary" onClick={() => navigate('/leases/new')}>
-                            <FileText size={18} />
-                            Full Unit Lease
-                        </Button>
+                        {hasPermission('Leases', 'add') && (
+                            <>
+                                <Button variant="secondary" onClick={() => navigate('/leases/new-bedroom')}>
+                                    <Bed size={18} />
+                                    Bedroom Lease
+                                </Button>
+                                <Button variant="primary" onClick={() => navigate('/leases/new')}>
+                                    <FileText size={18} />
+                                    Full Unit Lease
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -233,20 +238,24 @@ export const LeaseHistory = () => {
                                                 >
                                                     <Eye size={16} />
                                                 </button>
-                                                <button
-                                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200"
-                                                    onClick={() => setEditLease({ ...lease })}
-                                                    title="Edit Lease"
-                                                >
-                                                    <Pencil size={16} />
-                                                </button>
-                                                <button
-                                                    className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
-                                                    onClick={() => handleDelete(lease.id)}
-                                                    title="Delete Lease"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                {hasPermission('Leases', 'edit') && (
+                                                    <button
+                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-200"
+                                                        onClick={() => setEditLease({ ...lease })}
+                                                        title="Edit Lease"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                )}
+                                                {hasPermission('Leases', 'delete') && (
+                                                    <button
+                                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+                                                        onClick={() => handleDelete(lease.id)}
+                                                        title="Delete Lease"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
