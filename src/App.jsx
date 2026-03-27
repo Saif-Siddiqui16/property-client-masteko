@@ -56,6 +56,10 @@ import EmailHistory from "./pages/EmailHistory";
 import Settings from "./pages/Settings";
 import { Owners } from "./pages/Owners";
 import { TeamManagement } from "./pages/TeamManagement";
+import { TeamInvite } from "./pages/TeamInvite";
+import SMSInbox from "./pages/SMSInbox";
+import SMSCampaigns from "./pages/SMSCampaigns";
+import SMSTemplates from "./pages/SMSTemplates";
 
 /* TENANT PORTAL */
 import { TenantProtectedRoute } from "./components/TenantProtectedRoute";
@@ -90,6 +94,7 @@ function App() {
 
         {/* 🔐 LOGIN */}
         <Route path="/login" element={<Login />} />
+        <Route path="/invite" element={<TeamInvite />} />
 
         {/* 🔒 PROTECTED AREA */}
         <Route element={<ProtectedRoute />}>
@@ -147,6 +152,11 @@ function App() {
           <Route path="/team-management" element={<TeamManagement />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/profile" element={<Profile />} />
+          
+          {/* SMS ENHANCEMENT */}
+          <Route path="/admin/sms/inbox" element={<SMSInbox />} />
+          <Route path="/admin/sms/campaigns" element={<SMSCampaigns />} />
+          <Route path="/admin/sms/templates" element={<SMSTemplates />} />
         </Route>
 
         {/* 🏢 TENANT PORTAL */}

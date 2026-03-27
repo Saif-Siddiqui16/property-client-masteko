@@ -213,7 +213,7 @@ const Communication = () => {
   const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
 
   return (
-    <MainLayout title="Communication Hub">
+    <MainLayout title="SMS Communications">
       <div className="flex flex-col md:flex-row h-[calc(100vh-140px)] bg-white rounded-xl shadow-[0_10px_25px_rgba(0,0,0,0.06)] overflow-hidden">
 
         {/* LEFT: SIDEBAR */}

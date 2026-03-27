@@ -274,7 +274,7 @@ export const DocumentLibrary = () => {
                                 <option value="All">All Types</option>
                                 <option value="Lease">Leases</option>
                                 <option value="Insurance">Insurance</option>
-                                <option value="Invoice">Invoices</option>
+                                <option value="Refund Proof">Refund Proof</option>
                             </select>
                         </div>
                         <div className="flex items-center gap-2 px-4 py-3.5 rounded-[18px] border border-slate-200 bg-white font-bold text-slate-600 text-sm">
@@ -495,7 +495,7 @@ export const DocumentLibrary = () => {
                                             >
                                                 <option value="Lease">Lease Agreement</option>
                                                 <option value="Insurance">Insurance Policy</option>
-                                                <option value="Invoice">Invoice</option>
+                                                <option value="Refund Proof">Refund Proof</option>
                                                 <option value="ID">Identification</option>
                                                 <option value="Other">Other</option>
                                             </select>

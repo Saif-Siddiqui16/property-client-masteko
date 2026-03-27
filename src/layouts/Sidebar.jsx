@@ -107,8 +107,13 @@ const NAV_ITEMS = [
   },
   {
     icon: MessageSquare,
-    label: "Communication",
-    path: "/communication"
+    label: "SMS Hub",
+    path: "/admin/sms/inbox",
+    children: [
+      { label: "Inbox", path: "/admin/sms/inbox" },
+      { label: "Campaign Manager", path: "/admin/sms/campaigns" },
+      { label: "Templates", path: "/admin/sms/templates" }
+    ]
   },
   {
     icon: Mail,
@@ -192,6 +197,9 @@ const NavItem = ({ item, depth = 0, onClose }) => {
       >
         {item.icon && <item.icon size={20} />}
         <span className="flex-1">{item.label}</span>
+        {(item.label === 'SMS Hub' || item.label === 'Inbox') && (
+          <UnreadSMSBadge />
+        )}
         {hasChildren && (isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
       </NavLink>
 
@@ -303,7 +311,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
                 'Payments': 'Payments',
                 'Accounting': 'Accounting',
                 'Reports': 'Reports',
-                'Communication': 'Communication',
+                'SMS Hub': 'Communication',
                 'Email Logs': 'Email Logs',
                 'Maintenance': 'Maintenance',
                 'Tickets': 'Tickets',
@@ -348,3 +356,28 @@ export const Sidebar = ({ isOpen, onClose }) => {
     </>
   );
 };
+
+const UnreadSMSBadge = () => {
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+        const fetchCount = async () => {
+            try {
+                const res = await api.get('/api/communication/unread-count');
+                setCount(res.data.count || 0);
+            } catch (e) { }
+        };
+        fetchCount();
+        const interval = setInterval(fetchCount, 30000); // Check every 30s
+        return () => clearInterval(interval);
+    }, []);
+
+    if (count === 0) return null;
+
+    return (
+        <span className="bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full inline-flex items-center justify-center min-w-[1.25rem] h-5 shadow-sm ml-auto mr-2">
+            {count > 99 ? '99+' : count}
+        </span>
+    );
+};
+
