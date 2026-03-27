@@ -94,6 +94,7 @@ const NAV_ITEMS = [
     label: "Accounting",
     path: "/accounting",
     children: [
+      { label: "General Ledger", path: "/accounting" },
       { label: "QuickBooks Sync", path: "/settings/quickbooks" },
       { label: "Chart of Accounts", path: "/accounting/chart-of-accounts" },
       { label: "Tax Settings", path: "/accounting/tax-settings" }

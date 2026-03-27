@@ -142,6 +142,10 @@ const RefundsAdjustments = () => {
       if (editingRecord) {
         await api.put(`/api/admin/refunds/${editingRecord.id}`, payload);
       } else {
+        // Include proposed allocations from calcData if they exist
+        if (calcData?.proposedAllocations) {
+          payload.allocations = calcData.proposedAllocations;
+        }
         await api.post('/api/admin/refunds', payload);
       }
 
@@ -429,27 +433,36 @@ const RefundsAdjustments = () => {
                   {calcData && (
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 animate-in fade-in duration-300">
                       <h4 className="text-xs font-black text-slate-700 uppercase tracking-widest mb-3 border-b border-slate-200 pb-1 flex items-center gap-1">
-                        <Clock size={14} className="text-slate-500" /> System Calculation
+                        <Clock size={14} className="text-slate-500" /> System Calculation (Prioritized)
                       </h4>
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="flex justify-between items-center text-xs font-bold text-slate-600">
-                          <span>Paid Deposit Total:</span>
-                          <span className="text-emerald-600 font-mono tracking-tight">$ {calcData.totalDepositPaid.toLocaleString('en-CA')}</span>
+                          <span>Security Deposit Held:</span>
+                          <span className="text-emerald-600 font-mono tracking-tight">$ {calcData.availableDeposit?.toLocaleString('en-CA')}</span>
                         </div>
-                        {calcData.totalServiceCharges > 0 && (
-                          <div className="flex justify-between items-center text-xs font-bold text-slate-600">
-                            <span>Service Invoice Deductions:</span>
-                            <span className="text-rose-600 font-mono tracking-tight">- $ {calcData.totalServiceCharges.toLocaleString('en-CA')}</span>
+
+                        {calcData.proposedAllocations && calcData.proposedAllocations.length > 0 && (
+                          <div className="pt-2 border-t border-slate-100">
+                            <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Deductions Table</label>
+                            {calcData.proposedAllocations.map(alloc => (
+                              <div key={alloc.invoiceId} className="flex justify-between items-center text-[11px] font-medium text-slate-500 mb-1">
+                                <span className="flex items-center gap-1">
+                                  <Receipt size={10} /> {alloc.invoiceNo} ({alloc.category})
+                                </span>
+                                <span className="text-rose-500 font-mono">-$ {alloc.amount.toLocaleString('en-CA')}</span>
+                              </div>
+                            ))}
                           </div>
                         )}
+
                         <div className="border-t border-dashed border-slate-200 pt-2 flex justify-between items-center font-black text-slate-800">
-                          <span className="text-xs uppercase">Payable Refund Amount:</span>
+                          <span className="text-xs uppercase">Payable Refund:</span>
                           <span className="text-sm font-black text-indigo-600 font-mono">
                             $ {calcData.finalRefundAmount.toLocaleString('en-CA')}
                           </span>
                         </div>
                       </div>
-                      <div className="mt-2 text-[10px] text-slate-400 font-semibold italic">Based on paid invoices. Pre-fills automatically, but you can override below.</div>
+                      <div className="mt-2 text-[10px] text-slate-400 font-semibold italic">Priority: 1. Service Fees, 2. Rent, 3. Refund.</div>
                     </div>
                   )}
 

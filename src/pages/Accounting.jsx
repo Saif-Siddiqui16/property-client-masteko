@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { DashboardLayout } from '../layouts/DashboardLayout';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { Table } from '../components/Table';
 import { PaymentModal } from '../components/PaymentModal';
-import { Download, Filter, Plus, DollarSign } from 'lucide-react';
+import { DollarSign } from 'lucide-react';
 
 const MOCK_TRANSACTIONS = [
     { id: 1, date: '2024-01-01', description: 'Rent - Jan 2024', type: 'Invoice', amount: 1200.00, balance: 1200.00, status: 'Unpaid' },
@@ -17,6 +16,9 @@ import api from '../api/client';
 export const Accounting = () => {
     const [transactions, setTransactions] = useState([]);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 8;
 
     React.useEffect(() => {
         fetchTxs();
@@ -25,35 +27,36 @@ export const Accounting = () => {
     const fetchTxs = async () => {
         try {
             const res = await api.get('/api/admin/accounting/transactions');
-            setTransactions(res.data);
-        } catch (e) { console.error(e); }
+            setTransactions(res.data || []);
+        } catch (e) {
+            console.error(e);
+            setTransactions([]);
+        }
     };
 
-    // Calculate simple stats locally for now
-    const totalReceivables = transactions.filter(t => t.type === 'Invoice').reduce((acc, t) => acc + t.balance, 0);
-    const ytdIncome = transactions.filter(t => t.type === 'Payment').reduce((acc, t) => acc + t.amount, 0);
-    const expenses = transactions.filter(t => t.type === 'Expense').reduce((acc, t) => acc + t.amount, 0);
+    // Calculate stats based on business logic (Case-insensitive)
+    const totalReceivables = transactions
+        .filter(t => t.type?.toUpperCase() === 'INVOICE')
+        .reduce((acc, t) => acc + (parseFloat(t.balance) || 0), 0);
+
+    const ytdIncome = transactions
+        .filter(t => ['PAYMENT', 'LIABILITY DEDUCTION'].includes(t.type?.toUpperCase()))
+        .reduce((acc, t) => acc + Math.abs(parseFloat(t.amount) || 0), 0);
+
+    const expenses = transactions
+        .filter(t => ['EXPENSE', 'LIABILITY REFUND'].includes(t.type?.toUpperCase()))
+        .reduce((acc, t) => acc + Math.abs(parseFloat(t.amount) || 0), 0);
+
+    // Pagination Logic
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = transactions.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(transactions.length / itemsPerPage);
 
     return (
         <DashboardLayout title="Accounting & Ledger">
             <div className="flex justify-between items-center mb-6">
-                <div className="flex gap-2">
-                    <Button variant="outline" icon={Filter}>Filter</Button>
-                    <Button variant="outline" icon={Download}>Export QuickBooks</Button>
-                </div>
-                {/* Simplified Record Transaction for demo - usually a modal */}
-                <Button icon={Plus} onClick={async () => {
-                    const desc = prompt("Transaction Description:");
-                    if (!desc) return;
-                    const amount = parseFloat(prompt("Amount:"));
-                    const type = prompt("Type (Invoice/Payment/Expense):", "Expense");
-                    try {
-                        await api.post('/api/admin/accounting/transactions', {
-                            date: new Date(), description: desc, type, amount, status: 'Paid'
-                        });
-                        fetchTxs();
-                    } catch (e) { alert('Error'); }
-                }}>Record Transaction</Button>
+                <div>{/* Buttons removed as requested */}</div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -72,41 +75,77 @@ export const Accounting = () => {
             </div>
 
             <Card title="General Ledger">
-                <Table
-                    headers={['Date', 'Description', 'Type', 'Amount', 'Balance', 'Status', 'Actions']}
-                    data={transactions}
-                    renderRow={(tx) => (
-                        <>
-                            <td>{tx.date}</td>
-                            <td className="font-medium text-slate-900">{tx.description}</td>
-                            <td>
-                                <span className={`px-2.5 py-1 rounded text-xs font-medium ${tx.type === 'Invoice' ? 'bg-slate-100 text-slate-700' : 'bg-green-100 text-green-700'
-                                    }`}>
-                                    {tx.type}
-                                </span>
-                            </td>
-                            <td>
-                                <span className={tx.amount < 0 ? 'text-green-600 font-medium' : 'text-slate-900 font-medium'}>
-                                    {tx.amount < 0 ? '-' : ''}${Math.abs(tx.amount).toFixed(2)}
-                                </span>
-                            </td>
-                            <td className="font-bold text-slate-900">${tx.balance.toFixed(2)}</td>
-                            <td>
-                                <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium capitalize ${tx.status === 'Unpaid' ? 'bg-red-100 text-red-700' :
-                                    tx.status === 'Partial' ? 'bg-amber-100 text-amber-700' :
-                                        'bg-green-100 text-green-700'
-                                    }`}>
-                                    {tx.status}
-                                </span>
-                            </td>
-                            <td>
-                                {tx.balance > 0 && tx.type === 'Invoice' && (
-                                    <Button size="sm" variant="ghost" onClick={() => setSelectedInvoice(tx)}>Pay</Button>
-                                )}
-                            </td>
-                        </>
-                    )}
-                />
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b border-slate-100 bg-slate-50/50">
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Date</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Tenant</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-widest">Type</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Amount</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Balance</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {currentItems.length === 0 ? (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-400 italic">No transactions found</td>
+                                </tr>
+                            ) : (
+                                currentItems.map((tx) => (
+                                    <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-600">{tx.date}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="text-sm font-bold text-slate-900">{tx.tenant}</span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-2.5 py-1 rounded text-[10px] font-black uppercase ${['Payment', 'LIABILITY DEDUCTION'].includes(tx.type) ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'
+                                                }`}>
+                                                {tx.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`text-sm font-black ${['Payment', 'LIABILITY DEDUCTION'].includes(tx.type) ? 'text-emerald-600' : 'text-slate-900'}`}>
+                                                {tx.amount < 0 ? '-' : ''}${Math.abs(tx.amount).toLocaleString('en-CA')}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-bold text-slate-900 font-mono">${tx.balance.toLocaleString('en-CA')}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black uppercase border ${tx.status === 'Unpaid' ? 'bg-red-50 text-red-700 border-red-100' :
+                                                tx.status === 'Partial' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                                    'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                }`}>
+                                                {tx.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-white rounded-b-xl">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        Page {currentPage} of {totalPages || 1}
+                    </p>
+                    <div className="flex gap-1.5">
+                        {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((page) => (
+                            <button
+                                key={page}
+                                onClick={() => setCurrentPage(page)}
+                                className={`w-8 h-8 rounded-lg text-xs font-black transition-all border ${currentPage === page
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-500 hover:text-indigo-600'
+                                    }`}
+                            >
+                                {page}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </Card>
 
             {selectedInvoice && (
