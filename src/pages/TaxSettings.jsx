@@ -2,8 +2,29 @@ import { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import { Trash2, Edit } from 'lucide-react';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
+import { AccessControl } from '../components/AccessControl';
 
 export const TaxSettings = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
+  if (!hasPermission('Tax Settings', 'view')) {
+    return (
+        <MainLayout title="Permission Denied">
+            <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
+                <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
+                <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
+                    You do not have permission to view this section. Please contact your administrator.
+                </p>
+            </div>
+        </MainLayout>
+    );
+  }
 
   /* ---------------- STATE ---------------- */
   const [taxes, setTaxes] = useState([]);
@@ -116,16 +137,17 @@ export const TaxSettings = () => {
           </div>
         </div>
 
-        {/* ADD BUTTON */}
-        <div className="flex justify-end">
-          <button className="bg-indigo-600 text-white border-none py-2.5 px-4 rounded-lg cursor-pointer transition-colors hover:bg-indigo-700 font-medium text-sm" onClick={() => {
-            setForm({ name: '', rate: '', appliesTo: 'Rent', status: 'active' });
-            setIsEditing(false);
-            setShowModal(true);
-          }}>
-            + Add New Tax
-          </button>
-        </div>
+        {hasPermission('Tax Settings', 'add') && (
+            <div className="flex justify-end">
+              <button className="bg-indigo-600 text-white border-none py-2.5 px-4 rounded-lg cursor-pointer transition-colors hover:bg-indigo-700 font-medium text-sm" onClick={() => {
+                setForm({ name: '', rate: '', appliesTo: 'Rent', status: 'active' });
+                setIsEditing(false);
+                setShowModal(true);
+              }}>
+                + Add New Tax
+              </button>
+            </div>
+        )}
 
         {/* TABLE */}
         <div className="bg-white rounded-xl overflow-hidden shadow-[0_10px_25px_rgba(0,0,0,0.06)]">
@@ -153,20 +175,24 @@ export const TaxSettings = () => {
                   </td>
                   <td className="p-3.5 border-t border-gray-100 text-right">
                     <div className="flex justify-end gap-1">
-                      <button
-                        onClick={() => handleEditClick(tax)}
-                        className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-                        title="Edit Tax"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(tax.id)}
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
-                        title="Delete Tax"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      {hasPermission('Tax Settings', 'edit') && (
+                          <button
+                            onClick={() => handleEditClick(tax)}
+                            className="p-2 text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                            title="Edit Tax"
+                          >
+                            <Edit size={18} />
+                          </button>
+                      )}
+                      {hasPermission('Tax Settings', 'delete') && (
+                          <button
+                            onClick={() => handleDelete(tax.id)}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+                            title="Delete Tax"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                      )}
                     </div>
                   </td>
                 </tr>

@@ -3,6 +3,13 @@ import { MainLayout } from '../layouts/MainLayout';
 import api from '../api/client';
 
 const Reports = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
   const [data, setData] = useState({
     kpi: { totalRevenue: 0, occupancyRate: 0, activeLeases: 0, outstandingDues: 0 },
     monthlyRevenue: [],

@@ -4,6 +4,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { PaymentModal } from '../components/PaymentModal';
 import { DollarSign } from 'lucide-react';
+import { hasPermission } from '../utils/permissions';
 
 const MOCK_TRANSACTIONS = [
     { id: 1, date: '2024-01-01', description: 'Rent - Jan 2024', type: 'Invoice', amount: 1200.00, balance: 1200.00, status: 'Unpaid' },
@@ -14,6 +15,26 @@ const MOCK_TRANSACTIONS = [
 import api from '../api/client';
 
 export const Accounting = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    React.useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
+    if (!hasPermission('General Ledger', 'view')) {
+        return (
+            <MainLayout title="Permission Denied">
+                <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
+                    <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
+                    <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
+                        You do not have permission to view this section. Please contact your administrator.
+                    </p>
+                </div>
+            </MainLayout>
+        );
+    }
+
     const [transactions, setTransactions] = useState([]);
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     // Pagination State

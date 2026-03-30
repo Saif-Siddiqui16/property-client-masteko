@@ -30,6 +30,13 @@ const initialOwners = [
 ];
 
 export const Owners = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
     const [owners, setOwners] = useState([]);
     const [search, setSearch] = useState('');
     const [showModal, setShowModal] = useState(false);

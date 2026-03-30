@@ -2,8 +2,29 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { Mail, Edit2, Trash2, Plus, X, Search, FileText, Paperclip, Check } from 'lucide-react';
 import { MainLayout } from '../layouts/MainLayout';
+import { hasPermission } from '../utils/permissions';
 
 const EmailTemplates = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
+    if (!hasPermission('Email Templates', 'view')) {
+        return (
+            <MainLayout title="Permission Denied">
+                <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
+                    <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
+                    <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
+                        You do not have permission to view this section. Please contact your administrator.
+                    </p>
+                </div>
+            </MainLayout>
+        );
+    }
+
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -95,13 +116,15 @@ const EmailTemplates = () => {
                     </h1>
                     <p className="text-gray-500 mt-1">Manage reusable professional communication templates.</p>
                 </div>
-                <button 
-                    onClick={() => openModal()}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-md hover:shadow-indigo-100 active:scale-95"
-                >
-                    <Plus className="h-5 w-5" />
-                    New Template
-                </button>
+                {hasPermission('Email Templates', 'add') && (
+                    <button 
+                        onClick={() => openModal()}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-md hover:shadow-indigo-100 active:scale-95"
+                    >
+                        <Plus className="h-5 w-5" />
+                        New Template
+                    </button>
+                )}
             </div>
 
             {/* Search Bar */}
@@ -139,12 +162,16 @@ const EmailTemplates = () => {
                                         <FileText className="h-6 w-6 text-indigo-600" />
                                     </div>
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => openModal(template)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600">
-                                            <Edit2 className="h-4 w-4" />
-                                        </button>
-                                        <button onClick={() => handleDelete(template.id)} className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-500">
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                        {hasPermission('Email Templates', 'edit') && (
+                                            <button onClick={() => openModal(template)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600">
+                                                <Edit2 className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                        {hasPermission('Email Templates', 'delete') && (
+                                            <button onClick={() => handleDelete(template.id)} className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-500">
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                                 <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">{template.name}</h3>

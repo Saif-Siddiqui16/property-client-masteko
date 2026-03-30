@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useLocation, Link } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard,
   Building2,
@@ -31,123 +32,140 @@ const NAV_ITEMS = [
   {
     icon: LayoutDashboard,
     label: "Dashboard",
+    tKey: "sidebar.dashboard",
     path: "/dashboard",
     children: [
-      { label: "Overview", path: "/dashboard" },
-      { label: "Vacancy Dashboard", path: "/vacancy" },
-      { label: "Revenue Dashboard", path: "/revenue" }
+      { label: "Overview", tKey: "sidebar.overview", path: "/dashboard" },
+      { label: "Vacancy Dashboard", tKey: "sidebar.vacancy", path: "/vacancy" },
+      { label: "Revenue Dashboard", tKey: "sidebar.revenue", path: "/revenue" }
     ]
   },
   {
     icon: Building2,
     label: "Properties",
+    tKey: "sidebar.properties",
     path: "/properties/buildings",
     children: [
-      { label: "Buildings", path: "/properties/buildings" },
-      { label: "Units", path: "/units" }
+      { label: "Buildings", tKey: "sidebar.buildings", path: "/properties/buildings" },
+      { label: "Units", tKey: "sidebar.units", path: "/units" }
     ]
   },
   {
     icon: Users,
     label: "Tenants",
+    tKey: "sidebar.tenants",
     path: "/tenants",
     children: [
-      { label: "Tenant List", path: "/tenants" },
-      { label: "Vehicle Management", path: "/tenants/vehicles" },
+      { label: "Tenant List", tKey: "sidebar.tenant_list", path: "/tenants" },
+      { label: "Vehicle Management", tKey: "sidebar.vehicles", path: "/tenants/vehicles" },
       // { label: "Owners", path: "/owners" },
-      { label: "Insurance Alerts", path: "/insurance-alerts" }
+      { label: "Insurance Alerts", tKey: "sidebar.insurance", path: "/insurance-alerts" }
     ]
   },
   {
     icon: Landmark,
     label: "Owners",
+    tKey: "sidebar.owners",
     path: "/owners"
   },
   {
     icon: FileText,
     label: "Leases",
+    tKey: "sidebar.leases",
     path: "/leases"
   },
   {
     icon: FileText,
     label: "Rent Roll",
+    tKey: "sidebar.rent_roll",
     path: "/rent-roll"
   },
   {
     icon: FileText,
     label: "Documents",
+    tKey: "sidebar.documents",
     path: "/documents"
   },
   {
     icon: CreditCard,
     label: "Payments",
+    tKey: "sidebar.payments",
     path: "/payments/invoices",
     children: [
-      { label: "Rent Invoices", path: "/payments/invoices" },
-      { label: "Payments Received", path: "/payments/received" },
-      { label: "Outstanding Dues", path: "/payments/outstanding" },
-      { label: "Refunds & Adjustments", path: "/payments/refunds" }
+      { label: "Rent Invoices", tKey: "sidebar.invoices", path: "/payments/invoices" },
+      { label: "Payments Received", tKey: "sidebar.received", path: "/payments/received" },
+      { label: "Outstanding Dues", tKey: "sidebar.outstanding", path: "/payments/outstanding" },
+      { label: "Refunds & Adjustments", tKey: "sidebar.refunds", path: "/payments/refunds" }
     ]
   },
   {
     icon: Calculator,
     label: "Accounting",
+    tKey: "sidebar.accounting",
     path: "/accounting",
     children: [
-      { label: "General Ledger", path: "/accounting" },
-      { label: "QuickBooks Sync", path: "/settings/quickbooks" },
-      { label: "Chart of Accounts", path: "/accounting/chart-of-accounts" },
-      { label: "Tax Settings", path: "/accounting/tax-settings" }
+      { label: "General Ledger", tKey: "sidebar.ledger", path: "/accounting" },
+      { label: "QuickBooks Sync", tKey: "sidebar.quickbooks", path: "/settings/quickbooks" },
+      { label: "Chart of Accounts", tKey: "sidebar.chart_of_accounts", path: "/accounting/chart-of-accounts" },
+      { label: "Tax Settings", tKey: "sidebar.tax_settings", path: "/accounting/tax-settings" }
     ]
   },
   {
     icon: PieChart,
     label: "Reports",
+    tKey: "sidebar.reports",
     path: "/reports"
   },
   {
     icon: MessageSquare,
     label: "SMS Hub",
+    tKey: "sidebar.sms_hub",
     path: "/admin/sms/inbox",
     children: [
-      { label: "Inbox", path: "/admin/sms/inbox" },
-      { label: "Campaign Manager", path: "/admin/sms/campaigns" },
-      { label: "Templates", path: "/admin/sms/templates" }
+      { label: "Inbox", tKey: "sidebar.inbox", path: "/admin/sms/inbox" },
+      { label: "Campaign Manager", tKey: "sidebar.campaigns", path: "/admin/sms/campaigns" },
+      { label: "Templates", tKey: "sidebar.templates", path: "/admin/sms/templates" }
     ]
   },
   {
     icon: Mail,
-    label: "Email",
+    label: "Email Hub",
+    tKey: "sidebar.email_hub",
     path: "/admin/email/composer",
     children: [
-      { label: "Send Email", path: "/admin/email/composer" },
-      { label: "Email Templates", path: "/admin/email/templates" },
-      { label: "Sent Emails", path: "/admin/email/history" }
+      { label: "Send Email", tKey: "sidebar.send_email", path: "/admin/email/composer" },
+      { label: "Email Templates", tKey: "sidebar.email_templates", path: "/admin/email/templates" },
+      { label: "Sent Emails", tKey: "sidebar.email_history", path: "/admin/email/history" }
     ]
   },
   {
     icon: ClipboardList,
     label: "Maintenance",
+    tKey: "sidebar.maintenance",
     path: "/maintenance"
   },
   {
     icon: Wrench,
     label: "Tickets",
+    tKey: "sidebar.tickets",
     path: "/tickets"
   },
   {
     icon: Users,
     label: "Team Access Control",
+    tKey: "sidebar.team",
     path: "/team-management"
   },
   {
     icon: SettingsIcon,
     label: "Settings",
+    tKey: "sidebar.settings",
     path: "/settings"
   },
   {
     icon: User,
     label: "Profile",
+    tKey: "sidebar.profile",
     path: "/profile"
   }
 ];
@@ -157,6 +175,7 @@ const NAV_ITEMS = [
  ========================= */
 
 const NavItem = ({ item, depth = 0, onClose }) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const hasChildren = item.children?.length > 0;
   const [isOpen, setIsOpen] = useState(false);
@@ -183,7 +202,7 @@ const NavItem = ({ item, depth = 0, onClose }) => {
     <>
       <NavLink
         to={item.path}
-        end={item.path === '/tenants' || item.path === '/dashboard' || item.path === '/properties/buildings'}
+        end={item.path === '/tenants' || item.path === '/dashboard' || item.path === '/properties/buildings' || item.path === '/accounting'}
         onClick={handleClick}
         className={({ isActive }) =>
           clsx(
@@ -196,7 +215,7 @@ const NavItem = ({ item, depth = 0, onClose }) => {
         style={{ paddingLeft: `calc(16px + ${depth * 14}px)` }}
       >
         {item.icon && <item.icon size={20} />}
-        <span className="flex-1">{item.label}</span>
+        <span className="flex-1">{t(item.tKey || item.label)}</span>
         {(item.label === 'SMS Hub' || item.label === 'Inbox') && (
           <UnreadSMSBadge />
         )}
@@ -291,43 +310,92 @@ export const Sidebar = ({ isOpen, onClose }) => {
           {(() => {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
+            
+            // Re-render trigger from custom event
+            const [forceUpdate, setForceUpdate] = React.useState(0);
+            React.useEffect(() => {
+              const handleUpdate = () => setForceUpdate(prev => prev + 1);
+              window.addEventListener('permissionsUpdated', handleUpdate);
+              return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+            }, []);
 
-            return NAV_ITEMS.filter(item => {
-              const user = JSON.parse(localStorage.getItem('user') || '{}');
-              const permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
-              
+            const labelToModule = {
+              'Dashboard': 'Dashboard',
+              'Overview': 'Overview',
+              'Vacancy Dashboard': 'Vacancy Dashboard',
+              'Revenue Dashboard': 'Revenue Dashboard',
+              'Properties': 'Properties',
+              'Buildings': 'Buildings',
+              'Units': 'Units',
+              'Tenants': 'Tenants',
+              'Tenant List': 'Tenant List',
+              'Vehicle Management': 'Vehicles',
+              'Insurance Alerts': 'Insurance',
+              'Owners': 'Owners',
+              'Leases': 'Leases',
+              'Rent Roll': 'Rent Roll',
+              'Documents': 'Documents',
+              'Payments': 'Payments',
+              'Rent Invoices': 'Invoices',
+              'Payments Received': 'Payments Received',
+              'Outstanding Dues': 'Outstanding Dues',
+              'Refunds & Adjustments': 'Refunds',
+              'Accounting': 'Accounting',
+              'General Ledger': 'General Ledger',
+              'QuickBooks Sync': 'QuickBooks Sync',
+              'Chart of Accounts': 'Chart of Accounts',
+              'Tax Settings': 'Tax Settings',
+              'Reports': 'Reports',
+              'SMS Hub': 'Communication',
+              'Inbox': 'Inbox',
+              'Campaign Manager': 'Campaign Manager',
+              'Templates': 'Templates',
+              'Email Hub': 'Email Hub',
+              'Send Email': 'Send Email',
+              'Email Templates': 'Email Templates',
+              'Sent Emails': 'Sent Emails',
+              'Maintenance': 'Maintenance',
+              'Tickets': 'Tickets',
+              'Team Access Control': 'Settings',
+              'Settings': 'Settings'
+            };
+
+            const canUserView = (navItem) => {
               if (user.role === 'ADMIN') return true;
-              if (user.role !== 'COWORKER') return true;
+              if (navItem.label === 'Profile') return true;
 
-              // Map sidebar labels to exactly match the MODULES array in TeamManagement.jsx
-              const labelToModule = {
-                'Dashboard': 'Dashboard',
-                'Properties': 'Buildings',
-                'Tenants': 'Tenants',
-                'Owners': 'Owners',
-                'Leases': 'Leases',
-                'Rent Roll': 'Rent Roll',
-                'Documents': 'Documents',
-                'Payments': 'Payments',
-                'Accounting': 'Accounting',
-                'Reports': 'Reports',
-                'SMS Hub': 'Communication',
-                'Email Logs': 'Email Logs',
-                'Maintenance': 'Maintenance',
-                'Tickets': 'Tickets',
-                'Team Access Control': 'Settings',
-                'Settings': 'Settings',
-                'Insurance Alerts': 'Insurance'
-              };
+              // Hide admin-only accounting and configuration panels from coworkers entirely
+              const adminOnlyLabels = ['QuickBooks Sync', 'Chart of Accounts', 'Tax Settings', 'Team Access Control', 'Settings'];
+              if (adminOnlyLabels.includes(navItem.label)) return false;
 
-              // Identify module name for both main labels and specific child paths logic
-              const moduleName = labelToModule[item.label];
-              
-              if (!moduleName) return true; // Show by default if not mapped
+              const moduleName = labelToModule[navItem.label];
+
+              // If it has children, the parent is visible if at least one child is visible
+              if (navItem.children?.length > 0) {
+                return navItem.children.some(child => canUserView(child));
+              }
+
+              // If no mapping exists for a leaf node, show it by default
+              if (!moduleName) return true;
 
               const perm = permissions.find(p => p.moduleName === moduleName);
               return perm ? perm.canView : false;
-            }).map(item => (
+            };
+
+            const getVisibleItems = (items) => {
+              return items.reduce((acc, item) => {
+                if (!canUserView(item)) return acc;
+                
+                const newItem = { ...item };
+                if (newItem.children?.length > 0) {
+                  newItem.children = getVisibleItems(newItem.children);
+                }
+                acc.push(newItem);
+                return acc;
+              }, []);
+            };
+
+            return getVisibleItems(NAV_ITEMS).map(item => (
               <NavItem key={item.label} item={item} onClose={onClose} />
             ));
           })()}

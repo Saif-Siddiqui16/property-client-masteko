@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
 
 const statusStyles = {
     Completed: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -41,6 +42,13 @@ const statusIcons = {
 };
 
 export const Maintenance = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
     const [tasks, setTasks] = useState([]);
     const [buildings, setBuildings] = useState([]);
     const [search, setSearch] = useState('');
@@ -207,10 +215,12 @@ export const Maintenance = () => {
                                 <Calendar size={20} />
                             </button>
                         </div>
-                        <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
-                            <Plus size={16} />
-                            Add Task
-                        </Button>
+                        {hasPermission('Maintenance', 'add') && (
+                            <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
+                                <Plus size={16} />
+                                Add Task
+                            </Button>
+                        )}
                     </div>
                 </section>
 
@@ -260,8 +270,8 @@ export const Maintenance = () => {
                                         </span>
                                     </div>
 
-                                    <div className="flex justify-end gap-2">
-                                        {task.status !== 'Completed' && (
+                                     <div className="flex justify-end gap-2">
+                                        {task.status !== 'Completed' && hasPermission('Maintenance', 'edit') && (
                                             <button
                                                 onClick={() => handleMarkCompleted(task.id)}
                                                 className="p-2 hover:bg-emerald-50 hover:text-emerald-600 rounded-lg transition-colors bg-white border border-slate-200 shadow-sm"
@@ -270,24 +280,28 @@ export const Maintenance = () => {
                                                 <CheckCircle2 size={16} />
                                             </button>
                                         )}
-                                        <button
-                                            onClick={() => {
-                                                setEditingTask(task);
-                                                setShowAddModal(true);
-                                                setSelectedBuildingIds(task.buildingId ? [task.buildingId] : []);
-                                            }}
-                                            className="p-2 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-colors bg-white border border-slate-200 shadow-sm"
-                                            title="Edit Task"
-                                        >
-                                            <Edit2 size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteTask(task.dbId)}
-                                            className="p-2 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors bg-white border border-slate-200 shadow-sm"
-                                            title="Delete Task"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
+                                        {hasPermission('Maintenance', 'edit') && (
+                                            <button
+                                                onClick={() => {
+                                                    setEditingTask(task);
+                                                    setShowAddModal(true);
+                                                    setSelectedBuildingIds(task.buildingId ? [task.buildingId] : []);
+                                                }}
+                                                className="p-2 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-colors bg-white border border-slate-200 shadow-sm"
+                                                title="Edit Task"
+                                            >
+                                                <Edit2 size={16} />
+                                            </button>
+                                        )}
+                                        {hasPermission('Maintenance', 'delete') && (
+                                            <button
+                                                onClick={() => handleDeleteTask(task.dbId)}
+                                                className="p-2 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors bg-white border border-slate-200 shadow-sm"
+                                                title="Delete Task"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}

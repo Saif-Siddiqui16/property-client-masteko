@@ -4,6 +4,7 @@ import { Button } from '../components/Button';
 import { Search, Eye, Filter, CheckCircle, Clock, AlertTriangle, X, Plus, User, Building, Home, ChevronDown, Trash2, Edit2 } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
 
 const priorityColors = {
     High: 'bg-red-50 text-red-700 border-red-100',
@@ -18,6 +19,13 @@ const statusIcons = {
 };
 
 export const Tickets = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
     const [tickets, setTickets] = useState([]);
     const [buildings, setBuildings] = useState([]);
     const [tenants, setTenants] = useState([]);
@@ -184,10 +192,12 @@ export const Tickets = () => {
                             <Filter size={16} />
                             Filters
                         </Button>
-                        <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
-                            <Plus size={16} />
-                            Add Ticket
-                        </Button>
+                        {hasPermission('Tickets', 'add') && (
+                            <Button variant="primary" size="sm" onClick={() => setShowAddModal(true)}>
+                                <Plus size={16} />
+                                Add Ticket
+                            </Button>
+                        )}
                     </div>
                 </section>
 
@@ -231,7 +241,7 @@ export const Tickets = () => {
                                     {ticket.status}
                                 </span>
 
-                                <span className="flex justify-center gap-1">
+                                 <span className="flex justify-center gap-1">
                                     <button
                                         onClick={() => setSelectedTicket(ticket)}
                                         className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
@@ -239,24 +249,28 @@ export const Tickets = () => {
                                     >
                                         <Eye size={16} />
                                     </button>
-                                    <button
-                                        onClick={() => {
-                                            setEditingTicket(ticket);
-                                            setSelectedBuildingId(ticket.propertyId?.toString() || '');
-                                            setShowAddModal(true);
-                                        }}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
-                                        title="Edit Ticket"
-                                    >
-                                        <Edit2 size={16} />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteTicket(ticket.dbId)}
-                                        className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
-                                        title="Delete Ticket"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    {hasPermission('Tickets', 'edit') && (
+                                        <button
+                                            onClick={() => {
+                                                setEditingTicket(ticket);
+                                                setSelectedBuildingId(ticket.propertyId?.toString() || '');
+                                                setShowAddModal(true);
+                                            }}
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                                            title="Edit Ticket"
+                                        >
+                                            <Edit2 size={16} />
+                                        </button>
+                                    )}
+                                    {hasPermission('Tickets', 'delete') && (
+                                        <button
+                                            onClick={() => handleDeleteTicket(ticket.dbId)}
+                                            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                                            title="Delete Ticket"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
                                 </span>
                             </div>
                         ))}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
 import { 
   Car, 
@@ -20,9 +21,11 @@ import {
 } from 'lucide-react';
 import api from '../api/client';
 import { VehicleForm } from './VehicleForm';
+import { hasPermission } from '../utils/permissions';
 import clsx from 'clsx';
 
 export const Vehicles = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const initialFilter = queryParams.get('filter');
@@ -38,6 +41,13 @@ export const Vehicles = () => {
   const [viewingVehicle, setViewingVehicle] = useState(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, totalPages: 1, limit: 10 });
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  useEffect(() => {
+    const handleUpdate = () => setForceUpdate(prev => prev + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
 
   const fetchVehicles = async () => {
     try {
@@ -98,7 +108,7 @@ export const Vehicles = () => {
   };
 
   return (
-    <MainLayout title="Vehicle Management">
+    <MainLayout title={t('sidebar.vehicles')}>
       <div className="flex flex-col gap-6">
         
         {/* TOP BAR / FILTERS */}
@@ -107,7 +117,7 @@ export const Vehicles = () => {
             <Search size={18} className="text-slate-400" />
             <input
               type="text"
-              placeholder="Search plate, tenant, make..."
+              placeholder={t('sidebar.overview')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="bg-transparent border-none outline-none text-slate-700 placeholder:text-slate-400 w-full text-sm font-medium"
@@ -122,17 +132,19 @@ export const Vehicles = () => {
                 onChange={(e) => setBuildingFilter(e.target.value)}
                 className="bg-transparent border-none outline-none text-sm text-slate-700 font-medium cursor-pointer min-w-[150px]"
               >
-                <option value="">All Buildings</option>
+                <option value="">{t('sidebar.buildings')}</option>
                 {properties.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
             </div>
 
-            <Button variant="primary" onClick={() => { setEditingVehicle(null); setShowForm(true); }} className="whitespace-nowrap rounded-xl shadow-lg shadow-indigo-100">
-              <Plus size={18} />
-              Register Vehicle
-            </Button>
+            {hasPermission('Vehicles', 'add') && (
+              <Button variant="primary" onClick={() => { setEditingVehicle(null); setShowForm(true); }} className="whitespace-nowrap rounded-xl shadow-lg shadow-indigo-100">
+                <Plus size={18} />
+                {t('vehicle.register')}
+              </Button>
+            )}
           </div>
         </section>
 
@@ -141,7 +153,7 @@ export const Vehicles = () => {
           {loading ? (
             <div className="p-20 flex flex-col items-center justify-center space-y-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-              <p className="text-slate-500 font-medium italic">Loading vehicle records...</p>
+              <p className="text-slate-500 font-medium italic">{t('vehicle.loading')}</p>
             </div>
           ) : vehicles.length === 0 ? (
             <div className="p-20 flex flex-col items-center justify-center text-center space-y-4">
@@ -159,11 +171,11 @@ export const Vehicles = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50/50 border-b border-slate-100">
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Vehicle Details</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Registrant (Tenant)</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Location</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('vehicle.details')}</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('sidebar.tenants')}</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('vehicle.location')}</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('common.status')}</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -236,20 +248,24 @@ export const Vehicles = () => {
                           >
                             <Eye size={16} />
                           </button>
-                          <button 
-                            onClick={() => handleEdit(v)}
-                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                            title="Edit Vehicle"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(v.id)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                            title="Delete Vehicle"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {hasPermission('Vehicles', 'edit') && (
+                            <button 
+                              onClick={() => handleEdit(v)}
+                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                              title="Edit Vehicle"
+                            >
+                              <Pencil size={16} />
+                            </button>
+                          )}
+                          {hasPermission('Vehicles', 'delete') && (
+                            <button 
+                              onClick={() => handleDelete(v.id)}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="Delete Vehicle"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

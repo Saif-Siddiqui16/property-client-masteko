@@ -8,6 +8,13 @@ import api from '../api/client';
 import { OwnerSelector } from '../components/OwnerSelector';
 
 export const VacancyDashboard = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
   const [selectedOwnerId, setSelectedOwnerId] = useState('');
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({

@@ -2,8 +2,30 @@ import { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import { FiPlus, FiEdit, FiX, FiTrash2 } from 'react-icons/fi';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
+import { AccessControl } from '../components/AccessControl';
 
 export const ChartOfAccounts = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
+  if (!hasPermission('Chart of Accounts', 'view')) {
+    return (
+        <MainLayout title="Permission Denied">
+            <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
+                <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
+                <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
+                    You do not have permission to view this section. Please contact your administrator.
+                </p>
+            </div>
+        </MainLayout>
+    );
+  }
+
   const [filter, setFilter] = useState('All');
   const [showModal, setShowModal] = useState(false);
   const [editIndex, setEditIndex] = useState(null);
@@ -104,12 +126,14 @@ export const ChartOfAccounts = () => {
             ))}
           </div>
 
-          <button
-            className="flex items-center gap-1.5 bg-green-600 text-white py-2.5 px-3.5 rounded-lg text-sm cursor-pointer border-none transition-all duration-250 hover:bg-green-700 hover:-translate-y-px"
-            onClick={openAddModal}
-          >
-            <FiPlus /> Add New Account
-          </button>
+          {hasPermission('Chart of Accounts', 'add') && (
+              <button
+                className="flex items-center gap-1.5 bg-green-600 text-white py-2.5 px-3.5 rounded-lg text-sm cursor-pointer border-none transition-all duration-250 hover:bg-green-700 hover:-translate-y-px"
+                onClick={openAddModal}
+              >
+                <FiPlus /> Add New Account
+              </button>
+          )}
         </div>
 
         {/* ACCOUNT CARDS */}
@@ -124,22 +148,26 @@ export const ChartOfAccounts = () => {
               <div className="flex justify-between items-center">
                 <h3 className="text-base font-semibold text-slate-900">{acc.accountName}</h3>
                 <div className="flex gap-1.5 items-center">
-                  <button
-                    className="bg-none border-none cursor-pointer text-slate-500 text-base transition-colors duration-200 hover:text-indigo-600"
-                    onClick={() => openEditModal({
-                      name: acc.accountName,
-                      type: acc.assetType,
-                      balance: acc.openingBalance
-                    }, index)}
-                  >
-                    <FiEdit />
-                  </button>
-                  <button
-                    className="bg-none border-none cursor-pointer text-slate-500 text-base transition-colors duration-200 hover:text-red-600"
-                    onClick={() => handleDelete(acc.id)}
-                  >
-                    <FiTrash2 />
-                  </button>
+                  {hasPermission('Chart of Accounts', 'edit') && (
+                      <button
+                        className="bg-none border-none cursor-pointer text-slate-500 text-base transition-colors duration-200 hover:text-indigo-600"
+                        onClick={() => openEditModal({
+                          name: acc.accountName,
+                          type: acc.assetType,
+                          balance: acc.openingBalance
+                        }, index)}
+                      >
+                        <FiEdit />
+                      </button>
+                  )}
+                  {hasPermission('Chart of Accounts', 'delete') && (
+                      <button
+                        className="bg-none border-none cursor-pointer text-slate-500 text-base transition-colors duration-200 hover:text-red-600"
+                        onClick={() => handleDelete(acc.id)}
+                      >
+                        <FiTrash2 />
+                      </button>
+                  )}
                 </div>
               </div>
 

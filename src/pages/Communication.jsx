@@ -3,8 +3,16 @@ import { MainLayout } from '../layouts/MainLayout';
 import { communicationService } from '../services/communicationService';
 import { Search, Send, User, MoreVertical, RefreshCw, Filter, Clock, MessageCircle, ArrowLeft } from 'lucide-react';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
 
 const Communication = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
   const [currentUser, setCurrentUser] = useState(null);
   const [conversations, setConversations] = useState([]);
   const [activeTab, setActiveTab] = useState('ALL'); // 'ALL' | 'OWNER' | 'TENANT' | 'AUDIT'
@@ -222,12 +230,14 @@ const Communication = () => {
             <div className="flex items-center justify-between">
               <h2 className="font-bold text-slate-800">History</h2>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowBulkModal(true)}
-                  className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  📱 Bulk SMS
-                </button>
+                {hasPermission('Communication', 'add') && (
+                  <button
+                    onClick={() => setShowBulkModal(true)}
+                    className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    📱 Bulk SMS
+                  </button>
+                )}
                 <button onClick={fetchConversations} className={`p-2 rounded-full hover:bg-slate-100 ${refreshing ? 'animate-spin' : ''}`}>
                   <RefreshCw size={16} />
                 </button>
@@ -317,7 +327,7 @@ const Communication = () => {
               <div className="max-w-5xl mx-auto space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-black text-slate-800 tracking-tight">Outgoing Communication Audit</h3>
-                  {selectedLogs.length > 0 && (
+                  {selectedLogs.length > 0 && hasPermission('Communication', 'delete') && (
                     <button
                       onClick={async () => {
                         if (confirm(`Delete ${selectedLogs.length} selected logs?`)) {
@@ -387,21 +397,23 @@ const Communication = () => {
                                 </span>
                               </td>
                               <td className="p-4 text-right">
-                                <button
-                                  onClick={async () => {
-                                    if (confirm('Delete this log?')) {
-                                      try {
-                                        await api.delete(`/api/admin/communication/${log.id}`);
-                                        fetchAuditLogs(currentPage);
-                                      } catch (e) {
-                                        alert('Failed to delete log');
+                                {hasPermission('Communication', 'delete') && (
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm('Delete this log?')) {
+                                        try {
+                                          await api.delete(`/api/admin/communication/${log.id}`);
+                                          fetchAuditLogs(currentPage);
+                                        } catch (e) {
+                                          alert('Failed to delete log');
+                                        }
                                       }
-                                    }
-                                  }}
-                                  className="px-3 py-1 bg-red-50 text-red-600 text-xs font-bold rounded hover:bg-red-100"
-                                >
-                                  Delete
-                                </button>
+                                    }}
+                                    className="px-3 py-1 bg-red-50 text-red-600 text-xs font-bold rounded hover:bg-red-100"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -528,12 +540,15 @@ const Communication = () => {
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 h-12 px-5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+                    placeholder={hasPermission('Communication', 'add') ? "Type a message..." : "No permission to Chat"}
+                    disabled={!hasPermission('Communication', 'add')}
+                    className={`flex-1 h-12 px-5 bg-slate-50 border border-slate-200 rounded-xl text-sm ${!hasPermission('Communication', 'add') ? 'opacity-50 cursor-not-allowed' : ''}`}
                   />
-                  <button type="submit" disabled={sending} className="h-12 w-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center">
-                    <Send size={20} />
-                  </button>
+                  {hasPermission('Communication', 'add') && (
+                    <button type="submit" disabled={sending} className="h-12 w-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center">
+                      <Send size={20} />
+                    </button>
+                  )}
                 </form>
               </div>
             </>

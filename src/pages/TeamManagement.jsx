@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import api from '../api/client';
+import { useTranslation } from 'react-i18next';
 import { 
   Users, 
   UserPlus, 
@@ -17,31 +18,77 @@ import {
   Trash2
 } from 'lucide-react';
 
+const getModuleDisplayName = (name, t) => {
+  const map = {
+    'Dashboard': t('sidebar.dashboard'),
+    'Overview': `↳ ${t('sidebar.overview')}`,
+    'Vacancy Dashboard': `↳ ${t('sidebar.vacancy')}`,
+    'Revenue Dashboard': `↳ ${t('sidebar.revenue')}`,
+    'Properties': t('sidebar.properties'),
+    'Buildings': `↳ ${t('sidebar.buildings')}`,
+    'Units': `↳ ${t('sidebar.units')}`,
+    'Tenants': t('sidebar.tenants'),
+    'Tenant List': `↳ ${t('sidebar.tenant_list')}`,
+    'Vehicles': `↳ ${t('sidebar.vehicles')}`,
+    'Insurance': `↳ ${t('sidebar.insurance')}`,
+    'Leases': t('sidebar.leases'),
+    'Rent Roll': t('sidebar.rent_roll'),
+    'Documents': t('sidebar.documents'),
+    'Payments': t('sidebar.payments'),
+    'Invoices': `↳ ${t('sidebar.invoices')}`,
+    'Payments Received': `↳ ${t('sidebar.received')}`,
+    'Outstanding Dues': `↳ ${t('sidebar.outstanding')}`,
+    'Refunds': `↳ ${t('sidebar.refunds')}`,
+    'Accounting': t('sidebar.accounting'),
+    'General Ledger': `↳ ${t('sidebar.ledger')}`,
+    'QuickBooks Sync': `↳ ${t('sidebar.quickbooks')}`,
+    'Chart of Accounts': `↳ ${t('sidebar.chart_of_accounts')}`,
+    'Tax Settings': `↳ ${t('sidebar.tax_settings')}`,
+    'Reports': t('sidebar.reports'),
+    'Communication': t('sidebar.sms_hub'),
+    'Inbox': `↳ ${t('sidebar.inbox')}`,
+    'Campaign Manager': `↳ ${t('sidebar.campaigns')}`,
+    'Templates': `↳ ${t('sidebar.templates')}`,
+    'Email Hub': t('sidebar.email_hub'),
+    'Send Email': `↳ ${t('sidebar.send_email')}`,
+    'Email Templates': `↳ ${t('sidebar.email_templates')}`,
+    'Sent Emails': `↳ ${t('sidebar.email_history')}`,
+    'Maintenance': t('sidebar.maintenance'),
+    'Tickets': t('sidebar.tickets'),
+    'Settings': t('sidebar.team')
+  };
+  return map[name] || name;
+};
+
 const MODULES = [
-  'Dashboard',
-  'Tenants',
-  'Owners',
-  'Buildings',
-  'Units',
+  'Dashboard', 'Overview', 'Vacancy Dashboard', 'Revenue Dashboard',
+  'Properties', 'Buildings', 'Units',
+  'Tenants', 'Tenant List', 'Vehicles', 'Insurance', 
   'Leases',
-  'Invoices',
   'Rent Roll',
-  'Payments',
-  'Refunds',
-  'Insurance',
-  'Maintenance',
-  'Accounting',
-  'Communication',
-  'Email Logs',
-  'Analytics',
-  'Reports',
-  'Settings',
-  'Tickets',
   'Documents',
-  'Vehicles'
+  'Payments', 'Invoices', 'Payments Received', 'Outstanding Dues', 'Refunds',
+  'Accounting', 'General Ledger',
+  'Reports',
+  'Communication', 'Inbox', 'Campaign Manager', 'Templates',
+  'Email Hub', 'Send Email', 'Email Templates', 'Sent Emails',
+  'Maintenance',
+  'Tickets',
+  'Settings'
 ];
 
+const PARENTS = ['Dashboard', 'Properties', 'Tenants', 'Payments', 'Accounting', 'Communication', 'Email Hub'];
+
+const sortPermissions = (perms) => {
+    return [...(perms || [])].sort((a, b) => {
+        const indexA = MODULES.indexOf(a.moduleName);
+        const indexB = MODULES.indexOf(b.moduleName);
+        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+    });
+};
+
 export const TeamManagement = () => {
+  const { t } = useTranslation();
   const [coworkers, setCoworkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMember, setSelectedMember] = useState(null);
@@ -226,21 +273,21 @@ export const TeamManagement = () => {
   };
 
   return (
-    <MainLayout title="Team Member Access Control">
+    <MainLayout title={t('sidebar.team')}>
       <div className="flex flex-col gap-8">
         
         {/* HEADER SECTION */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-slate-800">Coworkers & Staff</h2>
-            <p className="text-slate-500 font-medium">Manage team profiles and set individual access permissions.</p>
+            <h2 className="text-2xl font-black text-slate-800">{t('sidebar.team')}</h2>
+            <p className="text-slate-500 font-medium">{t('dashboard.portfolio_update')}</p> 
           </div>
           <button 
             onClick={() => { resetForm(); setShowModal(true); }}
             className="flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-2xl font-bold shadow-xl shadow-primary-100 hover:bg-primary-700 transition-all group"
           >
             <UserPlus size={20} className="group-hover:scale-110 transition-transform" />
-            Add Team Member
+            {t('team.new_member')}
           </button>
         </div>
 
@@ -251,8 +298,8 @@ export const TeamManagement = () => {
           <div className="lg:col-span-4 flex flex-col gap-4">
             <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-bold text-slate-800">Team Members</h3>
-                    <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest">{coworkers.length} Total</span>
+                    <h3 className="font-bold text-slate-800">{t('sidebar.team')}</h3>
+                    <span className="bg-slate-100 text-slate-500 text-[10px] font-black px-2 py-1 rounded-full uppercase tracking-widest">{coworkers.length} {t('common.total')}</span>
                 </div>
 
                 {loading ? (
@@ -306,37 +353,37 @@ export const TeamManagement = () => {
                         {/* Decorative Background Element */}
                         <div className="absolute top-0 right-0 w-32 h-32 bg-primary-50 rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
 
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
                             <div className="flex items-center gap-6">
-                                <div className="w-16 h-16 rounded-3xl bg-slate-900 text-white flex items-center justify-center text-xl font-black shadow-2xl shadow-slate-200 uppercase">
+                                <div className="w-16 h-16 rounded-3xl bg-slate-900 text-white flex items-center justify-center text-xl font-black shadow-2xl shadow-slate-200 uppercase flex-shrink-0">
                                     {(selectedMember.firstName && selectedMember.firstName !== 'undefined') ? selectedMember.firstName[0] : (selectedMember.name?.[0] || selectedMember.email?.[0] || 'U')}
                                     {(selectedMember.lastName && selectedMember.lastName !== 'undefined') ? selectedMember.lastName[0] : ''}
                                 </div>
                                 <div>
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex flex-wrap items-center gap-3">
                                          <h3 className="text-2xl font-black text-slate-800">
                                              {(selectedMember.firstName && selectedMember.firstName !== 'undefined') ? `${selectedMember.firstName} ${selectedMember.lastName && selectedMember.lastName !== 'undefined' ? selectedMember.lastName : ''}` : selectedMember.name || selectedMember.email || 'Team Member'}
                                          </h3>
                                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                                             selectedMember.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
                                         }`}>
-                                            {selectedMember.isActive ? 'Active' : 'Disabled'}
+                                            {selectedMember.isActive ? t('common.status_active') : t('common.status_disabled')}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-4 mt-2 text-slate-400">
+                                    <div className="flex flex-wrap items-center gap-4 mt-2 text-slate-400">
                                         <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
                                             <Shield size={14} className="text-primary-600" />
                                             <span className="text-[11px] font-bold uppercase tracking-tight text-slate-600">{selectedMember.title || 'COWORKER'}</span>
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <Mail size={14} />
-                                            <span className="text-xs font-medium">{selectedMember.email}</span>
+                                            <span className="text-xs font-medium truncate max-w-[200px]">{selectedMember.email}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center justify-end gap-3 mt-4 lg:mt-0">
                                 <button 
                                     onClick={() => handleEdit(selectedMember)}
                                     className="p-3 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all"
@@ -368,10 +415,11 @@ export const TeamManagement = () => {
                                 </button>
                                 <button 
                                     onClick={() => handleDelete(selectedMember.id)}
-                                    className="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-red-600 text-white shadow-lg shadow-red-200 hover:bg-red-700 transition-all ml-2"
                                     title="Permanent Delete"
                                 >
-                                    <Trash2 size={20} />
+                                    <Trash2 size={14} />
+                                    Delete
                                 </button>
                             </div>
                         </div>
@@ -380,58 +428,70 @@ export const TeamManagement = () => {
                     {/* PERMISSION TABLE */}
                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
                         <div className="p-8 border-b border-slate-50">
-                            <h3 className="text-lg font-black text-slate-800">Module Access Permissions</h3>
-                            <p className="text-sm text-slate-500 font-medium">Define exactly what this member can see and do.</p>
+                            <h3 className="text-lg font-black text-slate-800">{t('team.section_access')}</h3>
+                            <p className="text-sm text-slate-500 font-medium">{t('team.identification_note')}</p>
                         </div>
                         
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead className="bg-slate-50/80">
                                     <tr>
-                                        <th className="px-8 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Section</th>
-                                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">View</th>
-                                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Add</th>
-                                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Edit</th>
-                                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Delete</th>
+                                        <th className="px-8 py-4 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">{t('team.section')}</th>
+                                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">{t('team.v')}</th>
+                                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">{t('team.a')}</th>
+                                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">{t('team.e')}</th>
+                                        <th className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">{t('team.d')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {selectedMember.permissions && selectedMember.permissions.map(perm => (
-                                        <tr key={perm.id} className="hover:bg-slate-50/50 transition-colors">
+                                    {selectedMember.permissions && sortPermissions(selectedMember.permissions)
+                                        .filter(p => MODULES.includes(p.moduleName) && !['Settings', 'Team Access Control'].includes(p.moduleName))
+                                        .map(perm => {
+                                        const isParent = PARENTS.includes(perm.moduleName);
+                                        return (
+                                        <tr key={perm.id} className={`transition-colors ${isParent ? 'bg-slate-50/30' : 'hover:bg-slate-50/50'}`}>
                                             <td className="px-8 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center">
-                                                        <ExternalLink size={14} className="text-slate-400" />
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isParent ? 'bg-primary-50 border border-primary-100' : 'bg-slate-50 border border-slate-100'}`}>
+                                                        <ExternalLink size={14} className={isParent ? 'text-primary-600' : 'text-slate-400'} />
                                                     </div>
-                                                    <span className="font-bold text-slate-700">{perm.moduleName}</span>
+                                                    <span className={`font-bold ${isParent ? 'text-slate-900' : 'text-slate-700'}`}>{getModuleDisplayName(perm.moduleName, t)}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <PermissionCheckbox 
-                                                    checked={perm.canView} 
-                                                    onChange={(val) => handlePermissionChange(perm.id, 'canView', val)} 
-                                                />
+                                                {!isParent && (
+                                                    <PermissionCheckbox 
+                                                        checked={perm.canView} 
+                                                        onChange={(val) => handlePermissionChange(perm.id, 'canView', val)} 
+                                                    />
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <PermissionCheckbox 
-                                                    checked={perm.canAdd} 
-                                                    onChange={(val) => handlePermissionChange(perm.id, 'canAdd', val)} 
-                                                />
+                                                {!isParent && (
+                                                    <PermissionCheckbox 
+                                                        checked={perm.canAdd} 
+                                                        onChange={(val) => handlePermissionChange(perm.id, 'canAdd', val)} 
+                                                    />
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <PermissionCheckbox 
-                                                    checked={perm.canEdit} 
-                                                    onChange={(val) => handlePermissionChange(perm.id, 'canEdit', val)} 
-                                                />
+                                                {!isParent && (
+                                                    <PermissionCheckbox 
+                                                        checked={perm.canEdit} 
+                                                        onChange={(val) => handlePermissionChange(perm.id, 'canEdit', val)} 
+                                                    />
+                                                )}
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <PermissionCheckbox 
-                                                    checked={perm.canDelete} 
-                                                    onChange={(val) => handlePermissionChange(perm.id, 'canDelete', val)} 
-                                                />
+                                                {!isParent && (
+                                                    <PermissionCheckbox 
+                                                        checked={perm.canDelete} 
+                                                        onChange={(val) => handlePermissionChange(perm.id, 'canDelete', val)} 
+                                                    />
+                                                )}
                                             </td>
                                         </tr>
-                                    ))}
+                                    );})}
                                 </tbody>
                             </table>
                         </div>
@@ -462,14 +522,14 @@ export const TeamManagement = () => {
                 <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowModal(false)}></div>
                 <div className="bg-white w-full max-w-2xl rounded-[2.5rem] shadow-2xl relative z-10 flex flex-col max-h-[95vh] overflow-hidden animate-[scale_0.3s_ease]">
                     <div className="p-8 pb-4 flex items-center justify-between border-b border-slate-50">
-                        <h3 className="text-xl font-black text-slate-800">{isEditing ? 'Edit Profile' : 'New Team Member'}</h3>
+                        <h3 className="text-xl font-black text-slate-800">{isEditing ? t('team.edit_profile') : t('team.new_member')}</h3>
                         <button onClick={() => setShowModal(false)} className="p-2 text-slate-400 hover:text-slate-600 transition-all"><X size={24} /></button>
                     </div>
                     
                     <form onSubmit={handleSubmit} className="p-8 pt-4 flex flex-col gap-4 overflow-y-auto">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="flex flex-col gap-2">
-                                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">First Name</label>
+                                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">{t('team.first_name')}</label>
                                 <input 
                                     name="firstName" 
                                     value={formData.firstName} 
@@ -480,7 +540,7 @@ export const TeamManagement = () => {
                                 />
                             </div>
                             <div className="flex flex-col gap-2">
-                                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Last Name</label>
+                                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">{t('team.last_name')}</label>
                                 <input 
                                     name="lastName" 
                                     value={formData.lastName} 
@@ -493,7 +553,7 @@ export const TeamManagement = () => {
                         </div>
 
                         <div className="flex flex-col gap-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Email Address</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">{t('team.email')}</label>
                             <input 
                                 name="email" 
                                 type="email"
@@ -506,7 +566,7 @@ export const TeamManagement = () => {
                         </div>
 
                         <div className="flex flex-col gap-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Phone Number</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">{t('team.phone')}</label>
                             <div className="relative group/phone">
                                 <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 transition-colors group-focus-within/phone:text-primary-500 z-10" />
                                 <div className="w-full flex items-center bg-slate-50/50 rounded-2xl border border-slate-100 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-100 focus-within:border-transparent transition-all overflow-hidden pl-12">
@@ -526,7 +586,7 @@ export const TeamManagement = () => {
                         </div>
 
                         <div className="flex flex-col gap-2">
-                            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Title / Role</label>
+                            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">{t('team.title')}</label>
                             <div className="relative">
                                 <Briefcase size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
                                 <input 
@@ -543,7 +603,7 @@ export const TeamManagement = () => {
                         {/* MODAL PERMISSIONS SECTION */}
                         <div className="flex flex-col gap-4 mt-2">
                             <div className="flex items-center justify-between px-1">
-                                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Section Access & Permissions</label>
+                                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('team.section_access')}</label>
                                 <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">CONFIGURABLE</span>
                             </div>
                             
@@ -551,7 +611,7 @@ export const TeamManagement = () => {
                                 <table className="w-full text-left border-collapse">
                                     <thead className="sticky top-0 bg-white border-b border-slate-100 z-10">
                                         <tr>
-                                            <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-tighter">Section</th>
+                                            <th className="p-3 text-[9px] font-black text-slate-400 uppercase tracking-tighter">{t('team.section')}</th>
                                             <th className="p-3 text-center text-[9px] font-black text-slate-400 uppercase tracking-tighter">V</th>
                                             <th className="p-3 text-center text-[9px] font-black text-slate-400 uppercase tracking-tighter">A</th>
                                             <th className="p-3 text-center text-[9px] font-black text-slate-400 uppercase tracking-tighter">E</th>
@@ -559,37 +619,49 @@ export const TeamManagement = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50/50">
-                                        {formData.permissions.map(perm => (
-                                            <tr key={perm.moduleName} className="hover:bg-white transition-colors">
+                                        {sortPermissions(formData.permissions)
+                                            .filter(p => !['Settings', 'Team Access Control'].includes(p.moduleName))
+                                            .map(perm => {
+                                            const isParent = PARENTS.includes(perm.moduleName);
+                                            return (
+                                            <tr key={perm.moduleName} className={`transition-colors ${isParent ? 'bg-white/50' : 'hover:bg-white'}`}>
                                                 <td className="p-3">
-                                                    <span className="text-xs font-bold text-slate-600 tracking-tight">{perm.moduleName}</span>
+                                                    <span className={`text-xs font-bold tracking-tight ${isParent ? 'text-slate-900' : 'text-slate-600'}`}>{getModuleDisplayName(perm.moduleName, t)}</span>
                                                 </td>
                                                 <td className="p-3 text-center">
-                                                    <PermissionCheckboxSmall 
-                                                        checked={perm.canView} 
-                                                        onChange={(val) => handleModalPermissionChange(perm.moduleName, 'canView', val)} 
-                                                    />
+                                                    {!isParent && (
+                                                        <PermissionCheckboxSmall 
+                                                            checked={perm.canView} 
+                                                            onChange={(val) => handleModalPermissionChange(perm.moduleName, 'canView', val)} 
+                                                        />
+                                                    )}
                                                 </td>
                                                 <td className="p-3 text-center">
-                                                    <PermissionCheckboxSmall 
-                                                        checked={perm.canAdd} 
-                                                        onChange={(val) => handleModalPermissionChange(perm.moduleName, 'canAdd', val)} 
-                                                    />
+                                                    {!isParent && (
+                                                        <PermissionCheckboxSmall 
+                                                            checked={perm.canAdd} 
+                                                            onChange={(val) => handleModalPermissionChange(perm.moduleName, 'canAdd', val)} 
+                                                        />
+                                                    )}
                                                 </td>
                                                 <td className="p-3 text-center">
-                                                    <PermissionCheckboxSmall 
-                                                        checked={perm.canEdit} 
-                                                        onChange={(val) => handleModalPermissionChange(perm.moduleName, 'canEdit', val)} 
-                                                    />
+                                                    {!isParent && (
+                                                        <PermissionCheckboxSmall 
+                                                            checked={perm.canEdit} 
+                                                            onChange={(val) => handleModalPermissionChange(perm.moduleName, 'canEdit', val)} 
+                                                        />
+                                                    )}
                                                 </td>
                                                 <td className="p-3 text-center">
-                                                    <PermissionCheckboxSmall 
-                                                        checked={perm.canDelete} 
-                                                        onChange={(val) => handleModalPermissionChange(perm.moduleName, 'canDelete', val)} 
-                                                    />
+                                                    {!isParent && (
+                                                        <PermissionCheckboxSmall 
+                                                            checked={perm.canDelete} 
+                                                            onChange={(val) => handleModalPermissionChange(perm.moduleName, 'canDelete', val)} 
+                                                        />
+                                                    )}
                                                 </td>
                                             </tr>
-                                        ))}
+                                        );})}
                                     </tbody>
                                 </table>
                             </div>
@@ -601,13 +673,13 @@ export const TeamManagement = () => {
                                 onClick={() => setShowModal(false)}
                                 className="flex-1 py-4 text-slate-500 font-bold hover:bg-slate-50 rounded-2xl transition-all"
                             >
-                                Cancel
+                                {t('common.cancel')}
                             </button>
                             <button 
                                 type="submit"
                                 className="flex-3 py-4 bg-primary-600 text-white font-black rounded-2xl shadow-xl shadow-primary-200 hover:bg-primary-700 transition-all uppercase tracking-tighter"
                             >
-                                {isEditing ? 'Save Changes' : 'Create Team Profile'}
+                                {isEditing ? t('team.update_profile') : t('team.create_profile')}
                             </button>
                         </div>
                     </form>

@@ -3,8 +3,29 @@ import api from '../api/client';
 import { Mail, Search, Filter, History, Paperclip, Eye, RotateCw, X, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { MainLayout } from '../layouts/MainLayout';
+import { hasPermission } from '../utils/permissions';
 
 const EmailHistory = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
+    if (!hasPermission('Sent Emails', 'view')) {
+        return (
+            <MainLayout title="Permission Denied">
+                <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
+                    <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
+                    <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
+                        You do not have permission to view this section. Please contact your administrator.
+                    </p>
+                </div>
+            </MainLayout>
+        );
+    }
+
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
@@ -72,13 +93,13 @@ const EmailHistory = () => {
 
     const fetchMetadata = async () => {
         try {
-            const [bRes, tRes] = await Promise.all([
-                api.get('/api/admin/properties'),
-                api.get('/api/admin/email/templates')
-            ]);
-            const extractData = (res) => Array.isArray(res.data) ? res.data : (res.data?.data || []);
-            setBuildings(extractData(bRes));
-            setTemplates(extractData(tRes));
+            const bRes = await api.get('/api/admin/properties');
+            setBuildings(Array.isArray(bRes.data) ? bRes.data : (bRes.data?.data || []));
+
+            if (hasPermission('Email Templates', 'view')) {
+                const tRes = await api.get('/api/admin/email/templates');
+                setTemplates(Array.isArray(tRes.data) ? tRes.data : (tRes.data?.data || []));
+            }
         } catch (error) {
             console.error('Error fetching metadata:', error);
         }
@@ -242,14 +263,16 @@ const EmailHistory = () => {
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </button>
-                                            <button 
-                                                onClick={() => handleResend(log.id)}
-                                                disabled={actionLoading}
-                                                className="p-1.5 hover:bg-orange-50 rounded-lg bg-gray-50 text-orange-600 transition-colors disabled:opacity-50"
-                                                title="Resend to Recipient"
-                                            >
-                                                <RotateCw className={`h-4 w-4 ${actionLoading ? 'animate-spin' : ''}`} />
-                                            </button>
+                                            {hasPermission('Sent Emails', 'add') && (
+                                                <button 
+                                                    onClick={() => handleResend(log.id)}
+                                                    disabled={actionLoading}
+                                                    className="p-1.5 hover:bg-orange-50 rounded-lg bg-gray-50 text-orange-600 transition-colors disabled:opacity-50"
+                                                    title="Resend to Recipient"
+                                                >
+                                                    <RotateCw className={`h-4 w-4 ${actionLoading ? 'animate-spin' : ''}`} />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

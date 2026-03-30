@@ -16,6 +16,13 @@ import api from '../api/client';
 import { OwnerSelector } from '../components/OwnerSelector';
 
 export const RevenueDashboard = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
   const [selectedOwnerId, setSelectedOwnerId] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [loading, setLoading] = useState(false);

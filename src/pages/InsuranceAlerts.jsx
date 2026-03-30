@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { MainLayout } from '../layouts/MainLayout';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -24,8 +25,17 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
 
 export const InsuranceAlerts = () => {
+    const { t } = useTranslation();
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
@@ -189,15 +199,17 @@ export const InsuranceAlerts = () => {
     };
 
     return (
-        <MainLayout title="Tenant Insurance Compliance">
+        <MainLayout title={t('sidebar.insurance')}>
             <div className="flex flex-col gap-8 pb-10">
 
                 {/* HEADER SECTION */}
                 <div className="flex justify-between items-center">
-                    <p className="text-slate-500 font-medium">Manage tenant insurance records with full visibility and compliance tracking.</p>
-                    <Button onClick={openAddModal} variant="primary" className="rounded-xl shadow-md flex items-center gap-2">
-                        <Plus size={18} /> Add Insurance
-                    </Button>
+                    <p className="text-slate-500 font-medium">{t('insurance.manage_desc')}</p>
+                    {hasPermission('Insurance', 'add') && (
+                        <Button onClick={openAddModal} variant="primary" className="rounded-xl shadow-md flex items-center gap-2">
+                            <Plus size={18} /> {t('insurance.add')}
+                        </Button>
+                    )}
                 </div>
 
                 {/* SUMMARY CARDS */}
@@ -212,7 +224,7 @@ export const InsuranceAlerts = () => {
                             </div>
                             <div>
                                 <h3 className="text-2xl font-black text-slate-800 tracking-tight">{stats.missing}</h3>
-                                <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest leading-none mt-1">Missing Setup</p>
+                                <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest leading-none mt-1">{t('common.status_missing')}</p>
                             </div>
                         </div>
                     </Card>
@@ -227,7 +239,7 @@ export const InsuranceAlerts = () => {
                             </div>
                             <div>
                                 <h3 className="text-2xl font-black text-slate-800 tracking-tight">{stats.expired}</h3>
-                                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest leading-none mt-1">Expired</p>
+                                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest leading-none mt-1">{t('common.status_expired')}</p>
                             </div>
                         </div>
                     </Card>
@@ -242,7 +254,7 @@ export const InsuranceAlerts = () => {
                             </div>
                             <div>
                                 <h3 className="text-2xl font-black text-slate-800 tracking-tight">{stats.expiring}</h3>
-                                <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest leading-none mt-1">Expiring Soon (15d)</p>
+                                <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest leading-none mt-1">{t('common.status_expiring_soon')}</p>
                             </div>
                         </div>
                     </Card>
@@ -257,7 +269,7 @@ export const InsuranceAlerts = () => {
                             </div>
                             <div>
                                 <h3 className="text-2xl font-black text-slate-800 tracking-tight">{stats.active}</h3>
-                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none mt-1">Active (Compliant)</p>
+                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest leading-none mt-1">{t('common.status_active')}</p>
                             </div>
                         </div>
                     </Card>
@@ -281,12 +293,12 @@ export const InsuranceAlerts = () => {
                         onChange={(e) => setStatusFilter(e.target.value)}
                         className="px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-medium bg-white"
                     >
-                        <option value="All">All Statuses</option>
-                        <option value="MISSING">Missing Setup</option>
-                        <option value="ACTIVE">Active</option>
-                        <option value="EXPIRING_SOON">Expiring Soon</option>
-                        <option value="EXPIRED">Expired</option>
-                        <option value="ARCHIVED">Archived History</option>
+                        <option value="All">{t('sidebar.all_statuses') || 'All Statuses'}</option>
+                        <option value="MISSING">{t('common.status_missing')}</option>
+                        <option value="ACTIVE">{t('common.status_active')}</option>
+                        <option value="EXPIRING_SOON">{t('common.status_expiring_soon')}</option>
+                        <option value="EXPIRED">{t('common.status_expired')}</option>
+                        <option value="ARCHIVED">{t('common.status_archived')}</option>
                     </select>
 
                     <select
@@ -294,7 +306,7 @@ export const InsuranceAlerts = () => {
                         onChange={(e) => setPropertyFilter(e.target.value)}
                         className="px-4 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 text-sm font-medium bg-white"
                     >
-                        <option value="All">All Buildings</option>
+                        <option value="All">{t('sidebar.buildings')}</option>
                         {Array.from(new Set(insuranceData.map(i => i.building).filter(b => b && b !== 'N/A'))).map(building => (
                             <option key={building} value={building}>{building}</option>
                         ))}
@@ -311,16 +323,16 @@ export const InsuranceAlerts = () => {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-100">
-                                        <th className="p-4 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Tenant</th>
-                                        <th className="p-4 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Property</th>
-                                        <th className="p-4 px-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Expiry Date</th>
-                                        <th className="p-4 px-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                                        <th className="p-4 px-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Actions</th>
+                                        <th className="p-4 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('sidebar.tenants')}</th>
+                                        <th className="p-4 px-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('navbar.properties')}</th>
+                                        <th className="p-4 px-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('vehicle.expiry')}</th>
+                                        <th className="p-4 px-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('common.status')}</th>
+                                        <th className="p-4 px-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('common.actions')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {filteredData.length > 0 ? filteredData.map((item) => (
-                                    <tr key={item.insuranceId || `missing-${item.tenantId}`} className="group hover:bg-slate-50/50 transition-colors">
+                                    <tr key={`${item.insuranceId || 'missing'}-${item.tenantId}-${item.unitId}-${item.leaseId}`} className="group hover:bg-slate-50/50 transition-colors">
                                         <td className="p-4 px-6">
                                             <div className="font-bold text-slate-800 tracking-tight text-sm">{item.tenantName}</div>
                                         </td>
@@ -339,7 +351,7 @@ export const InsuranceAlerts = () => {
                                                 item.status === 'EXPIRED' ? 'bg-red-50 text-red-600 border-red-100' :
                                                 'bg-slate-100 text-slate-500 border-slate-200'
                                                 }`}>
-                                                {item.status.replace('_', ' ')}
+                                                {t(`common.status_${item.status.toLowerCase()}`)}
                                             </span>
                                         </td>
                                         <td className="p-4 px-6 text-right">
@@ -353,13 +365,15 @@ export const InsuranceAlerts = () => {
                                                         >
                                                             <Eye size={16} />
                                                         </button>
-                                                        <button
-                                                            onClick={() => openEditModal(item)}
-                                                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100 shadow-none hover:shadow-sm"
-                                                            title="Edit / Replace Details"
-                                                        >
-                                                            <Edit size={16} />
-                                                        </button>
+                                                        {hasPermission('Insurance', 'edit') && (
+                                                            <button
+                                                                onClick={() => openEditModal(item)}
+                                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100 shadow-none hover:shadow-sm"
+                                                                title="Edit / Replace Details"
+                                                            >
+                                                                <Edit size={16} />
+                                                            </button>
+                                                        )}
                                                     </>
                                                 )}
                                             </div>

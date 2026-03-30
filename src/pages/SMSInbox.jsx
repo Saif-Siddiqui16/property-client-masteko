@@ -2,8 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
 import { Search, Send, User, MessageSquare, Clock, Filter, CheckCheck, RefreshCw, ChevronLeft, LayoutPanelLeft } from 'lucide-react';
 import { MainLayout } from '../layouts/MainLayout';
+import { hasPermission } from '../utils/permissions';
 
 const SMSInbox = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
     const [conversations, setConversations] = useState([]);
     const [selectedUser, setSelectedUser] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -194,7 +202,7 @@ const SMSInbox = () => {
                 </div>
 
                 {/* Chat Window */}
-                <div className={`${!selectedUser ? 'hidden lg:flex' : 'flex'} flex-1 flex-col bg-white relative`}>
+                <div className={`${!selectedUser ? 'hidden lg:flex' : 'flex'} flex-1 min-w-0 flex-col bg-white relative`}>
                     {selectedUser ? (
                         <>
                             {/* Chat Header */}
@@ -236,8 +244,8 @@ const SMSInbox = () => {
                                         const isOutbound = msg.direction === 'OUTBOUND';
                                         return (
                                             <div key={msg.id || idx} className={`flex ${isOutbound ? 'justify-end' : 'justify-start'}`}>
-                                                <div className={`max-w-[75%] lg:max-w-2xl group`}>
-                                                    <div className={`relative px-6 py-4 rounded-3xl text-sm leading-relaxed shadow-sm transition-all hover:shadow-md ${isOutbound ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-100'}`}>
+                                                <div className={`max-w-[85%] md:max-w-[75%] lg:max-w-xl xl:max-w-2xl group`}>
+                                                    <div className={`relative px-6 py-4 rounded-3xl text-sm leading-relaxed shadow-sm transition-all hover:shadow-md break-words whitespace-pre-wrap ${isOutbound ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-100'}`}>
                                                         {msg.content}
                                                         <div className={`mt-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter ${isOutbound ? 'text-indigo-200' : 'text-slate-400'}`}>
                                                             <span>{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
@@ -279,7 +287,8 @@ const SMSInbox = () => {
                                         <textarea 
                                             value={newMessage}
                                             onChange={(e) => setNewMessage(e.target.value)}
-                                            placeholder="Type a message or select a template..."
+                                            placeholder={hasPermission('Inbox', 'add') ? "Type a message or select a template..." : "You do not have permission to send messages."}
+                                            disabled={!hasPermission('Inbox', 'add')}
                                             rows="1"
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -287,16 +296,18 @@ const SMSInbox = () => {
                                                     handleSendMessage(e);
                                                 }
                                             }}
-                                            className="w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-[2rem] text-sm focus:border-indigo-600 focus:ring-0 transition-all outline-none resize-none max-h-32"
+                                            className={`w-full px-6 py-4 bg-slate-50 border-2 border-slate-100 rounded-[2rem] text-sm focus:border-indigo-600 focus:ring-0 transition-all outline-none resize-none max-h-32 ${!hasPermission('Inbox', 'add') ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         />
                                     </div>
-                                    <button 
-                                        type="submit" 
-                                        disabled={sending || !newMessage.trim()}
-                                        className="w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center transition-all shadow-xl shadow-indigo-100 active:scale-90 disabled:opacity-50 disabled:shadow-none"
-                                    >
-                                        <Send className="h-6 w-6" />
-                                    </button>
+                                    {hasPermission('Inbox', 'add') && (
+                                        <button 
+                                            type="submit" 
+                                            disabled={sending || !newMessage.trim()}
+                                            className="w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full flex items-center justify-center transition-all shadow-xl shadow-indigo-100 active:scale-90 disabled:opacity-50 disabled:shadow-none"
+                                        >
+                                            <Send className="h-6 w-6" />
+                                        </button>
+                                    )}
                                 </form>
                             </div>
                         </>

@@ -4,6 +4,13 @@ import GoogleTranslate from '../components/GoogleTranslate';
 import api from '../api/client';
 
 const Settings = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
   const [settings, setSettings] = useState({
     notifications: true,
     autoInvoices: true,

@@ -33,7 +33,19 @@ import {
 import { OwnerSelector } from '../components/OwnerSelector';
 
 export const Dashboard = () => {
-    if (!hasPermission('Dashboard', 'view')) {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
+    const canViewAnyDashboard = hasPermission('Dashboard', 'view') || 
+                               hasPermission('Overview', 'view') || 
+                               hasPermission('Vacancy Dashboard', 'view') || 
+                               hasPermission('Revenue Dashboard', 'view');
+
+    if (!canViewAnyDashboard) {
       return (
         <MainLayout title="Access Denied">
           <div className="flex flex-col items-center justify-center min-h-[400px] bg-white rounded-[32px] border border-slate-100 shadow-2xl p-16 text-center">

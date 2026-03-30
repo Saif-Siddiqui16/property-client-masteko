@@ -20,6 +20,13 @@ export const RentRoll = () => {
         );
     }
 
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState({ summary: {}, rentRoll: [] });
     const [buildings, setBuildings] = useState([]);

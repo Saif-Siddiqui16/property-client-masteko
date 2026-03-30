@@ -4,6 +4,13 @@ import api from '../api/client';
 import { User, Mail, Lock, Phone, Save, CheckCircle, AlertCircle, Eye, EyeOff, MapPin, X } from 'lucide-react';
 
 export const Profile = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
     const [profile, setProfile] = useState({
         name: '',
         email: '',

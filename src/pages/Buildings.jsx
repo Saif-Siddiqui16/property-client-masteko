@@ -7,6 +7,13 @@ import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
 
 export const Buildings = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
   const [buildings, setBuildings] = useState([]);
   const [search, setSearch] = useState('');
   // Pagination State
@@ -38,6 +45,9 @@ export const Buildings = () => {
 
 
   const fetchOwners = async () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.role !== 'ADMIN') return;
+
     try {
       const response = await api.get('/api/admin/owners');
       setOwners(response.data?.data || response.data || []);

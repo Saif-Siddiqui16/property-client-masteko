@@ -2,8 +2,16 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { Send, Users, Building2, CheckCircle, Clock, AlertCircle, Plus, X, Search, ChevronRight } from 'lucide-react';
 import { MainLayout } from '../layouts/MainLayout';
+import { hasPermission } from '../utils/permissions';
 
 const SMSCampaigns = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
     const [campaigns, setCampaigns] = useState([]);
     const [templates, setTemplates] = useState([]);
     const [buildings, setBuildings] = useState([]);
@@ -98,13 +106,15 @@ const SMSCampaigns = () => {
                         </h1>
                         <p className="text-gray-500 mt-1">Broadcast messages to buildings or specific tenant groups.</p>
                     </div>
-                    <button 
-                        onClick={() => setIsModalOpen(true)}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-100 active:scale-95"
-                    >
-                        <Plus className="h-5 w-5" />
-                        New Campaign
-                    </button>
+                    {hasPermission('Campaign Manager', 'add') && (
+                        <button 
+                            onClick={() => setIsModalOpen(true)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                        >
+                            <Plus className="h-5 w-5" />
+                            New Campaign
+                        </button>
+                    )}
                 </div>
 
                 {/* Campaign List */}

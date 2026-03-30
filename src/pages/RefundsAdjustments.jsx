@@ -10,9 +10,19 @@ import {
 import { Button } from '../components/Button';
 import api from '../api/client';
 import { useLocation } from 'react-router-dom';
+import { hasPermission } from '../utils/permissions';
 
 const RefundsAdjustments = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
   const [records, setRecords] = useState([]);
+  if (!hasPermission('Refunds', 'view')) return null;
+
   const [tenants, setTenants] = useState([]);
   const [units, setUnits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -183,16 +193,18 @@ const RefundsAdjustments = () => {
         )}
 
         <div className="flex justify-end pt-2">
-          <Button variant="primary" onClick={() => {
-            setEditingRecord(null);
-            setSelectedTenantId('');
-            setSelectedUnitId('');
-            setCalcData(null);
-            setAmountValue('');
-            setShowModal(true);
-          }}>
-            + Create Refund
-          </Button>
+          {hasPermission('Refunds', 'add') && (
+            <Button variant="primary" onClick={() => {
+              setEditingRecord(null);
+              setSelectedTenantId('');
+              setSelectedUnitId('');
+              setCalcData(null);
+              setAmountValue('');
+              setShowModal(true);
+            }}>
+              + Create Refund
+            </Button>
+          )}
         </div>
 
         <div className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden border border-gray-100">
@@ -250,18 +262,22 @@ const RefundsAdjustments = () => {
                       <button onClick={() => setSelected(r)} className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-slate-100 rounded-md transition-colors" title="View Details">
                         <Eye size={16} />
                       </button>
-                      <button onClick={() => {
-                        setEditingRecord(r);
-                        setAmountValue(Math.abs(r.amount).toString());
-                        setSelectedTenantId(r.tenantId);
-                        setSelectedUnitId(r.unitId);
-                        setShowModal(true);
-                      }} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors" title="Edit Refund">
-                        <FileCheck size={16} />
-                      </button>
-                      <button onClick={() => handleDelete(r.id)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded-md transition-colors" title="Delete Refund">
-                        <Trash2 size={16} />
-                      </button>
+                      {hasPermission('Refunds', 'edit') && (
+                        <button onClick={() => {
+                          setEditingRecord(r);
+                          setAmountValue(Math.abs(r.amount).toString());
+                          setSelectedTenantId(r.tenantId);
+                          setSelectedUnitId(r.unitId);
+                          setShowModal(true);
+                        }} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors" title="Edit Refund">
+                          <FileCheck size={16} />
+                        </button>
+                      )}
+                      {hasPermission('Refunds', 'delete') && (
+                        <button onClick={() => handleDelete(r.id)} className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-slate-100 rounded-md transition-colors" title="Delete Refund">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

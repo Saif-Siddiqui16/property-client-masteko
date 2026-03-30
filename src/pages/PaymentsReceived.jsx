@@ -3,9 +3,19 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Eye, RotateCcw, X } from 'lucide-react';
 import { Button } from '../components/Button';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
 
 const PaymentsReceived = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
   const [payments, setPayments] = useState([]);
+  if (!hasPermission('Payments Received', 'view')) return null;
+
 
   useEffect(() => {
     fetchPayments();
@@ -81,13 +91,15 @@ const PaymentsReceived = () => {
                         <button onClick={() => setSelectedPayment(p)} className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-slate-100 rounded-md transition-colors">
                           <Eye size={16} />
                         </button>
-                        <button
-                          onClick={() => handleRefund(p)}
-                          title="Refund"
-                          className="p-1.5 text-slate-500 hover:text-orange-600 hover:bg-slate-100 rounded-md transition-colors"
-                        >
-                          <RotateCcw size={16} />
-                        </button>
+                        {hasPermission('Refunds', 'add') && (
+                          <button
+                            onClick={() => handleRefund(p)}
+                            title="Refund"
+                            className="p-1.5 text-slate-500 hover:text-orange-600 hover:bg-slate-100 rounded-md transition-colors"
+                          >
+                            <RotateCcw size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

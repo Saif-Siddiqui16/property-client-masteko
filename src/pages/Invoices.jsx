@@ -4,33 +4,16 @@ import { Eye, Trash2, CheckCircle, X, CreditCard, Wallet, Banknote, Loader2, Plu
 import { Button } from '../components/Button';
 import clsx from 'clsx';
 import api from '../api/client';
-
-const DUMMY_INVOICES = [
-    {
-        id: 1,
-        invoiceNo: 'INV-001',
-        tenant: 'John Doe',
-        unit: 'A-101',
-        month: 'Jan 2026',
-        rent: 12000,
-        serviceFees: 0,
-        amount: 12000,
-        status: 'draft',
-    },
-    {
-        id: 2,
-        invoiceNo: 'INV-002',
-        tenant: 'Sarah Smith',
-        unit: 'B-202',
-        month: 'Jan 2026',
-        rent: 5000,
-        serviceFees: 1500,
-        amount: 6500,
-        status: 'paid',
-    },
-];
+import { hasPermission } from '../utils/permissions';
 
 export const Invoices = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
     const [predefinedServices, setPredefinedServices] = useState([]);
     const [showPresetsModal, setShowPresetsModal] = useState(false);
     const [newPreset, setNewPreset] = useState({ name: '', amount: '' });
@@ -110,7 +93,6 @@ export const Invoices = () => {
 
     const fetchTenantsForBuilding = async (propertyId) => {
         try {
-            // Use the endpoint that returns full tenant info including leases
             const res = await api.get(`/api/admin/tenants?propertyId=${propertyId}&limit=1000`);
             setTenants(res.data?.data || res.data || []);
         } catch (error) {
@@ -136,7 +118,6 @@ export const Invoices = () => {
         const endDate = new Date(end);
         const months = [];
 
-        // Iterate from start to end
         let current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
         const endMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
 
@@ -160,7 +141,6 @@ export const Invoices = () => {
             const months = generateLeaseMonths(selectedTenant.leaseStartDate, selectedTenant.leaseEndDate);
             setAvailableMonths(months);
 
-            // Default to current month if in range, otherwise first available month
             const currentMonthStr = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
             const defaultMonth = months.includes(currentMonthStr) ? currentMonthStr : (months[0] || '');
 
@@ -191,15 +171,6 @@ export const Invoices = () => {
             setIsBatchRunning(false);
         }
     };
-
-
-
-
-
-
-
-
-
 
     const markPaid = async (id) => {
         try {
@@ -254,7 +225,6 @@ export const Invoices = () => {
             fetchInvoices();
             setShowForm(false);
             setEditInvoice(null);
-            // Reset form
             setForm({ tenantId: '', unitId: '', tenant: '', unit: '', unitName: '', month: '', rent: '', serviceFees: '', category: 'RENT', description: '' });
             setLineItems([{ description: '', amount: '' }]);
             setSelectedBuilding('');
@@ -266,8 +236,6 @@ export const Invoices = () => {
 
     const openEdit = (inv) => {
         setEditInvoice(inv);
-
-        // Populate available months if lease info exists
         const months = generateLeaseMonths(inv.leaseStartDate, inv.leaseEndDate);
         setAvailableMonths(months);
 
@@ -290,38 +258,46 @@ export const Invoices = () => {
         <MainLayout title="Rent Invoices">
             <div className="p-6 flex flex-col gap-6">
                 <div className="flex justify-end gap-3">
-                    <Button
-                        variant="secondary"
-                        onClick={() => setShowPresetsModal(true)}
-                        className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                    >
-                        Preset Rates ⚙️
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        onClick={handleBatchInvoicing}
-                        disabled={isBatchRunning}
-                        className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                    >
-                        {isBatchRunning ? <Loader2 size={18} className="mr-1 animate-spin" /> : <CreditCard size={18} className="mr-1" />}
-                        Run Batch Rent Invoicing
-                    </Button>
-                    <Button variant="secondary" onClick={() => {
-                        setEditInvoice(null);
-                        setForm({ tenant: '', unit: '', month: '', rent: '0', serviceFees: '', category: 'SERVICE', description: '' });
-                        setShowForm(true);
-                    }}>
-                        <Plus size={18} className="mr-1" />
-                        Create Service Fee Invoice
-                    </Button>
-                    <Button variant="primary" onClick={() => {
-                        setEditInvoice(null);
-                        setForm({ tenant: '', unit: '', month: '', rent: '', serviceFees: '0', category: 'RENT', description: '' });
-                        setShowForm(true);
-                    }}>
-                        <Plus size={18} className="mr-1" />
-                        Create Rent Invoice
-                    </Button>
+                    {hasPermission('Invoices', 'edit') && (
+                        <Button
+                            variant="secondary"
+                            onClick={() => setShowPresetsModal(true)}
+                            className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                        >
+                            Preset Rates ⚙️
+                        </Button>
+                    )}
+                    {hasPermission('Invoices', 'add') && (
+                        <Button
+                            variant="secondary"
+                            onClick={handleBatchInvoicing}
+                            disabled={isBatchRunning}
+                            className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                        >
+                            {isBatchRunning ? <Loader2 size={18} className="mr-1 animate-spin" /> : <CreditCard size={18} className="mr-1" />}
+                            Run Batch Rent Invoicing
+                        </Button>
+                    )}
+                    {hasPermission('Invoices', 'add') && (
+                        <Button variant="secondary" onClick={() => {
+                            setEditInvoice(null);
+                            setForm({ tenantId: '', unitId: '', tenant: '', unit: '', unitName: '', month: '', rent: '0', serviceFees: '', category: 'SERVICE', description: '' });
+                            setShowForm(true);
+                        }}>
+                            <Plus size={18} className="mr-1" />
+                            Create Service Fee Invoice
+                        </Button>
+                    )}
+                    {hasPermission('Invoices', 'add') && (
+                        <Button variant="primary" onClick={() => {
+                            setEditInvoice(null);
+                            setForm({ tenantId: '', unitId: '', tenant: '', unit: '', unitName: '', month: '', rent: '', serviceFees: '0', category: 'RENT', description: '' });
+                            setShowForm(true);
+                        }}>
+                            <Plus size={18} className="mr-1" />
+                            Create Rent Invoice
+                        </Button>
+                    )}
                 </div>
 
                 <div className="w-full bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden border border-slate-100">
@@ -368,10 +344,12 @@ export const Invoices = () => {
                                                 <button onClick={() => setViewInvoice(inv)} className="hover:text-indigo-600 transition-colors bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm" title="View">
                                                     <Eye size={16} />
                                                 </button>
-                                                <button onClick={() => openEdit(inv)} className="hover:text-amber-600 transition-colors bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm" title="Edit">
-                                                    <Edit2 size={16} />
-                                                </button>
-                                                {inv.status === 'sent' && (
+                                                {hasPermission('Invoices', 'edit') && (
+                                                    <button onClick={() => openEdit(inv)} className="hover:text-amber-600 transition-colors bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm" title="Edit">
+                                                        <Edit2 size={16} />
+                                                    </button>
+                                                )}
+                                                {inv.status === 'sent' && hasPermission('Payments', 'add') && (
                                                     <button
                                                         onClick={() => {
                                                             setIsPaying(inv);
@@ -383,9 +361,11 @@ export const Invoices = () => {
                                                         Pay
                                                     </button>
                                                 )}
-                                                <button onClick={() => deleteInvoice(inv.id)} className="hover:text-rose-600 transition-colors bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm" title="Delete">
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                {hasPermission('Invoices', 'delete') && (
+                                                    <button onClick={() => deleteInvoice(inv.id)} className="hover:text-rose-600 transition-colors bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm" title="Delete">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -395,12 +375,9 @@ export const Invoices = () => {
                     </div>
                 </div>
 
-                {/* MODALS REMAIN THE SAME BUT RE-IMPLEMENTED CORRECTLY */}
-                {/* VIEW MODAL */}
                 {viewInvoice && (
                     <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-md animate-in fade-in duration-300 px-4">
                         <div className="bg-white rounded-3xl w-full max-w-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
-                            {/* Modal Header (Admin Actions) */}
                             <div className="px-8 py-4 bg-slate-50 border-b border-slate-100 flex items-center justify-between shrink-0">
                                 <div className="flex items-center gap-2">
                                     <div className={clsx("w-2 h-2 rounded-full",
@@ -435,10 +412,8 @@ export const Invoices = () => {
                                 </div>
                             </div>
 
-                            {/* PDF Body */}
                             <div className="flex-1 overflow-y-auto p-12 bg-white">
                                 <div className="max-w-xl mx-auto space-y-12">
-                                    {/* Brand & Header */}
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-4">
                                             <div className="flex items-center gap-3 text-indigo-600">
@@ -465,7 +440,6 @@ export const Invoices = () => {
                                         </div>
                                     </div>
 
-                                    {/* Billing & Dates */}
                                     <div className="grid grid-cols-2 gap-12 pt-8 border-t border-slate-100">
                                         <div className="space-y-4">
                                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Billed To</h4>
@@ -489,7 +463,6 @@ export const Invoices = () => {
                                         </div>
                                     </div>
 
-                                    {/* Line Items */}
                                     <div className="space-y-4">
                                         <div className="bg-slate-900 rounded-xl px-6 py-3 flex items-center justify-between">
                                             <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Description</span>
@@ -525,7 +498,6 @@ export const Invoices = () => {
                                         </div>
                                     </div>
 
-                                    {/* Totals Section */}
                                     <div className="flex justify-end pt-4">
                                         <div className="w-64 space-y-3">
                                             <div className="flex justify-between items-center text-sm px-2">
@@ -546,7 +518,6 @@ export const Invoices = () => {
                                         </div>
                                     </div>
 
-                                    {/* Footer Note */}
                                     <div className="pt-12 text-center border-t border-slate-50">
                                         <p className="text-xs text-slate-400 font-medium leading-relaxed italic">
                                             Thank you for being a valued tenant. Please ensure payments are made before the due date to avoid late fees.
@@ -556,30 +527,33 @@ export const Invoices = () => {
                                 </div>
                             </div>
 
-                            {/* Bottom Footer (Actions) */}
                             <div className="p-8 bg-slate-50 border-t border-slate-100 shrink-0">
                                 {viewInvoice.status === 'draft' ? (
                                     <div className="flex gap-4">
-                                        <Button
-                                            onClick={() => {
-                                                const inv = viewInvoice;
-                                                setViewInvoice(null);
-                                                openEdit(inv);
-                                            }}
-                                            variant="secondary"
-                                            className="flex-1 rounded-2xl py-4 h-auto font-black shadow-none border-2 border-slate-200 hover:bg-white flex items-center justify-center gap-2 group"
-                                        >
-                                            <Edit2 size={18} className="group-hover:rotate-12 transition-transform" />
-                                            Edit Draft
-                                        </Button>
-                                        <Button
-                                            onClick={() => markSent(viewInvoice.id)}
-                                            className="flex-[2] rounded-2xl py-4 h-auto font-black shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group relative overflow-hidden"
-                                        >
-                                            <span className="relative z-10">Send to Tenant</span>
-                                            <Send size={18} className="relative z-10 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                                            <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 group-hover:scale-105 transition-transform duration-500"></div>
-                                        </Button>
+                                        {hasPermission('Invoices', 'edit') && (
+                                            <Button
+                                                onClick={() => {
+                                                    const inv = viewInvoice;
+                                                    setViewInvoice(null);
+                                                    openEdit(inv);
+                                                }}
+                                                variant="secondary"
+                                                className="flex-1 rounded-2xl py-4 h-auto font-black shadow-none border-2 border-slate-200 hover:bg-white flex items-center justify-center gap-2 group"
+                                            >
+                                                <Edit2 size={18} className="group-hover:rotate-12 transition-transform" />
+                                                Edit Draft
+                                            </Button>
+                                        )}
+                                        {hasPermission('SMS Hub', 'add') && (
+                                            <Button
+                                                onClick={() => markSent(viewInvoice.id)}
+                                                className="flex-[2] rounded-2xl py-4 h-auto font-black shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 group relative overflow-hidden"
+                                            >
+                                                <span className="relative z-10">Send to Tenant</span>
+                                                <Send size={18} className="relative z-10 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 group-hover:scale-105 transition-transform duration-500"></div>
+                                            </Button>
+                                        )}
                                     </div>
                                 ) : (
                                     <Button
@@ -594,7 +568,6 @@ export const Invoices = () => {
                     </div>
                 )}
 
-                {/* CREATE/EDIT MODAL */}
                 {showForm && (
                     <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-[110] backdrop-blur-sm animate-in fade-in">
                         <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl animate-in zoom-in-95 overflow-hidden flex flex-col max-h-[90vh]">
@@ -824,7 +797,7 @@ export const Invoices = () => {
                                             }}
                                             required={parseFloat(form.serviceFees) === 0}
                                             disabled={parseFloat(form.serviceFees) > 0}
-                                            readOnly={!!form.tenantId && !editInvoice} // Allow overrides during edit mode
+                                            readOnly={!!form.tenantId && !editInvoice} 
                                             className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 transition-all font-medium text-slate-900 font-mono disabled:bg-slate-50 disabled:text-slate-400 read-only:bg-slate-50 read-only:text-indigo-600"
                                         />
                                     </div>
@@ -891,7 +864,6 @@ export const Invoices = () => {
                     </div>
                 )}
 
-                {/* PAYMENT FLOW MODAL (Existing logic restored) */}
                 {isPaying && (
                     <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[120] backdrop-blur-md animate-in fade-in">
                         <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95">
@@ -997,7 +969,6 @@ export const Invoices = () => {
                     </div>
                 )}
 
-                {/* MANAGE PRESETS MODAL */}
                 {showPresetsModal && (
                     <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[110] backdrop-blur-md animate-in fade-in duration-300 px-4">
                         <div className="bg-white rounded-3xl w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.2)] animate-in zoom-in-95 duration-300 flex flex-col p-6 max-h-[80vh] overflow-hidden border border-slate-200">

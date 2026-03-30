@@ -1,15 +1,41 @@
 import React from 'react';
-import { Search, Menu, LogOut, Building, ChevronDown } from 'lucide-react';
+import { Search, Menu, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
 import clsx from 'clsx';
 
 export const Topbar = ({ title = 'Overview', onMenuClick }) => {
     const navigate = useNavigate();
+    const { i18n, t } = useTranslation();
 
     const handleLogout = () => {
         localStorage.removeItem('isLoggedIn');
         navigate('/login');
+    };
+
+    const [currentLang, setCurrentLang] = React.useState(i18n.language?.split('-')[0] || 'en');
+
+    React.useEffect(() => {
+        const syncWithGoogle = () => {
+            const masterSelect = document.querySelector("#google_translate_master_container select.goog-te-combo");
+            if (masterSelect && masterSelect.value && masterSelect.value !== currentLang) {
+                setCurrentLang(masterSelect.value);
+                i18n.changeLanguage(masterSelect.value);
+            }
+        };
+        const interval = setInterval(syncWithGoogle, 1000);
+        return () => clearInterval(interval);
+    }, [currentLang, i18n]);
+
+    const handleLanguageChange = (lang) => {
+        i18n.changeLanguage(lang);
+        setCurrentLang(lang);
+        const masterSelect = document.querySelector("#google_translate_master_container select.goog-te-combo");
+        if (masterSelect) {
+            masterSelect.value = lang;
+            masterSelect.dispatchEvent(new Event("change"));
+        }
     };
 
     return (
@@ -24,45 +50,8 @@ export const Topbar = ({ title = 'Overview', onMenuClick }) => {
                 </button>
 
                 <div className="flex items-center gap-6">
-                    <h1 className="text-lg ml-5 font-semibold text-slate-800 tracking-[-0.01em] whitespace-nowrap">{title}</h1>
-
-                    {/* Organization Selector */}
-                   {/*
-                    <div className="hidden md:flex items-center relative gap-2 pl-6 border-l border-slate-200">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                            <Building size={16} />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Organization</span>
-                            <button
-                                onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-                                className="flex items-center gap-1.5 text-sm font-bold text-slate-700 hover:text-indigo-600 transition-colors"
-                            >
-                                {activeOrg}
-                                <ChevronDown size={14} className={clsx("transition-transform", showOrgDropdown && "rotate-180")} />
-                            </button>
-                        </div>
-
-                        {showOrgDropdown && (
-                            <div className="absolute top-full left-6 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 py-2 z-50 animate-in fade-in slide-in-from-top-2">
-                                {['Demo Owner A', 'Demo Owner B'].map(org => (
-                                    <button
-                                        key={org}
-                                        onClick={() => { setActiveOrg(org); setShowOrgDropdown(false); }}
-                                        className={clsx(
-                                            "w-full text-left px-4 py-2 text-sm font-medium transition-colors",
-                                            activeOrg === org ? "text-indigo-600 bg-indigo-50" : "text-slate-600 hover:bg-slate-50"
-                                        )}
-                                    >
-                                        {org}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                   */}
-
-                    </div>
+                    <h1 className="text-lg ml-5 font-semibold text-slate-800 tracking-[-0.01em] whitespace-nowrap">{title || t('navbar.dashboard')}</h1>
+                </div>
             </div>
 
             {/* RIGHT */}
@@ -75,6 +64,32 @@ export const Topbar = ({ title = 'Overview', onMenuClick }) => {
                         placeholder="Search properties, tenants..."
                         className="w-full h-10 pl-10 pr-4 rounded-md border border-slate-200 text-sm bg-white text-slate-900 transition-all focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 placeholder:text-slate-400 hover:border-slate-300"
                     />
+                </div>
+
+                {/* LANGUAGE SWITCHER */}
+                <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg p-1 h-10 notranslate">
+                    <button
+                        onClick={() => handleLanguageChange('en')}
+                        className={clsx(
+                            "px-3 h-full text-[11px] font-black rounded-md transition-all uppercase tracking-wider",
+                            currentLang === 'en' 
+                                ? "bg-white text-primary-600 shadow-sm border border-slate-100" 
+                                : "text-slate-400 hover:text-slate-600"
+                        )}
+                    >
+                        EN
+                    </button>
+                    <button
+                        onClick={() => handleLanguageChange('fr')}
+                        className={clsx(
+                            "px-3 h-full text-[11px] font-black rounded-md transition-all uppercase tracking-wider",
+                            currentLang === 'fr' 
+                                ? "bg-white text-primary-600 shadow-sm border border-slate-100" 
+                                : "text-slate-400 hover:text-slate-600"
+                        )}
+                    >
+                        FR
+                    </button>
                 </div>
 
                 {/* LOGOUT BUTTON */}

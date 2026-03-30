@@ -10,6 +10,13 @@ import { AccessControl } from '../components/AccessControl';
 const initialTenants = [];
 
 export const Tenants = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
   const { id } = useParams();
   const navigate = useNavigate();
   const [tenants, setTenants] = useState([]);
@@ -472,7 +479,7 @@ export const Tenants = () => {
                 </select>
               </div>
 
-              <AccessControl module="Tenants" action="add">
+              <AccessControl module="Tenant List" action="add">
                 <Button variant="primary" onClick={() => { setEditingTenant(null); setShowModal(true); }}>
                   <Plus size={18} />
                   Add Tenant
@@ -570,7 +577,7 @@ export const Tenants = () => {
                             <Eye size={16} />
                           </button>
                           
-                          <AccessControl module="Tenants" action="edit">
+                          <AccessControl module="Tenant List" action="edit">
                             <button
                               onClick={() => handleEditTenant(tenant)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
@@ -580,7 +587,7 @@ export const Tenants = () => {
                             </button>
                           </AccessControl>
 
-                          <AccessControl module="Tenants" action="edit">
+                          <AccessControl module="Tenant List" action="edit">
                             <button
                               onClick={() => handleSendInvite(tenant)}
                               className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 ${tenant.isInviteSent ? 'text-green-600 hover:bg-green-50' : 'text-slate-400 hover:text-amber-600 hover:bg-amber-50'}`}
@@ -590,7 +597,7 @@ export const Tenants = () => {
                             </button>
                           </AccessControl>
 
-                          <AccessControl module="Tenants" action="delete">
+                          <AccessControl module="Tenant List" action="delete">
                             <button
                               onClick={() => deleteTenant(tenant.id)}
                               className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
@@ -670,7 +677,7 @@ export const Tenants = () => {
                             View
                           </button>
                           
-                          <AccessControl module="Tenants" action="edit">
+                          <AccessControl module="Tenant List" action="edit">
                             <button
                               onClick={() => handleEditTenant(tenant)}
                               className="flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-blue-600 bg-blue-50 hover:bg-blue-100 transition-all text-xs font-semibold"
@@ -680,7 +687,7 @@ export const Tenants = () => {
                             </button>
                           </AccessControl>
 
-                          <AccessControl module="Tenants" action="edit">
+                          <AccessControl module="Tenant List" action="edit">
                             <button
                               onClick={() => handleSendInvite(tenant)}
                               className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg transition-all text-xs font-semibold ${tenant.isInviteSent ? 'text-green-600 bg-green-50 hover:bg-green-100' : 'text-amber-600 bg-amber-50 hover:bg-amber-100'}`}
@@ -699,7 +706,7 @@ export const Tenants = () => {
                             </button>
                           </AccessControl>
 
-                          <AccessControl module="Tenants" action="delete">
+                          <AccessControl module="Tenant List" action="delete">
                             <button
                               onClick={() => deleteTenant(tenant.id)}
                               className="flex items-center justify-center px-3 py-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-all"

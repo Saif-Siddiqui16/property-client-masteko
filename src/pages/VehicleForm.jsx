@@ -16,10 +16,12 @@ import {
   Clock
 } from 'lucide-react';
 import api from '../api/client';
+import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
 import clsx from 'clsx';
 
 export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) => {
+  const { t } = useTranslation();
   const [tenants, setTenants] = useState([]);
   const [loadingTenants, setLoadingTenants] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState(null);
@@ -160,10 +162,10 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
               <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
                 <Car size={24} />
               </div>
-              {editingVehicle ? 'Edit Vehicle Profile' : 'Vehicle Registration'}
+              {editingVehicle ? t('vehicle.edit_profile') : t('vehicle.register')}
             </h3>
             <p className="text-slate-500 font-medium text-sm mt-1">
-              Associate a vehicle with a tenant profile for parking security.
+              {t('vehicle.identification_note')}
             </p>
           </div>
           <button
@@ -183,12 +185,12 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-slate-400 font-black text-[11px] uppercase tracking-widest px-1">
                 <User size={14} className="text-indigo-500" />
-                Step 1: Assign Resident
+                {t('vehicle.step_resident')}
               </div>
               
               <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">Select Tenant</label>
+                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.select_tenant')}</label>
                   <select
                     name="tenantId"
                     value={formData.tenantId}
@@ -196,7 +198,7 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
                     required
                     className="w-full h-[54px] px-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 font-semibold focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none"
                   >
-                    <option value="">-- Choose Tenant --</option>
+                    <option value="">{t('vehicle.choose_tenant')}</option>
                     {tenants.map(t => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
@@ -225,12 +227,12 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-slate-400 font-black text-[11px] uppercase tracking-widest px-1">
                 <CreditCard size={14} className="text-indigo-500" />
-                Step 2: Vehicle Information
+                {t('vehicle.step_info')}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">Licence Plate *</label>
+                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.plate')} *</label>
                   <input
                     type="text"
                     name="licensePlate"
@@ -242,7 +244,7 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">Color *</label>
+                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.color')} *</label>
                   <input
                     type="text"
                     name="color"
@@ -254,7 +256,7 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">Make *</label>
+                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.make')} *</label>
                   <input
                     type="text"
                     name="make"
@@ -266,7 +268,7 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">Model *</label>
+                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.model')} *</label>
                   <input
                     type="text"
                     name="model"
@@ -278,7 +280,7 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
                   />
                 </div>
                 <div className="col-span-2 space-y-2">
-                  <label className="text-sm font-bold text-slate-700 ml-1">Parking Space (Optional)</label>
+                  <label className="text-sm font-bold text-slate-700 ml-1">{t('vehicle.parking')}</label>
                   <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
@@ -298,7 +300,7 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-slate-400 font-black text-[11px] uppercase tracking-widest px-1">
                 <Camera size={14} className="text-indigo-500" />
-                Step 3: Vehicle Media
+                {t('vehicle.step_media')}
               </div>
 
               <div className="grid grid-cols-2 gap-6">
@@ -325,7 +327,7 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
                           <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-slate-400">
                             <Camera size={24} />
                           </div>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Click to upload</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('common.actions')}</p>
                           <input
                             type="file"
                             name={photoKey}
@@ -352,7 +354,7 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
               className="flex-1 h-[58px] rounded-2xl text-sm font-black uppercase tracking-widest"
               disabled={saving}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               type="submit"
@@ -363,10 +365,10 @@ export const VehicleForm = ({ isOpen, onClose, fetchVehicles, editingVehicle }) 
               {saving ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Processing...
+                  {t('common.loading')}
                 </div>
               ) : (
-                editingVehicle ? 'Update Record' : 'Register Vehicle'
+                editingVehicle ? t('vehicle.update') : t('vehicle.register')
               )}
             </Button>
           </div>

@@ -7,8 +7,29 @@ import {
     Building, Search, Filter, CheckCircle2, AlertCircle, X, PlusCircle, FileText
 } from 'lucide-react';
 import { MainLayout } from '../layouts/MainLayout';
+import { hasPermission } from '../utils/permissions';
 
 const EmailComposer = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
+    if (!hasPermission('Send Email', 'view')) {
+        return (
+            <MainLayout title="Permission Denied">
+                <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm mt-8">
+                    <h3 className="text-xl font-black text-slate-800">Access Restricted</h3>
+                    <p className="max-w-md mx-auto mt-2 text-slate-500 font-medium italic">
+                        You do not have permission to view this section. Please contact your administrator.
+                    </p>
+                </div>
+            </MainLayout>
+        );
+    }
+
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState(null); // { type: 'success'|'error', message: '' }
@@ -43,33 +64,37 @@ const EmailComposer = () => {
 
     const fetchInitialData = async () => {
         try {
-            const [bRes, tRes, tempRes, dRes, sRes] = await Promise.all([
-                api.get('/api/admin/properties'),
-                api.get('/api/admin/tenants?limit=1000'), 
-                api.get('/api/admin/email/templates'),
-                api.get('/api/admin/documents?limit=1000'),
-                api.get('/api/admin/email/signature')
+            setLoading(true);
+            const tryFetch = async (url, fallback = []) => {
+                try {
+                    const res = await api.get(url);
+                    return Array.isArray(res.data) ? res.data : (res.data?.data || res.data || fallback);
+                } catch (e) {
+                    console.warn(`Partial fetch failed for ${url}:`, e.message);
+                    return fallback;
+                }
+            };
+
+            const [buildingsData, tenantsData, templatesData, documentsData, signatureData] = await Promise.all([
+                tryFetch('/api/admin/properties'),
+                tryFetch('/api/admin/tenants?limit=1000'), 
+                tryFetch('/api/admin/email/templates'),
+                tryFetch('/api/admin/documents?limit=1000'),
+                tryFetch('/api/admin/email/signature', { signature: '' })
             ]);
             
-            const extractData = (res) => Array.isArray(res.data) ? res.data : (res.data?.data || []);
-
-            const buildingsData = extractData(bRes);
-            const tenantsData = extractData(tRes);
-            const templatesData = extractData(tempRes);
-            const documentsData = extractData(dRes);
-
             setBuildings(buildingsData);
             setTenants(tenantsData);
             setTemplates(templatesData);
             setDocuments(documentsData);
-            setSignature(sRes.data.signature || '');
+            setSignature(signatureData?.signature || '');
 
             return { templates: templatesData, tenants: tenantsData };
         } catch (error) {
-            console.error('Error fetching data:', error);
-            setTenants([]);
-            setBuildings([]);
+            console.error('Critical error in fetchInitialData:', error);
             return null;
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -646,31 +671,35 @@ const EmailComposer = () => {
 
                         <div className="flex gap-4">
                             {step < 4 ? (
-                                <button 
-                                    onClick={() => setStep(step + 1)}
-                                    className="bg-gray-900 text-white px-10 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-black transition-all hover:shadow-xl active:scale-95 group"
-                                >
-                                    Continue
-                                    <ChevronRight className="h-5 w-5 group-translate-x-1 transition-transform" />
-                                </button>
+                                hasPermission('Send Email', 'add') && (
+                                    <button 
+                                        onClick={() => setStep(step + 1)}
+                                        className="bg-gray-900 text-white px-10 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-black transition-all hover:shadow-xl active:scale-95 group"
+                                    >
+                                        Continue
+                                        <ChevronRight className="h-5 w-5 group-translate-x-1 transition-transform" />
+                                    </button>
+                                )
                             ) : (
-                                <button 
-                                    onClick={handleSend}
-                                    disabled={loading || getFilteredRecipients().length === 0}
-                                    className="bg-indigo-600 text-white px-12 py-3 rounded-2xl font-black text-lg flex items-center gap-3 hover:bg-indigo-700 transition-all hover:scale-105 shadow-2xl shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed group"
-                                >
-                                    {loading ? (
-                                        <>
-                                            <div className="h-5 w-5 border-4 border-white border-t-transparent rounded-full animate-spin" />
-                                            Sending...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="h-6 w-6 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                                            SEND EMAILS NOW
-                                        </>
-                                    )}
-                                </button>
+                                hasPermission('Send Email', 'add') && (
+                                    <button 
+                                        onClick={handleSend}
+                                        disabled={loading || getFilteredRecipients().length === 0}
+                                        className="bg-indigo-600 text-white px-12 py-3 rounded-2xl font-black text-lg flex items-center gap-3 hover:bg-indigo-700 transition-all hover:scale-105 shadow-2xl shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <div className="h-5 w-5 border-4 border-white border-t-transparent rounded-full animate-spin" />
+                                                Sending...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send className="h-6 w-6 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                                SEND EMAILS NOW
+                                            </>
+                                        )}
+                                    </button>
+                                )
                             )}
                         </div>
                     </div>

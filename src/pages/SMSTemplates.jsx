@@ -2,8 +2,16 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/client';
 import { MessageSquare, Edit2, Trash2, Plus, X, Search, FileText, Check } from 'lucide-react';
 import { MainLayout } from '../layouts/MainLayout';
+import { hasPermission } from '../utils/permissions';
 
 const SMSTemplates = () => {
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
+
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -79,13 +87,15 @@ const SMSTemplates = () => {
                         </h1>
                         <p className="text-gray-500 mt-1">Manage reusable SMS messages for your tenants.</p>
                     </div>
-                    <button 
-                        onClick={() => openModal()}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-100 active:scale-95"
-                    >
-                        <Plus className="h-5 w-5" />
-                        Create Template
-                    </button>
+                    {hasPermission('Templates', 'add') && (
+                        <button 
+                            onClick={() => openModal()}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                        >
+                            <Plus className="h-5 w-5" />
+                            Create Template
+                        </button>
+                    )}
                 </div>
 
                 {/* Search Bar */}
@@ -123,12 +133,16 @@ const SMSTemplates = () => {
                                             <FileText className="h-6 w-6 text-indigo-600" />
                                         </div>
                                         <div className="flex gap-1">
-                                            <button onClick={() => openModal(template)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-600">
-                                                <Edit2 className="h-4 w-4" />
-                                            </button>
-                                            <button onClick={() => handleDelete(template.id)} className="p-2 hover:bg-red-50 rounded-xl transition-colors text-red-500">
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
+                                            {hasPermission('Templates', 'edit') && (
+                                                <button onClick={() => openModal(template)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-600">
+                                                    <Edit2 className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            {hasPermission('Templates', 'delete') && (
+                                                <button onClick={() => handleDelete(template.id)} className="p-2 hover:bg-red-50 rounded-xl transition-colors text-red-500">
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                     <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">{template.name}</h3>

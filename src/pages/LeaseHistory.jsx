@@ -9,6 +9,12 @@ import { hasPermission } from '../utils/permissions';
 // DUMMY_LEASES removed
 export const LeaseHistory = () => {
     const navigate = useNavigate();
+    const [__forceUpdate, __setForceUpdate] = useState(0);
+    useEffect(() => {
+        const handleUpdate = () => __setForceUpdate(p => p + 1);
+        window.addEventListener('permissionsUpdated', handleUpdate);
+        return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+    }, []);
 
     const [leases, setLeases] = useState([]);
     const [selectedLease, setSelectedLease] = useState(null);

@@ -3,9 +3,19 @@ import { MainLayout } from '../layouts/MainLayout';
 import { Eye, CreditCard, X } from 'lucide-react';
 import { Button } from '../components/Button';
 import api from '../api/client';
+import { hasPermission } from '../utils/permissions';
 
 const OutstandingDues = () => {
+  const [__forceUpdate, __setForceUpdate] = useState(0);
+  useEffect(() => {
+    const handleUpdate = () => __setForceUpdate(p => p + 1);
+    window.addEventListener('permissionsUpdated', handleUpdate);
+    return () => window.removeEventListener('permissionsUpdated', handleUpdate);
+  }, []);
+
   const [dues, setDues] = useState([]);
+  if (!hasPermission('Outstanding Dues', 'view')) return null;
+
 
   useEffect(() => {
     fetchDues();
@@ -95,17 +105,19 @@ const OutstandingDues = () => {
                         <button onClick={() => setSelectedInvoice(d)} className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-slate-100 rounded-md transition-colors">
                           <Eye size={16} />
                         </button>
-                        <button
-                          onClick={() => {
-                            setSelectedInvoice(d);
-                            setPaymentForm({ amount: d.amount.toString(), paymentMethod: 'Cash' });
-                            setShowPaymentModal(true);
-                          }}
-                          title="Record Payment"
-                          className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded-md transition-colors"
-                        >
-                          <CreditCard size={16} />
-                        </button>
+                        {hasPermission('Outstanding Dues', 'add') && (
+                          <button
+                            onClick={() => {
+                              setSelectedInvoice(d);
+                              setPaymentForm({ amount: d.amount.toString(), paymentMethod: 'Cash' });
+                              setShowPaymentModal(true);
+                            }}
+                            title="Record Payment"
+                            className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-slate-100 rounded-md transition-colors"
+                          >
+                            <CreditCard size={16} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -147,12 +159,14 @@ const OutstandingDues = () => {
                 <Button variant="secondary" onClick={() => setSelectedInvoice(null)}>
                   Close
                 </Button>
-                <Button onClick={() => {
-                  setPaymentForm({ amount: selectedInvoice.amount.toString(), paymentMethod: 'Cash' });
-                  setShowPaymentModal(true);
-                }}>
-                  Record Payment
-                </Button>
+                {hasPermission('Outstanding Dues', 'add') && (
+                  <Button onClick={() => {
+                    setPaymentForm({ amount: selectedInvoice.amount.toString(), paymentMethod: 'Cash' });
+                    setShowPaymentModal(true);
+                  }}>
+                    Record Payment
+                  </Button>
+                )}
               </div>
             </div>
           </div>
