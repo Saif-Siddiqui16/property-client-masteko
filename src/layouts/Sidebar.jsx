@@ -431,7 +431,7 @@ const UnreadSMSBadge = () => {
     useEffect(() => {
         const fetchCount = async () => {
             try {
-                const res = await api.get('/api/communication/unread-count');
+                const res = await api.get('/api/communication/unread-stats');
                 setCount(res.data.count || 0);
             } catch (e) { }
         };

@@ -39,14 +39,26 @@ const EmailComposer = () => {
     const [manualAttachments, setManualAttachments] = useState([]);
     const fileInputRef = React.useRef(null);
     const [tenants, setTenants] = useState([]);
+    const [coworkers, setCoworkers] = useState([]); // New state for team
     const [templates, setTemplates] = useState([]);
     const [documents, setDocuments] = useState([]);
-    const [filteredTenantsList, setFilteredTenantsList] = useState([]);
+    const [filteredCoworkersList, setFilteredCoworkersList] = useState([]); // Search for team
     
+    // Pagination & Search for Tenants
+    const [tenantPage, setTenantPage] = useState(1);
+    const [tenantSearchTerm, setTenantSearchTerm] = useState('');
+    const tenantsPerPage = 6; 
+
+    // Pagination & Search for Buildings
+    const [buildingPage, setBuildingPage] = useState(1);
+    const [buildingSearchTerm, setBuildingSearchTerm] = useState('');
+    const buildingsPerPage = 4; // Buildings are larger, let's show fewer per page
+
     // Draft State
     const [selection, setSelection] = useState({
         buildingIds: [],
         tenantIds: [],
+        coworkerIds: [], // New state for granular team selection
         excludedTenantIds: [], // New state for granular deselects
         filterType: 'all' // all, outstanding, expiring_insurance, upcoming_moveout
     });
@@ -75,9 +87,10 @@ const EmailComposer = () => {
                 }
             };
 
-            const [buildingsData, tenantsData, templatesData, documentsData, signatureData] = await Promise.all([
+            const [buildingsData, tenantsData, coworkersData, templatesData, documentsData, signatureData] = await Promise.all([
                 tryFetch('/api/admin/properties'),
                 tryFetch('/api/admin/tenants?limit=1000'), 
+                tryFetch('/api/admin/coworkers'), // Fetch team members
                 tryFetch('/api/admin/email/templates'),
                 tryFetch('/api/admin/documents?limit=1000'),
                 tryFetch('/api/admin/email/signature', { signature: '' })
@@ -85,11 +98,12 @@ const EmailComposer = () => {
             
             setBuildings(buildingsData);
             setTenants(tenantsData);
+            setCoworkers(coworkersData);
             setTemplates(templatesData);
             setDocuments(documentsData);
             setSignature(signatureData?.signature || '');
 
-            return { templates: templatesData, tenants: tenantsData };
+            return { templates: templatesData, tenants: tenantsData, coworkers: coworkersData };
         } catch (error) {
             console.error('Critical error in fetchInitialData:', error);
             return null;
@@ -136,6 +150,15 @@ const EmailComposer = () => {
         setSelection({ ...selection, buildingIds: ids });
     };
 
+    const toggleCoworker = (id) => {
+        setSelection(prev => ({
+            ...prev,
+            coworkerIds: prev.coworkerIds.includes(id)
+                ? prev.coworkerIds.filter(cid => cid !== id)
+                : [...prev.coworkerIds, id]
+        }));
+    };
+
     const getFilteredRecipients = () => {
         const selectedRecipientsMap = new Map(); // Map to store tenants and avoid duplicates within the SAME building context
         
@@ -170,12 +193,21 @@ const EmailComposer = () => {
 
             const tenant = tenants.find(t => t.id === tId);
             if (tenant) {
-                // If they are already selected via a building, don't show them again as a loose individual
-                // We'll just ensure they show up once for their primary residence if not already in the list
                 const defaultPropertyId = tenant.buildingId || tenant.propertyId || (tenant.leases && tenant.leases[0]?.unit?.propertyId);
                 const compoundKey = `${tId}-${defaultPropertyId}`;
                 if (!selectedRecipientsMap.has(compoundKey)) {
                     selectedRecipientsMap.set(compoundKey, { ...tenant, targetPropertyId: defaultPropertyId });
+                }
+            }
+        });
+
+        // 3. Process Individual Coworkers (New)
+        selection.coworkerIds.forEach(cId => {
+            const coworker = coworkers.find(c => c.id === cId);
+            if (coworker) {
+                const compoundKey = `coworker-${cId}`;
+                if (!selectedRecipientsMap.has(compoundKey)) {
+                    selectedRecipientsMap.set(compoundKey, { ...coworker, targetPropertyId: null });
                 }
             }
         });
@@ -312,29 +344,119 @@ const EmailComposer = () => {
                 {step === 1 && (
                     <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-300">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                            {/* Left Column: Buildings & Individual Search */}
+                            {/* Left Column: Team, Buildings & Individual Search */}
                             <div className="space-y-6">
-                                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                    <Building className="h-5 w-5 text-indigo-600" />
-                                    Target Buildings
+                                {/* management & team selection */}
+                                <div className="space-y-6 pb-10 border-b border-gray-100 mb-10">
+                                    <h3 className="text-xl font-bold text-gray-900 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Users className="h-5 w-5 text-indigo-600" />
+                                            Management & Team
+                                        </div>
+                                        <div className="relative">
+                                            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Search team..." 
+                                                className="pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-400"
+                                                onChange={(e) => {
+                                                    const term = e.target.value.toLowerCase();
+                                                    setFilteredCoworkersList(coworkers.filter(c => c.name.toLowerCase().includes(term) || c.email.toLowerCase().includes(term)));
+                                                }}
+                                            />
+                                        </div>
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {(filteredCoworkersList.length > 0 ? filteredCoworkersList : coworkers).map(c => (
+                                            <button
+                                                key={c.id}
+                                                onClick={() => toggleCoworker(c.id)}
+                                                className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                                                    selection.coworkerIds.includes(c.id) 
+                                                    ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' 
+                                                    : 'border-gray-50 bg-gray-50 hover:border-gray-200'
+                                                }`}
+                                            >
+                                                <div className="text-sm font-bold text-gray-800 line-clamp-1">{c.name}</div>
+                                                <div className="text-[11px] text-indigo-400 font-bold uppercase tracking-tight line-clamp-1">{c.title || 'Team Member'}</div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <h3 className="text-xl font-bold text-gray-900 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Building className="h-5 w-5 text-indigo-600" />
+                                        Target Buildings
+                                    </div>
+                                    <div className="relative">
+                                        <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Search building..." 
+                                            className="pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-400"
+                                            value={buildingSearchTerm}
+                                            onChange={(e) => {
+                                                setBuildingSearchTerm(e.target.value);
+                                                setBuildingPage(1);
+                                            }}
+                                        />
+                                    </div>
                                 </h3>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {buildings.map(b => (
-                                        <button
-                                            key={b.id}
-                                            onClick={() => toggleBuilding(b.id)}
-                                            className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                                                selection.buildingIds.includes(b.id) 
-                                                ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' 
-                                                : 'border-gray-50 bg-gray-50 hover:border-gray-200'
-                                            }`}
-                                        >
-                                            <div className={`text-sm font-bold uppercase tracking-tight ${selection.buildingIds.includes(b.id) ? 'text-indigo-700' : 'text-gray-600'}`}>
-                                                {b.name}
-                                            </div>
-                                            <div className="text-xs text-gray-400 mt-1">{b.address}</div>
-                                        </button>
-                                    ))}
+                                    {(() => {
+                                        const filtered = buildings.filter(b => 
+                                            b.name.toLowerCase().includes(buildingSearchTerm.toLowerCase()) || 
+                                            b.address.toLowerCase().includes(buildingSearchTerm.toLowerCase())
+                                        );
+                                        const paginated = filtered.slice((buildingPage - 1) * buildingsPerPage, buildingPage * buildingsPerPage);
+                                        const totalPages = Math.ceil(filtered.length / buildingsPerPage);
+                                        
+                                        return (
+                                            <>
+                                                {paginated.map(b => (
+                                                    <button
+                                                        key={b.id}
+                                                        onClick={() => toggleBuilding(b.id)}
+                                                        className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                                                            selection.buildingIds.includes(b.id) 
+                                                            ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' 
+                                                            : 'border-gray-50 bg-gray-50 hover:border-gray-200'
+                                                        }`}
+                                                    >
+                                                        <div className={`text-sm font-bold uppercase tracking-tight line-clamp-1 ${selection.buildingIds.includes(b.id) ? 'text-indigo-700' : 'text-gray-600'}`}>
+                                                            {b.name}
+                                                        </div>
+                                                        <div className="text-[10px] text-gray-400 mt-1 line-clamp-1">{b.address}</div>
+                                                    </button>
+                                                ))}
+                                                
+                                                {filtered.length > buildingsPerPage && (
+                                                    <div className="col-span-2 flex items-center justify-between mt-2 px-2">
+                                                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                                                            Page {buildingPage} of {totalPages}
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button 
+                                                                onClick={() => setBuildingPage(p => Math.max(1, p - 1))}
+                                                                disabled={buildingPage === 1}
+                                                                className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                            >
+                                                                <ChevronLeft className="h-4 w-4 text-gray-600" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => setBuildingPage(p => Math.min(totalPages, p + 1))}
+                                                                disabled={buildingPage === totalPages}
+                                                                className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                            >
+                                                                <ChevronRight className="h-4 w-4 text-gray-600" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                 </div>
 
                                 <div className="space-y-6 pt-10 border-t border-gray-100 mt-10">
@@ -349,9 +471,10 @@ const EmailComposer = () => {
                                                 type="text" 
                                                 placeholder="Search by name..." 
                                                 className="pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-400"
+                                                value={tenantSearchTerm}
                                                 onChange={(e) => {
-                                                    const term = e.target.value.toLowerCase();
-                                                    setFilteredTenantsList(tenants.filter(t => t.name.toLowerCase().includes(term) || t.email.toLowerCase().includes(term)).slice(0, 10));
+                                                    setTenantSearchTerm(e.target.value);
+                                                    setTenantPage(1);
                                                 }}
                                             />
                                         </div>
@@ -362,22 +485,58 @@ const EmailComposer = () => {
                                                 No tenants were found in the database.
                                             </div>
                                         )}
-                                        {(filteredTenantsList.length > 0 ? filteredTenantsList : tenants.slice(0, 50)).map(t => (
-                                            <button
-                                                key={t.id}
-                                                onClick={() => toggleIndividualTenant(t.id)}
-                                                className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                                                    selection.tenantIds.includes(t.id) 
-                                                    ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' 
-                                                    : 'border-gray-50 bg-gray-50 hover:border-gray-200'
-                                                }`}
-                                            >
-                                                <div className="text-sm font-bold text-gray-800">{t.name}</div>
-                                                <div className="text-[11px] text-gray-400">{t.email}</div>
-                                            </button>
-                                        ))}
+                                        {(() => {
+                                            const filtered = tenants.filter(t => 
+                                                t.name.toLowerCase().includes(tenantSearchTerm.toLowerCase()) || 
+                                                t.email.toLowerCase().includes(tenantSearchTerm.toLowerCase())
+                                            );
+                                            const paginated = filtered.slice((tenantPage - 1) * tenantsPerPage, tenantPage * tenantsPerPage);
+                                            const totalPages = Math.ceil(filtered.length / tenantsPerPage);
+                                            
+                                            return (
+                                                <>
+                                                    {paginated.map(t => (
+                                                        <button
+                                                            key={t.id}
+                                                            onClick={() => toggleIndividualTenant(t.id)}
+                                                            className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                                                                selection.tenantIds.includes(t.id) 
+                                                                ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' 
+                                                                : 'border-gray-50 bg-gray-50 hover:border-gray-200'
+                                                            }`}
+                                                        >
+                                                            <div className="text-sm font-bold text-gray-800 line-clamp-1">{t.name}</div>
+                                                            <div className="text-[11px] text-gray-400 line-clamp-1">{t.email}</div>
+                                                        </button>
+                                                    ))}
+                                                    
+                                                    {filtered.length > tenantsPerPage && (
+                                                        <div className="col-span-2 flex items-center justify-between mt-2 px-2">
+                                                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                                                                Page {tenantPage} of {totalPages}
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button 
+                                                                    onClick={() => setTenantPage(p => Math.max(1, p - 1))}
+                                                                    disabled={tenantPage === 1}
+                                                                    className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                                >
+                                                                    <ChevronLeft className="h-4 w-4 text-gray-600" />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => setTenantPage(p => Math.min(totalPages, p + 1))}
+                                                                    disabled={tenantPage === totalPages}
+                                                                    className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                                >
+                                                                    <ChevronRight className="h-4 w-4 text-gray-600" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                     </div>
-                                    {tenants.length > 10 && <p className="text-[10px] text-gray-400 italic">Showing first few results. Use search for more.</p>}
                                 </div>
                             </div>
 
@@ -637,7 +796,7 @@ const EmailComposer = () => {
                         <div className="space-y-2 mb-10">
                             <h2 className="text-4xl font-black text-gray-900">Transmission Complete!</h2>
                             <p className="text-xl text-gray-500 max-w-lg mx-auto font-medium">
-                                Your bulk email broadcast has been successfully processed. {getFilteredRecipients().length} tenants have been notified.
+                                Your bulk email broadcast has been successfully processed. {getFilteredRecipients().length} recipients have been notified.
                             </p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">

@@ -28,7 +28,7 @@ const EmailTemplates = () => {
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [currentTemplate, setCurrentTemplate] = useState({ name: '', subject: '', body: '', documentIds: [] });
+    const [currentTemplate, setCurrentTemplate] = useState({ name: '', subject: '', body: '', language: 'en', type: '', documentIds: [] });
     const [availableDocs, setAvailableDocs] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -84,9 +84,11 @@ const EmailTemplates = () => {
         }
     };
 
-    const openModal = (template = { name: '', subject: '', body: '', documentIds: [] }) => {
+    const openModal = (template = { name: '', subject: '', body: '', language: 'en', type: '', documentIds: [] }) => {
         setCurrentTemplate({
             ...template,
+            language: template.language || 'en',
+            type: template.type || '',
             documentIds: template.documents?.map(d => d.id) || []
         });
         setIsModalOpen(true);
@@ -179,6 +181,12 @@ const EmailTemplates = () => {
                                 <div className="mt-4 text-xs text-gray-400 line-clamp-3">
                                     {template.body.replace(/<[^>]*>?/gm, '').substring(0, 150)}...
                                 </div>
+                                <div className="mt-4 flex gap-2">
+                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[10px] font-bold uppercase">{template.language}</span>
+                                    {template.type && (
+                                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[10px] font-bold uppercase">{template.type}</span>
+                                    )}
+                                </div>
                             </div>
                             <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
                                 <span className="text-xs text-gray-500 flex items-center gap-1.5 font-semibold uppercase tracking-wider">
@@ -208,6 +216,32 @@ const EmailTemplates = () => {
                         <form onSubmit={handleSave} className="overflow-y-auto p-8 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">Language</label>
+                                    <select 
+                                        value={currentTemplate.language}
+                                        onChange={(e) => setCurrentTemplate({...currentTemplate, language: e.target.value})}
+                                        className="w-full px-5 py-3 border-2 border-gray-100 rounded-2xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/50"
+                                    >
+                                        <option value="en">English (EN)</option>
+                                        <option value="fr">French (FR)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-2">System Type (Optional)</label>
+                                    <select 
+                                        value={currentTemplate.type || ''}
+                                        onChange={(e) => setCurrentTemplate({...currentTemplate, type: e.target.value})}
+                                        className="w-full px-5 py-3 border-2 border-gray-100 rounded-2xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/50"
+                                    >
+                                        <option value="">None</option>
+                                        <option value="INVITATION">INVITATION</option>
+                                    </select>
+                                    <p className="mt-1 text-[10px] text-gray-400 italic px-1">* Set to "INVITATION" for system-automated emails.</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-2">Template Name</label>
                                     <input 
                                         type="text" 
@@ -226,7 +260,7 @@ const EmailTemplates = () => {
                                         value={currentTemplate.subject}
                                         onChange={(e) => setCurrentTemplate({...currentTemplate, subject: e.target.value})}
                                         className="w-full px-5 py-3 border-2 border-gray-100 rounded-2xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/50"
-                                        placeholder="Dynamic fields like {{tenantFirstName}} supported"
+                                        placeholder="Dynamic fields like {{name}} supported"
                                     />
                                 </div>
                             </div>
@@ -243,28 +277,7 @@ const EmailTemplates = () => {
                                     className="w-full px-5 py-4 border-2 border-gray-100 rounded-b-2xl focus:border-indigo-500 focus:ring-0 transition-all outline-none font-mono text-sm bg-gray-50/50"
                                     placeholder="Write your email body here... (Rich text editor integration coming in Composer)"
                                 />
-                                <p className="mt-2 text-xs text-gray-400 italic">Available placeholders: {"{{tenantFirstName}}, {{tenantLastName}}, {{buildingName}}, {{unitNumber}}, {{rentAmount}}, {{outstandingBalance}} ..."}</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Linked Attachments (Shared Files)</label>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                    {availableDocs.map(doc => (
-                                        <button
-                                            key={doc.id}
-                                            type="button"
-                                            onClick={() => toggleDocument(doc.id)}
-                                            className={`flex justify-between items-center p-3 rounded-xl border-2 transition-all ${
-                                                currentTemplate.documentIds.includes(doc.id) 
-                                                ? 'border-indigo-500 bg-indigo-50/50' 
-                                                : 'border-gray-50 bg-gray-50 hover:border-gray-200'
-                                            }`}
-                                        >
-                                            <span className="text-xs font-semibold truncate max-w-[120px]">{doc.name}</span>
-                                            {currentTemplate.documentIds.includes(doc.id) && <Check className="h-4 w-4 text-indigo-600" />}
-                                        </button>
-                                    ))}
-                                </div>
+                                <p className="mt-2 text-xs text-gray-400 italic">Available placeholders: {"{{name}}, {{link}}, {{buildingName}}, {{unitNumber}}, {{rentAmount}}..."}</p>
                             </div>
 
                             <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">

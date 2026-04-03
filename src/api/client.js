@@ -28,9 +28,11 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response && error.response.status === 401) {
-            // Clear storage and redirect to login if needed
-            // localStorage.clear();
-            // window.location.href = '/login';
+            // Optional: Only redirect if NOT already on login or invite page
+            if (!window.location.pathname.match(/\/(login|invite)/)) {
+                localStorage.clear();
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }

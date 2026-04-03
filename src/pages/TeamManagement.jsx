@@ -100,6 +100,7 @@ export const TeamManagement = () => {
     email: '',
     phone: '+1',
     title: '',
+    preferredLanguage: 'English',
     permissions: MODULES.map(m => ({
         moduleName: m,
         canView: false,
@@ -109,9 +110,25 @@ export const TeamManagement = () => {
     }))
   });
 
+  const [invitationTemplates, setInvitationTemplates] = useState([]);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [memberToInvite, setMemberToInvite] = useState(null);
+
   useEffect(() => {
     fetchCoworkers();
+    fetchInvitationTemplates();
   }, []);
+
+  const fetchInvitationTemplates = async () => {
+    try {
+      const res = await api.get('/api/admin/email/templates');
+      // Only show templates marked as INVITATION type
+      const inviteOnly = res.data.filter(t => t.type === 'INVITATION');
+      setInvitationTemplates(inviteOnly);
+    } catch (err) {
+      console.error('Error fetching invitation templates:', err);
+    }
+  };
 
   const fetchCoworkers = async () => {
     try {
@@ -156,6 +173,7 @@ export const TeamManagement = () => {
       email: '',
       phone: '+1',
       title: '',
+      preferredLanguage: 'English',
       permissions: MODULES.map(m => ({
         moduleName: m,
         canView: false,
@@ -176,6 +194,7 @@ export const TeamManagement = () => {
       email: member.email || '',
       phone: member.phone || '',
       title: member.title || '',
+      preferredLanguage: member.preferredLanguage || 'English',
       permissions: member.permissions || MODULES.map(m => ({
         moduleName: m,
         canView: false,
@@ -228,10 +247,11 @@ export const TeamManagement = () => {
     }
   };
 
-  const sendInvitation = async (id) => {
+  const sendInvitation = async (id, templateId = null) => {
     try {
-      const res = await api.post(`/api/admin/coworkers/${id}/send-invite`);
+      const res = await api.post(`/api/admin/coworkers/${id}/send-invite`, { templateId });
       alert(res.data.message || 'Invitation email sent successfully');
+      setShowInviteModal(false);
       fetchCoworkers();
     } catch (error) {
       console.error('Send invite error:', error);
@@ -392,7 +412,10 @@ export const TeamManagement = () => {
                                     <UserPlus size={20} />
                                 </button>
                                 <button 
-                                    onClick={() => sendInvitation(selectedMember.id)}
+                                    onClick={() => {
+                                        setMemberToInvite(selectedMember);
+                                        setShowInviteModal(true);
+                                    }}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
                                         selectedMember.isInvited 
                                         ? 'bg-slate-50 text-slate-400 border border-slate-100' 
@@ -600,6 +623,20 @@ export const TeamManagement = () => {
                             <p className="text-[10px] text-slate-400 italic px-1 font-medium">* This title is for identification only and does not control access level.</p>
                         </div>
 
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">Email Invitation Language</label>
+                            <select 
+                                name="preferredLanguage" 
+                                value={formData.preferredLanguage} 
+                                onChange={handleInputChange} 
+                                className="w-full px-5 py-3 rounded-2xl border border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-primary-100 outline-none font-bold transition-all"
+                            >
+                                <option value="English">English</option>
+                                <option value="French">French</option>
+                            </select>
+                            <p className="text-[10px] text-slate-400 italic px-1 font-medium">* The invitation email will be sent in this language if a corresponding template exists.</p>
+                        </div>
+
                         {/* MODAL PERMISSIONS SECTION */}
                         <div className="flex flex-col gap-4 mt-2">
                             <div className="flex items-center justify-between px-1">
@@ -683,6 +720,68 @@ export const TeamManagement = () => {
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+        )}
+
+        {/* INVITATION TEMPLATE SELECT MODAL */}
+        {showInviteModal && memberToInvite && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => setShowInviteModal(false)}></div>
+                <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl relative z-10 p-8 flex flex-col gap-6 animate-[bounceIn_0.4s_ease]">
+                    <div>
+                        <h3 className="text-xl font-black text-slate-800">Choose Invitation Template</h3>
+                        <p className="text-sm text-slate-500 font-medium mt-1">
+                            Sending to: <span className="text-primary-600 font-bold">{memberToInvite.name || memberToInvite.email}</span>
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2 italic">Language: {memberToInvite.preferredLanguage || 'English'}</p>
+                    </div>
+
+                    <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
+                        {invitationTemplates
+                            .filter(t => {
+                                // Filter templates by coworker language code
+                                const targetLang = memberToInvite.preferredLanguage?.toLowerCase().includes('french') ? 'fr' : 'en';
+                                return t.language === targetLang;
+                            })
+                            .map(template => (
+                                <button 
+                                    key={template.id}
+                                    onClick={() => sendInvitation(memberToInvite.id, template.id)}
+                                    className="p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:border-primary-500 hover:shadow-lg transition-all text-left flex items-center justify-between group"
+                                >
+                                    <div className="flex-1 min-w-0 pr-4">
+                                        <h4 className="font-bold text-slate-800 group-hover:text-primary-600 transition-colors truncate">{template.name}</h4>
+                                        <p className="text-[10px] text-slate-400 font-medium truncate uppercase italic">{template.subject}</p>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center group-hover:bg-primary-600 group-hover:text-white group-hover:border-primary-600 transition-all">
+                                        <Mail size={14} />
+                                    </div>
+                                </button>
+                            ))}
+
+                        {invitationTemplates.filter(t => {
+                                const targetLang = memberToInvite.preferredLanguage?.toLowerCase().includes('french') ? 'fr' : 'en';
+                                return t.language === targetLang;
+                            }).length === 0 && (
+                            <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                <p className="text-xs text-slate-400 font-bold italic mb-3">No custom template found for this language.</p>
+                                <button 
+                                    onClick={() => sendInvitation(memberToInvite.id, null)}
+                                    className="px-4 py-2 bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-slate-900 transition-all"
+                                >
+                                    Use System Default
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <button 
+                        onClick={() => setShowInviteModal(false)}
+                        className="w-full py-4 text-slate-400 font-bold hover:bg-slate-50 rounded-2xl transition-all border border-slate-50"
+                    >
+                        {t('common.cancel')}
+                    </button>
                 </div>
             </div>
         )}

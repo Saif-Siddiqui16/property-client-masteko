@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import {
   Plus, AlertCircle, Calendar, DollarSign, User, Building,
-  Trash2, Edit2, History, ChevronRight, Eye, ShieldCheck,
+  Trash2, Edit2, History, ChevronRight, ChevronLeft, Eye, ShieldCheck,
   ArrowRight, FileText, Search, Filter, X,
   ArrowUpRight, ArrowDownRight, Info, PieChart, Receipt,
   FileCheck, Loader2, Clock, Download, CheckCircle2, Upload
@@ -31,6 +31,12 @@ const RefundsAdjustments = () => {
   const [editingRecord, setEditingRecord] = useState(null);
   const [selected, setSelected] = useState(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+
   const [calcData, setCalcData] = useState(null);
   const [loadingCalc, setLoadingCalc] = useState(false);
   const [amountValue, setAmountValue] = useState('');
@@ -57,7 +63,7 @@ const RefundsAdjustments = () => {
 
   const fetchInitialData = async () => {
     setLoading(true);
-    await Promise.all([fetchRecords(), fetchTenants(), fetchUnits()]);
+    await Promise.all([fetchRecords(currentPage), fetchTenants(), fetchUnits()]);
     setLoading(false);
   };
 
@@ -74,7 +80,7 @@ const RefundsAdjustments = () => {
     try {
       const res = await api.get(`/api/admin/refunds/calculate/${tid}`);
       setCalcData(res.data);
-      if (res.data?.finalRefundAmount !== undefined) {
+      if (res.data?.finalRefundAmount != null) {
         setAmountValue(res.data.finalRefundAmount.toString());
       }
     } catch (e) {
@@ -84,10 +90,13 @@ const RefundsAdjustments = () => {
     }
   };
 
-  const fetchRecords = async () => {
+  const fetchRecords = async (page = 1) => {
     try {
-      const response = await api.get('/api/admin/refunds');
-      setRecords(response.data);
+      const response = await api.get(`/api/admin/refunds?page=${page}&limit=${itemsPerPage}`);
+      setRecords(response.data.data || []);
+      setTotalPages(response.data.totalPages || 1);
+      setTotalItems(response.data.total || 0);
+      setCurrentPage(response.data.page || 1);
     } catch (error) { console.error('Error fetching refunds:', error); }
   };
 
@@ -164,7 +173,7 @@ const RefundsAdjustments = () => {
       setShowModal(false);
       setEditingRecord(null);
       setFile(null);
-      await fetchRecords();
+      await fetchRecords(currentPage);
     } catch (e) {
       alert('Error saving refund');
       console.error(e);
@@ -177,7 +186,7 @@ const RefundsAdjustments = () => {
     if (!window.confirm('Are you sure you want to delete this record?')) return;
     try {
       await api.delete(`/api/admin/refunds/${id}`);
-      fetchRecords();
+      fetchRecords(currentPage);
     } catch (e) { console.error(e); }
   };
 
@@ -236,7 +245,7 @@ const RefundsAdjustments = () => {
                   <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 font-mono whitespace-nowrap">{r.id}</td>
                     <td className="p-4 border-b border-gray-100 text-sm">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${r.type.toLowerCase().includes('refund')
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap ${(r.type || '').toLowerCase().includes('refund')
                         ? 'bg-cyan-50 text-cyan-700 border-cyan-100'
                         : 'bg-yellow-50 text-yellow-700 border-yellow-100'
                         }`}>
@@ -246,7 +255,7 @@ const RefundsAdjustments = () => {
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.tenant}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.unit}</td>
                     <td className={`p-4 border-b border-gray-100 text-sm font-medium font-mono whitespace-nowrap ${r.amount < 0 ? 'text-amber-700' : 'text-slate-700'}`}>
-                      ${Math.abs(r.amount).toLocaleString('en-CA')}
+                      ${Math.abs(r.amount || 0).toLocaleString('en-CA')}
                     </td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{r.date}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap font-medium text-indigo-600">{r.issuedDate || '—'}</td>
@@ -290,6 +299,60 @@ const RefundsAdjustments = () => {
             </table>
           </div>
         </div>
+
+        {/* PAGINATION CONTROLS */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 bg-white rounded-xl border border-gray-100 shadow-sm">
+            <div className="text-sm text-slate-500 font-medium">
+              Showing <span className="font-bold text-slate-700">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+              <span className="font-bold text-slate-700">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of{' '}
+              <span className="font-bold text-slate-700">{totalItems}</span> records
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => fetchRecords(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
+              >
+                <ChevronLeft size={18} className="text-slate-600" />
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {[...Array(totalPages)].map((_, i) => {
+                  const p = i + 1;
+                  // Only show first, last, and pages around current
+                  if (p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1)) {
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => fetchRecords(p)}
+                        className={`w-9 h-9 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          currentPage === p
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                            : 'text-slate-500 hover:bg-slate-100 border border-transparent'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  }
+                  if (p === currentPage - 2 || p === currentPage + 2) {
+                    return <span key={p} className="text-slate-300 px-1">...</span>;
+                  }
+                  return null;
+                })}
+              </div>
+
+              <button
+                onClick={() => fetchRecords(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
+              >
+                <ChevronRight size={18} className="text-slate-600" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* CREATE/EDIT MODAL */}
         {showModal && (
@@ -465,7 +528,7 @@ const RefundsAdjustments = () => {
                                 <span className="flex items-center gap-1">
                                   <Receipt size={10} /> {alloc.invoiceNo} ({alloc.category})
                                 </span>
-                                <span className="text-rose-500 font-mono">-$ {alloc.amount.toLocaleString('en-CA')}</span>
+                                <span className="text-rose-500 font-mono">-$ {alloc.amount?.toLocaleString('en-CA')}</span>
                               </div>
                             ))}
                           </div>
@@ -474,7 +537,7 @@ const RefundsAdjustments = () => {
                         <div className="border-t border-dashed border-slate-200 pt-2 flex justify-between items-center font-black text-slate-800">
                           <span className="text-xs uppercase">Payable Refund:</span>
                           <span className="text-sm font-black text-indigo-600 font-mono">
-                            $ {calcData.finalRefundAmount.toLocaleString('en-CA')}
+                            $ {calcData.finalRefundAmount?.toLocaleString('en-CA')}
                           </span>
                         </div>
                       </div>
@@ -574,7 +637,7 @@ const RefundsAdjustments = () => {
                 <div className="flex flex-col col-span-2 border-t border-slate-100 pt-3"><label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Notes / Description</label><span className="text-sm text-slate-700 mt-1">{selected.reason || '—'}</span></div>
 
                 <div className={`col-span-2 mt-2 p-4 rounded-xl text-center text-2xl font-black border ${selected.amount < 0 ? 'bg-amber-50 text-amber-800 border-amber-100' : 'bg-cyan-50 text-cyan-800 border-cyan-100'}`}>
-                  ${Math.abs(selected.amount).toLocaleString('en-CA')}
+                  ${Math.abs(selected.amount || 0).toLocaleString('en-CA')}
                 </div>
               </div>
 

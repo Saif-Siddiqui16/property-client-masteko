@@ -22,6 +22,7 @@ const SMSInbox = () => {
     const [chatLoading, setChatLoading] = useState(false);
     const [sending, setSending] = useState(false);
     const [showSidebar, setShowSidebar] = useState(true);
+    const [activeTab, setActiveTab] = useState('ALL'); // ALL, TENANT, COWORKER, OWNER, RESIDENT
     
     const messagesEndRef = useRef(null);
     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -118,10 +119,16 @@ const SMSInbox = () => {
         setNewMessage(content);
     };
 
-    const filteredConversations = conversations.filter(c => 
-        c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        c.phone?.includes(searchTerm)
-    );
+    const filteredConversations = conversations.filter(c => {
+        const matchesSearch = c.name?.toLowerCase().includes(searchTerm.toLowerCase()) || c.phone?.includes(searchTerm);
+        if (!matchesSearch) return false;
+        
+        if (activeTab === 'ALL') return true;
+        if (activeTab === 'TENANT') return c.role === 'TENANT' || c.role === 'RESIDENT';
+        if (activeTab === 'COWORKER') return c.role === 'COWORKER';
+        if (activeTab === 'OWNER') return c.role === 'OWNER';
+        return true;
+    });
 
     return (
         <MainLayout title="SMS Inbox">
@@ -146,6 +153,28 @@ const SMSInbox = () => {
                                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
                             />
                         </div>
+
+                        {/* TAB FILTERS */}
+                        <div className="flex gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100 overflow-x-auto scrollbar-hide">
+                            {[
+                                { id: 'ALL', label: 'All' },
+                                { id: 'TENANT', label: 'Tenants' },
+                                { id: 'COWORKER', label: 'Team' },
+                                { id: 'OWNER', label: 'Owners' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-lg flex-1 whitespace-nowrap transition-all ${
+                                        activeTab === tab.id 
+                                        ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' 
+                                        : 'text-slate-400 hover:text-slate-600'
+                                    }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -162,7 +191,7 @@ const SMSInbox = () => {
                         ) : filteredConversations.length === 0 ? (
                             <div className="p-12 text-center text-slate-400">
                                 <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-10" />
-                                <p className="text-sm font-bold uppercase tracking-widest">No threads found</p>
+                                <p className="text-sm font-bold uppercase tracking-widest">No {activeTab.toLowerCase()} found</p>
                             </div>
                         ) : (
                             filteredConversations.map(conv => {
@@ -185,7 +214,16 @@ const SMSInbox = () => {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-start mb-0.5">
-                                                <h4 className={`text-sm font-bold truncate ${unread ? 'text-indigo-900' : 'text-slate-700'}`}>{conv.name}</h4>
+                                                <div className="flex items-center gap-2 truncate">
+                                                    <h4 className={`text-sm font-bold truncate ${unread ? 'text-indigo-900' : 'text-slate-700'}`}>{conv.name}</h4>
+                                                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ${
+                                                        conv.role === 'COWORKER' ? 'bg-emerald-100 text-emerald-600' :
+                                                        conv.role === 'OWNER' ? 'bg-amber-100 text-amber-600' :
+                                                        'bg-gray-100 text-gray-500'
+                                                    }`}>
+                                                        {conv.role === 'COWORKER' ? 'TEAM' : conv.role}
+                                                    </span>
+                                                </div>
                                                 <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap">
                                                     {conv.lastMessage ? new Date(conv.lastMessage.createdAt).toLocaleDateString([], {hour: '2-digit', minute:'2-digit'}) : ''}
                                                 </span>

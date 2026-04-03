@@ -1,13 +1,15 @@
-import React from 'react';
-import { Search, Menu, LogOut } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Search, Menu, LogOut, MessageSquare } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../components/Button';
+import api from '../api/client';
 import clsx from 'clsx';
 
 export const Topbar = ({ title = 'Overview', onMenuClick }) => {
     const navigate = useNavigate();
     const { i18n, t } = useTranslation();
+    const [unreadCount, setUnreadCount] = useState(0);
 
     const handleLogout = () => {
         localStorage.removeItem('isLoggedIn');
@@ -15,6 +17,19 @@ export const Topbar = ({ title = 'Overview', onMenuClick }) => {
     };
 
     const [currentLang, setCurrentLang] = React.useState(i18n.language?.split('-')[0] || 'en');
+
+    useEffect(() => {
+        const fetchUnreadCount = async () => {
+            try {
+                const res = await api.get('/api/communication/unread-stats');
+                setUnreadCount(res.data.count || 0);
+            } catch (err) { }
+        };
+
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 30000); // 30s poll
+        return () => clearInterval(interval);
+    }, []);
 
     React.useEffect(() => {
         const syncWithGoogle = () => {
@@ -65,6 +80,20 @@ export const Topbar = ({ title = 'Overview', onMenuClick }) => {
                         className="w-full h-10 pl-10 pr-4 rounded-md border border-slate-200 text-sm bg-white text-slate-900 transition-all focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 placeholder:text-slate-400 hover:border-slate-300"
                     />
                 </div>
+
+                {/* SMS NOTIFICATION */}
+                <Link 
+                    to="/admin/sms/inbox"
+                    className="relative p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
+                    title="SMS Inbox"
+                >
+                    <MessageSquare size={20} />
+                    {unreadCount > 0 && (
+                        <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                            {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                    )}
+                </Link>
 
                 {/* LANGUAGE SWITCHER */}
                 <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg p-1 h-10 notranslate">
