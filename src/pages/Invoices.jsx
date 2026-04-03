@@ -93,7 +93,7 @@ export const Invoices = () => {
 
     const fetchTenantsForBuilding = async (propertyId) => {
         try {
-            const res = await api.get(`/api/admin/tenants?propertyId=${propertyId}&limit=1000`);
+            const res = await api.get(`/api/admin/tenants?propertyId=${propertyId}&limit=1000&includePast=true`);
             setTenants(res.data?.data || res.data || []);
         } catch (error) {
             console.error('Failed to fetch tenants', error);

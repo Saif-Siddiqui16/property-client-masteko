@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/client';
-import { Send, Users, Building2, CheckCircle, Clock, AlertCircle, Plus, X, Search, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Send, Users, Building2, CheckCircle, Clock, AlertCircle, Plus, X, Search, ChevronRight, ChevronLeft, Trash2 } from 'lucide-react';
 import { MainLayout } from '../layouts/MainLayout';
 import { hasPermission } from '../utils/permissions';
 
@@ -96,6 +96,17 @@ const SMSCampaigns = () => {
         } catch (error) {
             console.error('Error creating campaign:', error);
             alert(error.response?.data?.error || 'Failed to start campaign');
+        }
+    };
+
+    const handleDeleteCampaign = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this campaign? This won\'t stop any active sends but will remove it from history.')) return;
+        try {
+            await api.delete(`/api/communication/campaign/${id}`);
+            fetchCampaigns();
+        } catch (error) {
+            console.error('Error deleting campaign:', error);
+            alert('Failed to delete campaign');
         }
     };
 
@@ -195,6 +206,15 @@ const SMSCampaigns = () => {
                                                     {getStatusIcon(campaign.status)}
                                                     <span className="text-xs font-black uppercase tracking-widest text-gray-500">{campaign.status}</span>
                                                 </div>
+                                                {hasPermission('Campaign Manager', 'delete') && (
+                                                    <button 
+                                                        onClick={() => handleDeleteCampaign(campaign.id)}
+                                                        className="p-2 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-xl transition-all"
+                                                        title="Delete Campaign"
+                                                    >
+                                                        <Trash2 className="h-5 w-5" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
