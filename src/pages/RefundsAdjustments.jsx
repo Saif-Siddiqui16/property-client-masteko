@@ -173,6 +173,7 @@ const RefundsAdjustments = () => {
       setShowModal(false);
       setEditingRecord(null);
       setFile(null);
+      setCalcData(null); // Clear calculation data after save
       await fetchRecords(currentPage);
     } catch (e) {
       alert('Error saving refund');
@@ -277,6 +278,7 @@ const RefundsAdjustments = () => {
                           setAmountValue(Math.abs(r.amount).toString());
                           setSelectedTenantId(r.tenantId);
                           setSelectedUnitId(r.unitId);
+                          fetchCalculation(r.tenantId); // Fetch fresh calculations for this tenant
                           setShowModal(true);
                         }} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors" title="Edit Refund">
                           <FileCheck size={16} />
