@@ -254,10 +254,120 @@ export const Invoices = () => {
         setShowForm(true);
     };
 
+    const [filterBuilding, setFilterBuilding] = useState('');
+    const [filterUnit, setFilterUnit] = useState('');
+    const [filterYear, setFilterYear] = useState('');
+    const [filterMonth, setFilterMonth] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 15;
+
+    // Helper to parse inconsistent month strings (e.g., "April 2026", "Feb 2026", "2026-04-01")
+    const getMonthYear = (str) => {
+        if (!str) return { month: -1, year: -1 };
+        
+        let date = new Date(str);
+        if (isNaN(date.getTime())) {
+            // Handle formats like "Feb 2026" or "February 2026"
+            const parts = str.split(' ');
+            if (parts.length === 2) {
+                const monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+                const month = monthNames.findIndex(m => m.startsWith(parts[0].toLowerCase()));
+                const year = parseInt(parts[1]);
+                return { month, year };
+            }
+        }
+        return { month: date.getMonth(), year: date.getFullYear() };
+    };
+
+    const filteredInvoices = invoices.filter(inv => {
+        const matchesBuilding = !filterBuilding || (inv.propertyId?.toString() === filterBuilding);
+        const matchesUnit = !filterUnit || (inv.unit?.toLowerCase() || '').includes(filterUnit.toLowerCase());
+        
+        const { month, year } = getMonthYear(inv.month);
+        const matchesYear = !filterYear || (year.toString() === filterYear);
+        const matchesMonth = !filterMonth || (month.toString() === filterMonth);
+
+        return matchesBuilding && matchesUnit && matchesYear && matchesMonth;
+    });
+
+    const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
+    const currentInvoices = filteredInvoices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+    const years = [...new Set(invoices.map(inv => getMonthYear(inv.month).year))].filter(y => y > 0).sort((a,b) => b-a);
+    const months = [
+        { id: 0, name: 'January' }, { id: 1, name: 'February' }, { id: 2, name: 'March' }, { id: 3, name: 'April' },
+        { id: 4, name: 'May' }, { id: 5, name: 'June' }, { id: 6, name: 'July' }, { id: 7, name: 'August' },
+        { id: 8, name: 'September' }, { id: 9, name: 'October' }, { id: 10, name: 'November' }, { id: 11, name: 'December' }
+    ];
+
     return (
         <MainLayout title="Rent Invoices">
             <div className="p-6 flex flex-col gap-6">
-                <div className="flex justify-end gap-3">
+                
+                {/* GLOBAL FILTERS */}
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap items-center gap-4">
+                    <div className="flex-1 min-w-[200px]">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Building</label>
+                        <select 
+                            className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
+                            value={filterBuilding}
+                            onChange={(e) => setFilterBuilding(e.target.value)}
+                        >
+                            <option value="">All Buildings</option>
+                            {buildings.map(b => (
+                                <option key={b.id} value={b.id}>{b.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="w-32">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Unit</label>
+                        <input 
+                            type="text" 
+                            placeholder="e.g. 301"
+                            className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
+                            value={filterUnit}
+                            onChange={(e) => setFilterUnit(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="w-32">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Year</label>
+                        <select 
+                            className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
+                            value={filterYear}
+                            onChange={(e) => setFilterYear(e.target.value)}
+                        >
+                            <option value="">Year</option>
+                            {years.map(y => <option key={y} value={y}>{y}</option>)}
+                        </select>
+                    </div>
+
+                    <div className="w-36">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Month</label>
+                        <select 
+                            className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
+                            value={filterMonth}
+                            onChange={(e) => setFilterMonth(e.target.value)}
+                        >
+                            <option value="">Month</option>
+                            {months.map(m => (
+                                <option key={m.id} value={m.id}>{m.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {(filterBuilding || filterUnit || filterYear || filterMonth) && (
+                        <button 
+                            onClick={() => { setFilterBuilding(''); setFilterUnit(''); setFilterYear(''); setFilterMonth(''); }}
+                            className="mt-5 text-xs font-bold text-rose-500 hover:text-rose-700 underline"
+                        >
+                            Reset
+                        </button>
+                    )}
+                </div>
+
+                <div className="flex justify-end gap-3 px-1">
                     {hasPermission('Invoices', 'edit') && (
                         <Button
                             variant="secondary"
@@ -316,36 +426,40 @@ export const Invoices = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {invoices.map(inv => (
-                                    <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors border-b border-gray-50 last:border-0">
-                                        <td className="p-4 text-sm text-slate-700 font-medium whitespace-nowrap">{inv.invoiceNo}</td>
-                                        <td className="p-4 text-sm text-slate-600 whitespace-nowrap">{inv.tenant}</td>
+                                {currentInvoices.map(inv => (
+                                    <tr key={inv.id} className="hover:bg-slate-50/80 transition-colors border-b border-gray-100 last:border-0 hover:shadow-[0_4px_12px_rgba(0,0,0,0.03)] group/row">
+                                        <td className="p-4 text-sm text-slate-700 font-bold font-mono whitespace-nowrap">{inv.invoiceNo}</td>
+                                        <td className="p-4 text-sm text-slate-600 font-medium whitespace-nowrap">{inv.tenant}</td>
                                         <td className="p-4 text-sm text-slate-600 whitespace-nowrap">{inv.unit}</td>
                                         <td className="p-4 text-sm">
                                             <span className={clsx(
-                                                "px-2 py-0.5 rounded text-[10px] font-bold uppercase whitespace-nowrap",
-                                                (inv.category === 'SERVICE' || inv.category === 'DEPOSIT') ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
+                                                "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase whitespace-nowrap shadow-sm border",
+                                                inv.category === 'SERVICE' ? "bg-amber-50 text-amber-700 border-amber-100" : 
+                                                inv.category === 'SECURITY_DEPOSIT' ? "bg-purple-50 text-purple-700 border-purple-100" :
+                                                "bg-indigo-50 text-indigo-700 border-indigo-100"
                                             )}>
                                                 {inv.category || 'RENT'}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-sm text-slate-600 whitespace-nowrap">{inv.month}</td>
-                                        <td className="p-4 text-sm text-slate-900 font-bold font-mono whitespace-nowrap">$ {inv.amount.toLocaleString('en-CA')}</td>
+                                        <td className="p-4 text-sm text-slate-500 font-medium whitespace-nowrap">{inv.month}</td>
+                                        <td className="p-4 text-sm text-slate-900 font-black font-mono whitespace-nowrap italic">$ {inv.amount.toLocaleString('en-CA')}</td>
                                         <td className="p-4 text-sm">
-                                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider whitespace-nowrap ${inv.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
-                                                inv.status === 'sent' ? 'bg-indigo-100 text-indigo-700' :
-                                                    'bg-slate-100 text-slate-700'
-                                                }`}>
+                                            <span className={clsx(
+                                                "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap shadow-sm border",
+                                                inv.status === 'paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                inv.status === 'sent' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                                'bg-slate-50 text-slate-500 border-slate-100'
+                                            )}>
                                                 {inv.status}
                                             </span>
                                         </td>
-                                        <td className="p-4">
-                                            <div className="flex gap-2 text-slate-400 whitespace-nowrap">
-                                                <button onClick={() => setViewInvoice(inv)} className="hover:text-indigo-600 transition-colors bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm" title="View">
+                                        <td className="p-4 text-center">
+                                            <div className="flex justify-center gap-2 text-slate-400 whitespace-nowrap opacity-60 group-hover/row:opacity-100 transition-opacity">
+                                                <button onClick={() => setViewInvoice(inv)} className="p-1.5 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" title="View Detail">
                                                     <Eye size={16} />
                                                 </button>
                                                 {hasPermission('Invoices', 'edit') && (
-                                                    <button onClick={() => openEdit(inv)} className="hover:text-amber-600 transition-colors bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm" title="Edit">
+                                                    <button onClick={() => openEdit(inv)} className="p-1.5 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all" title="Edit Record">
                                                         <Edit2 size={16} />
                                                     </button>
                                                 )}
@@ -355,14 +469,14 @@ export const Invoices = () => {
                                                             setIsPaying(inv);
                                                             setPaymentStatus('idle');
                                                         }}
-                                                        className="hover:text-emerald-600 transition-colors bg-white border border-slate-200 px-2.5 py-1 rounded-lg shadow-sm flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 uppercase"
+                                                        className="px-3 py-1 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 text-[10px] font-black uppercase transition-all flex items-center gap-1.5"
                                                     >
-                                                        <CreditCard size={14} />
+                                                        <CreditCard size={12} />
                                                         Pay
                                                     </button>
                                                 )}
                                                 {hasPermission('Invoices', 'delete') && (
-                                                    <button onClick={() => deleteInvoice(inv.id)} className="hover:text-rose-600 transition-colors bg-white border border-slate-200 p-1.5 rounded-lg shadow-sm" title="Delete">
+                                                    <button onClick={() => deleteInvoice(inv.id)} className="p-1.5 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all" title="Delete Permanent">
                                                         <Trash2 size={16} />
                                                     </button>
                                                 )}
@@ -374,6 +488,25 @@ export const Invoices = () => {
                         </table>
                     </div>
                 </div>
+
+                {/* PAGINATION UI */}
+                {totalPages > 1 && (
+                    <div className="flex justify-center items-center gap-2 mt-4 pb-10">
+                        {[...Array(totalPages)].map((_, idx) => (
+                            <button
+                                key={idx + 1}
+                                onClick={() => setCurrentPage(idx + 1)}
+                                className={`w-10 h-10 rounded-xl text-sm font-black transition-all border ${
+                                    currentPage === idx + 1 
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' 
+                                    : 'bg-white text-slate-500 border-slate-100 hover:border-indigo-300 hover:text-indigo-600'
+                                }`}
+                            >
+                                {idx + 1}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
                 {viewInvoice && (
                     <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center z-[100] backdrop-blur-md animate-in fade-in duration-300 px-4">

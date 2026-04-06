@@ -198,75 +198,7 @@ export const Dashboard = () => {
           <>
             {/* TOP SUMMARY CARDS */}
             <section className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
-              <Card className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 group relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Building2 size={48} />
-                </div>
-                <span className="text-sm text-gray-500 tracking-wide font-medium flex items-center gap-2">
-                  <Building2 size={16} className="text-indigo-500" />
-                  Total Properties
-                </span>
-                <h2 className="text-[2rem] font-black mt-2 leading-tight text-slate-800">{totalProperties}</h2>
-              </Card>
 
-              <Card className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 group relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Home size={48} />
-                </div>
-                <span className="text-sm text-gray-500 tracking-wide font-medium flex items-center gap-2">
-                  <Home size={16} className="text-indigo-500" />
-                  Total Units
-                </span>
-                <h2 className="text-[2rem] font-black mt-2 leading-tight text-slate-800">{totalUnits}</h2>
-              </Card>
-
-              <Card className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 group relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Users size={48} />
-                </div>
-                <span className="text-sm text-gray-500 tracking-wide font-medium flex items-center gap-2">
-                  <Users size={16} className="text-indigo-500" />
-                  Occupancy
-                </span>
-                <div className="mt-3 space-y-1">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-slate-400">OCCUPIED</span>
-                    <span className="text-lg font-black text-indigo-600">{occupancy.occupied}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-bold text-slate-400">VACANT</span>
-                    <span className="text-lg font-black text-rose-500">{occupancy.vacant}</span>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 border-l-[6px] border-indigo-500 group relative">
-                <span className="text-sm text-gray-500 tracking-wide font-medium flex items-center gap-2">
-                  <TrendingUp size={16} className="text-indigo-500" />
-                  Projected Revenue
-                </span>
-                <h2 className="text-[1.75rem] font-black mt-2 leading-tight truncate text-slate-800" title={`$${(projectedRevenue || 0).toLocaleString('en-CA')}`}>
-                  ${(projectedRevenue || 0).toLocaleString('en-CA')}
-                </h2>
-                <div className="flex items-center gap-1.5 mt-2">
-                  <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-tighter">Expected</span>
-                  <p className="text-[10px] text-gray-400 font-medium">Monthly Active</p>
-                </div>
-              </Card>
-
-              <Card className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 border-l-[6px] border-emerald-500 group relative">
-                <span className="text-sm text-gray-500 tracking-wide font-medium flex items-center gap-2">
-                  <Wallet size={16} className="text-emerald-500" />
-                  Actual Revenue
-                </span>
-                <h2 className="text-[1.75rem] font-black mt-2 leading-tight truncate text-slate-800" title={`$${(actualRevenue || 0).toLocaleString('en-CA')}`}>
-                  ${(actualRevenue || 0).toLocaleString('en-CA')}
-                </h2>
-                <div className="flex items-center gap-1.5 mt-2">
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-tighter">Received</span>
-                  <p className="text-[10px] text-gray-400 font-medium">Year to Date</p>
-                </div>
-              </Card>
 
               <Card className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 border-l-[6px] border-amber-500 group">
                 <span className="text-sm text-gray-500 tracking-wide font-black uppercase italic flex items-center gap-2">
@@ -542,62 +474,7 @@ export const Dashboard = () => {
               </Card>
             </section>
 
-            {/* LOWER CONTENT */}
-            <section className="grid grid-cols-[repeat(auto-fit,minmax(360px,1fr))] gap-6">
-              <Card title="Recent Activity" className="p-6 rounded-[20px] bg-white shadow-[0_18px_35px_rgba(0,0,0,0.07)]">
-                <ul className="pl-4 text-gray-700 space-y-2 list-disc marker:text-gray-400">
-                  {recentActivity.map((activity, index) => (
-                    <li key={index}>{activity}</li>
-                  ))}
-                  {recentActivity.length === 0 && <li className="list-none text-gray-400 italic">No recent activity found</li>}
-                </ul>
-              </Card>
 
-              <Card title="Revenue Trends (Monthly)" className="p-6 rounded-[20px] bg-white shadow-[0_18px_35px_rgba(0,0,0,0.07)]">
-                {revenueData.length === 0 ? (
-                  <p className="text-gray-400 italic text-sm mt-2">No revenue data available yet</p>
-                ) : (
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={revenueData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
-                      <XAxis
-                        dataKey="month"
-                        stroke="#94a3b8"
-                        fontSize={11}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={formatMonth}
-                      />
-                      <YAxis
-                        stroke="#94a3b8"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => `$${value >= 1000 ? (value / 1000).toFixed(0) + 'k' : value}`}
-                      />
-                      <Tooltip
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                        cursor={{ fill: '#f1f5f9' }}
-                        formatter={(value) => [`$${parseFloat(value).toLocaleString('en-CA')}`, 'Revenue']}
-                        labelFormatter={formatMonth}
-                      />
-                      <Bar
-                        dataKey="revenue"
-                        radius={[6, 6, 0, 0]}
-                        fill="#6366f1"
-                        barSize={32}
-                      >
-                        <LabelList
-                          dataKey="revenue"
-                          position="top"
-                          style={{ fontSize: '10px', fill: '#64748b', fontWeight: '600' }}
-                          formatter={(v) => `$${parseFloat(v) >= 1000 ? (parseFloat(v) / 1000).toFixed(1) + 'k' : parseFloat(v).toFixed(0)}`}
-                        />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                )}
-              </Card>
-            </section>
           </>
         )}
 

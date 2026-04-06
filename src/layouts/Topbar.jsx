@@ -71,16 +71,6 @@ export const Topbar = ({ title = 'Overview', onMenuClick }) => {
 
             {/* RIGHT */}
             <div className="flex items-center gap-4">
-                {/* Search Bar - Hidden on mobile */}
-                <div className="relative w-80 hidden lg:block">
-                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    <input
-                        type="text"
-                        placeholder="Search properties, tenants..."
-                        className="w-full h-10 pl-10 pr-4 rounded-md border border-slate-200 text-sm bg-white text-slate-900 transition-all focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-50 placeholder:text-slate-400 hover:border-slate-300"
-                    />
-                </div>
-
                 {/* SMS NOTIFICATION */}
                 <Link 
                     to="/admin/sms/inbox"

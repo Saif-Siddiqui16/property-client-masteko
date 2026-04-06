@@ -14,8 +14,11 @@ const PaymentsReceived = () => {
   }, []);
 
   const [payments, setPayments] = useState([]);
-  if (!hasPermission('Payments Received', 'view')) return null;
+  const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
+  if (!hasPermission('Payments Received', 'view')) return null;
 
   useEffect(() => {
     fetchPayments();
@@ -29,6 +32,50 @@ const PaymentsReceived = () => {
       console.error('Error fetching payments:', error);
     }
   };
+
+  // Helper to parse "DD MMM YYYY" into a valid Date object
+  const parseCustomDate = (dateStr) => {
+    if (!dateStr) return new Date(0);
+    // Standard JS can often handle "27 Mar 2026", but let's be safe for all browsers
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+  };
+
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  // Filtered payments logic
+  const filteredPayments = payments.filter(p => {
+    const matchesSearch = (p.tenant?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
+                          (p.unit?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                          (p.id?.toString() || '').includes(searchTerm);
+    
+    if (!matchesSearch) return false;
+
+    // Date filtering (Midnight normalization for accurate range)
+    if (startDate || endDate) {
+      const pDate = parseCustomDate(p.date);
+      pDate.setHours(0, 0, 0, 0);
+
+      if (startDate) {
+        const sDate = new Date(startDate);
+        sDate.setHours(0, 0, 0, 0);
+        if (pDate < sDate) return false;
+      }
+      if (endDate) {
+        const eDate = new Date(endDate);
+        eDate.setHours(23, 59, 59, 999);
+        if (pDate > eDate) return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Pagination Logic
+  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
+  const currentPayments = filteredPayments.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleRefund = async (payment) => {
     const reason = window.prompt(`Enter reason for refunding ${payment.id}:`, 'Security Deposit Refund');
@@ -51,14 +98,55 @@ const PaymentsReceived = () => {
     }
   };
 
-  const [selectedPayment, setSelectedPayment] = useState(null);
-
   return (
     <MainLayout title="Payments Received">
-      <div className="p-0">
+      <div className="p-0 pb-16">
+        
+        {/* FILTER BAR */}
+        <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-wrap items-center gap-4">
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Search Tenant or Unit</label>
+            <input 
+              type="text" 
+              placeholder="e.g. Unit 88-301 or John Doe"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all"
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            />
+          </div>
+          
+          <div className="w-full sm:w-auto">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">From Date</label>
+            <input 
+              type="date" 
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
+            />
+          </div>
+
+          <div className="w-full sm:w-auto">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">To Date</label>
+            <input 
+              type="date" 
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
+            />
+          </div>
+
+          {(searchTerm || startDate || endDate) && (
+            <button 
+              onClick={() => { setSearchTerm(''); setStartDate(''); setEndDate(''); setCurrentPage(1); }}
+              className="mt-5 text-xs font-bold text-red-500 hover:text-red-700 underline"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
 
         {/* TABLE */}
-        <div className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden border border-gray-100">
+        <div className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.06)] overflow-hidden border border-gray-100 mb-6">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -75,7 +163,7 @@ const PaymentsReceived = () => {
               </thead>
 
               <tbody>
-                {payments.map((p) => (
+                {currentPayments.map((p) => (
                   <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 font-mono whitespace-nowrap">{p.id}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{p.tenant}</td>
@@ -108,6 +196,25 @@ const PaymentsReceived = () => {
             </table>
           </div>
         </div>
+
+        {/* PAGINATION UI */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center items-center gap-2">
+            {[...Array(totalPages)].map((_, idx) => (
+              <button
+                key={idx + 1}
+                onClick={() => setCurrentPage(idx + 1)}
+                className={`w-10 h-10 rounded-xl text-sm font-bold transition-all border ${
+                  currentPage === idx + 1 
+                  ? 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-100' 
+                  : 'bg-white text-slate-600 border-slate-100 hover:border-primary-300 hover:text-primary-600'
+                }`}
+              >
+                {idx + 1}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* VIEW PAYMENT MODAL */}
         {selectedPayment && (

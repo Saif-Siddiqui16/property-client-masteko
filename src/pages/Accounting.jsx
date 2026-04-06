@@ -61,11 +61,15 @@ export const Accounting = () => {
         .reduce((acc, t) => acc + (parseFloat(t.balance) || 0), 0);
 
     const ytdIncome = transactions
-        .filter(t => ['PAYMENT', 'LIABILITY DEDUCTION'].includes(t.type?.toUpperCase()))
+        .filter(t => t.type?.toUpperCase() === 'PAYMENT')
+        .reduce((acc, t) => acc + Math.abs(parseFloat(t.amount) || 0), 0);
+
+    const depositRefunds = transactions
+        .filter(t => ['LIABILITY DEDUCTION', 'LIABILITY', 'LIABILITY REFUND'].includes(t.type?.toUpperCase()))
         .reduce((acc, t) => acc + Math.abs(parseFloat(t.amount) || 0), 0);
 
     const expenses = transactions
-        .filter(t => ['EXPENSE', 'LIABILITY REFUND'].includes(t.type?.toUpperCase()))
+        .filter(t => t.type?.toUpperCase() === 'EXPENSE')
         .reduce((acc, t) => acc + Math.abs(parseFloat(t.amount) || 0), 0);
 
     // Pagination Logic
@@ -80,14 +84,10 @@ export const Accounting = () => {
                 <div>{/* Buttons removed as requested */}</div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <Card className="p-4 bg-slate-50 border-slate-200">
-                    <div className="text-sm text-slate-500 mb-1">Total Receivables</div>
-                    <div className="text-2xl font-bold text-slate-900">${totalReceivables.toLocaleString('en-CA')}</div>
-                </Card>
-                <Card className="p-4 bg-slate-50 border-slate-200">
-                    <div className="text-sm text-slate-500 mb-1">YTD Income</div>
-                    <div className="text-2xl font-bold text-green-600">${ytdIncome.toLocaleString('en-CA')}</div>
+                    <div className="text-sm text-slate-500 mb-1">Deposit Refunds</div>
+                    <div className="text-2xl font-bold text-red-600">${depositRefunds.toLocaleString('en-CA')}</div>
                 </Card>
                 <Card className="p-4 bg-slate-50 border-slate-200">
                     <div className="text-sm text-slate-500 mb-1">Expenses</div>

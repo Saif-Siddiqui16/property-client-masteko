@@ -34,14 +34,18 @@ export const RevenueDashboard = () => {
     projectedRevenue: 0,
     totalRevenue: 0,
     monthlyRevenue: [],
-    revenueByProperty: []
+    revenueByProperty: [],
+    recentActivity: []
   });
 
   const fetchStats = async (ownerId = '') => {
     try {
       setLoading(true);
-      const url = ownerId ? `/api/admin/analytics/revenue?ownerId=${ownerId}` : '/api/admin/analytics/revenue';
-      const res = await api.get(url);
+      const ownerParam = ownerId ? `?ownerId=${ownerId}` : '';
+      const [res, dashRes] = await Promise.all([
+        api.get(`/api/admin/analytics/revenue${ownerParam}`),
+        api.get(`/api/admin/dashboard/stats${ownerParam}`)
+      ]);
       const data = res.data;
 
       // Ensure chronological sorting of monthlyRevenue (instead of alphabetical)
@@ -74,7 +78,10 @@ export const RevenueDashboard = () => {
         });
       }
 
-      setStats(data);
+      setStats({
+        ...data,
+        recentActivity: dashRes.data.recentActivity || []
+      });
       setSelectedMonth('all'); // reset month filter on owner change
     } catch (e) {
       console.error('Revenue Fetch Error:', e);
@@ -249,6 +256,18 @@ export const RevenueDashboard = () => {
                     </li>
                   ))}
                   {stats.revenueByProperty.length === 0 && <li className="text-gray-400 italic">No revenue data for this owner</li>}
+                </ul>
+              </Card>
+
+              {/* Recent Activity moved here from Overview as requested */}
+              <Card title="Recent Activity" className="col-span-1 lg:col-span-2 p-6 rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)]">
+                <ul className="pl-4 text-gray-700 space-y-2 list-disc marker:text-gray-400">
+                  {stats.recentActivity && stats.recentActivity.map((activity, index) => (
+                    <li key={index} className="text-sm font-medium">{activity}</li>
+                  ))}
+                  {(!stats.recentActivity || stats.recentActivity.length === 0) && (
+                    <li className="list-none text-gray-400 italic">No recent activity found</li>
+                  )}
                 </ul>
               </Card>
 

@@ -110,11 +110,34 @@ const SMSCampaigns = () => {
         }
     };
 
+    const [reportModal, setReportModal] = useState({ open: false, data: [] });
+
+    const fetchReport = async (id) => {
+        try {
+            const response = await api.get(`/api/communication/campaign/${id}/failures`);
+            setReportModal({ open: true, data: response.data.failures });
+        } catch (error) {
+            console.error('Error fetching report:', error);
+            alert('Failed to load report');
+        }
+    };
+
+    const handleRetryCampaign = async (id) => {
+        try {
+            await api.post(`/api/communication/campaign/${id}/retry`);
+            fetchCampaigns();
+        } catch (error) {
+            console.error('Error retrying campaign:', error);
+            alert('Failed to retry campaign');
+        }
+    };
+
     const getStatusIcon = (status) => {
         switch (status) {
             case 'COMPLETED': return <CheckCircle className="h-5 w-5 text-emerald-500" />;
             case 'PROCESSING': return <Clock className="h-5 w-5 text-amber-500 animate-pulse" />;
             case 'FAILED': return <AlertCircle className="h-5 w-5 text-red-500" />;
+            case 'STUCK': return <AlertCircle className="h-5 w-5 text-amber-600" />;
             default: return <Clock className="h-5 w-5 text-slate-400" />;
         }
     };
@@ -130,15 +153,24 @@ const SMSCampaigns = () => {
                         </h1>
                         <p className="text-gray-500 mt-1">Broadcast messages to buildings or specific tenant groups.</p>
                     </div>
-                    {hasPermission('Campaign Manager', 'add') && (
+                    <div className="flex gap-3">
                         <button 
-                            onClick={() => setIsModalOpen(true)}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                            onClick={fetchCampaigns}
+                            className="bg-white hover:bg-gray-50 text-gray-600 p-3 rounded-2xl border border-gray-100 transition-all active:scale-95 shadow-sm"
+                            title="Refresh List"
                         >
-                            <Plus className="h-5 w-5" />
-                            New Campaign
+                            <Clock className="h-5 w-5" />
                         </button>
-                    )}
+                        {hasPermission('Campaign Manager', 'add') && (
+                            <button 
+                                onClick={() => setIsModalOpen(true)}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-100 active:scale-95"
+                            >
+                                <Plus className="h-5 w-5" />
+                                New Campaign
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Campaign List */}
@@ -185,13 +217,13 @@ const SMSCampaigns = () => {
                                             <div className="flex flex-col items-end gap-2 w-full md:w-64">
                                                 <div className="flex justify-between w-full text-xs font-bold uppercase tracking-wider text-gray-400">
                                                     <span>Progress</span>
-                                                    <span className={campaign.status === 'PROCESSING' ? 'text-amber-500' : 'text-gray-600'}>
+                                                    <span className={['PROCESSING', 'STUCK'].includes(campaign.status) ? 'text-amber-500' : 'text-gray-600'}>
                                                         {campaign.successCount + campaign.failedCount} / {campaign.totalRecipients}
                                                     </span>
                                                 </div>
                                                 <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden border border-gray-50">
                                                     <div 
-                                                        className={`h-full transition-all duration-1000 ${campaign.status === 'FAILED' ? 'bg-red-500' : 'bg-indigo-600'}`}
+                                                        className={`h-full transition-all duration-1000 ${['FAILED', 'STUCK'].includes(campaign.status) ? 'bg-red-500' : 'bg-indigo-600'}`}
                                                         style={{ width: `${( (campaign.successCount + campaign.failedCount) / campaign.totalRecipients) * 100}%` }}
                                                     />
                                                 </div>
@@ -201,23 +233,83 @@ const SMSCampaigns = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="flex items-center gap-4 pl-0 md:pl-6 md:border-l border-gray-100 w-full md:w-auto justify-between md:justify-end">
+                                            <div className="flex items-center gap-6 pl-0 md:pl-6 md:border-l border-gray-100 w-full md:w-auto justify-between md:justify-end">
                                                 <div className="flex items-center gap-2">
                                                     {getStatusIcon(campaign.status)}
-                                                    <span className="text-xs font-black uppercase tracking-widest text-gray-500">{campaign.status}</span>
+                                                    <span className="text-xs font-black uppercase tracking-widest text-slate-600">{campaign.status}</span>
                                                 </div>
-                                                {hasPermission('Campaign Manager', 'delete') && (
+                                                <div className="flex items-center gap-2">
+                                                    {campaign.failedCount > 0 && (
+                                                        <button 
+                                                            onClick={() => fetchReport(campaign.id)}
+                                                            className="p-2.5 hover:bg-amber-50 text-amber-600 hover:text-amber-800 rounded-xl transition-all border border-transparent hover:border-amber-100"
+                                                            title="View Missing Recipients"
+                                                        >
+                                                            <Search className="h-5 w-5" />
+                                                        </button>
+                                                    )}
                                                     <button 
-                                                        onClick={() => handleDeleteCampaign(campaign.id)}
-                                                        className="p-2 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-xl transition-all"
-                                                        title="Delete Campaign"
+                                                        onClick={() => handleRetryCampaign(campaign.id)}
+                                                        className="p-2.5 hover:bg-indigo-50 text-indigo-600 hover:text-indigo-800 rounded-xl transition-all border border-transparent hover:border-indigo-100"
+                                                        title="Retry/Resume sending"
                                                     >
-                                                        <Trash2 className="h-5 w-5" />
+                                                        <Send className="h-5 w-5" />
                                                     </button>
-                                                )}
+                                                    {hasPermission('Campaign Manager', 'delete') && (
+                                                        <button 
+                                                            onClick={() => handleDeleteCampaign(campaign.id)}
+                                                            className="p-2.5 hover:bg-red-50 text-red-500 hover:text-red-700 rounded-xl transition-all border border-transparent hover:border-red-100"
+                                                            title="Delete Campaign"
+                                                        >
+                                                            <Trash2 className="h-5 w-5" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
+
+                                    {/* Report Modal */}
+                                    {reportModal.open && (
+                                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-6 bg-gray-900/60 backdrop-blur-sm overflow-y-auto">
+                                            <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl flex flex-col animate-in fade-in zoom-in duration-200 my-auto">
+                                                <div className="px-10 py-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
+                                                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Missing Delivery</h2>
+                                                    <button onClick={() => setReportModal({ open: false, data: [] })} className="p-2 hover:bg-white rounded-full transition-colors shadow-sm">
+                                                        <X className="h-6 w-6 text-gray-400" />
+                                                    </button>
+                                                </div>
+                                                <div className="p-10">
+                                                    {reportModal.data.length === 0 ? (
+                                                        <p className="text-gray-500 text-center py-10 font-bold">Everyone has been reached!</p>
+                                                    ) : (
+                                                        <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                                                            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">
+                                                                The following {reportModal.data.length} people have not received their message:
+                                                            </p>
+                                                            {reportModal.data.map(user => (
+                                                                <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="p-2 bg-white rounded-lg border border-gray-100">
+                                                                            <Users className="h-4 w-4 text-indigo-500" />
+                                                                        </div>
+                                                                        <span className="font-bold text-gray-700">{user.name}</span>
+                                                                    </div>
+                                                                    <span className="text-xs font-medium text-gray-400">{user.phone || 'No Phone'}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                    <button 
+                                                        onClick={() => setReportModal({ open: false, data: [] })}
+                                                        className="w-full mt-10 py-4 bg-gray-900 text-white font-black uppercase tracking-widest rounded-2xl md:rounded-3xl hover:bg-black transition-all"
+                                                    >
+                                                        Close Report
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* List Pagination Controls */}
                                     {campaigns.length > campaignsPerPage && (

@@ -32,6 +32,45 @@ const EmailTemplates = () => {
     const [availableDocs, setAvailableDocs] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
 
+    const PLACEHOLDERS = [
+        { label: 'Recipient Name', code: '{{name}}' },
+        { label: 'Portal Link', code: '{{link}}' },
+        { label: 'Building', code: '{{buildingName}}' },
+        { label: 'Unit #', code: '{{unitNumber}}' },
+        { label: 'Rent $', code: '{{rentAmount}}' },
+        { label: 'Balance Due $', code: '{{outstandingBalance}}' },
+        { label: 'Lease End', code: '{{leaseEndDate}}' },
+        { label: 'Insurance End', code: '{{insuranceExpiryDate}}' },
+        { label: 'Date - Month', code: '{{month}}' },
+        { label: 'Date - Year', code: '{{year}}' },
+    ];
+
+    const insertPlaceholder = (fieldName, placeholder) => {
+        const field = currentTemplate[fieldName] || '';
+        // Try to find the element in DOM to respect cursor position
+        const input = document.getElementById(`editor-${fieldName}`);
+        
+        if (!input) {
+            setCurrentTemplate({ ...currentTemplate, [fieldName]: field + placeholder });
+            return;
+        }
+
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        const text = input.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+
+        const newValue = before + placeholder + after;
+        setCurrentTemplate({ ...currentTemplate, [fieldName]: newValue });
+
+        // Restore focus and move cursor after the placeholder
+        setTimeout(() => {
+            input.focus();
+            input.setSelectionRange(start + placeholder.length, start + placeholder.length);
+        }, 0);
+    };
+
     useEffect(() => {
         fetchTemplates();
         fetchDocuments();
@@ -252,9 +291,24 @@ const EmailTemplates = () => {
                                         placeholder="e.g. Rent Reminder"
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Subject Line</label>
+                                 <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-sm font-bold text-gray-700">Subject Line</label>
+                                        <div className="flex gap-1">
+                                            {PLACEHOLDERS.slice(0, 3).map(p => (
+                                                <button 
+                                                    key={p.code}
+                                                    type="button" 
+                                                    onClick={() => insertPlaceholder('subject', p.code)}
+                                                    className="px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter bg-indigo-50 text-indigo-600 rounded-md hover:bg-indigo-100 transition-colors"
+                                                >
+                                                    +{p.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                     <input 
+                                        id="editor-subject"
                                         type="text" 
                                         required
                                         value={currentTemplate.subject}
@@ -266,10 +320,26 @@ const EmailTemplates = () => {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2 text-center bg-gray-100 py-1 rounded-t-xl border-x-2 border-t-2 border-gray-100">
-                                    Email Body (HTML)
-                                </label>
+                                <div className="flex justify-between items-center bg-gray-100 px-4 py-1.5 rounded-t-xl border-x-2 border-t-2 border-gray-100">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                        Email Body (HTML)
+                                    </label>
+                                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                                        <span className="text-[9px] text-gray-400 font-bold uppercase italic mr-1">Insert:</span>
+                                        {PLACEHOLDERS.map(p => (
+                                            <button 
+                                                key={p.code}
+                                                type="button" 
+                                                onClick={() => insertPlaceholder('body', p.code)}
+                                                className="px-2.5 py-1 text-[10px] font-black uppercase bg-white border border-gray-200 text-indigo-600 rounded-lg hover:border-indigo-500 hover:shadow-sm transition-all whitespace-nowrap active:scale-95"
+                                            >
+                                                {p.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                                 <textarea 
+                                    id="editor-body"
                                     rows="10"
                                     required
                                     value={currentTemplate.body}
@@ -277,7 +347,7 @@ const EmailTemplates = () => {
                                     className="w-full px-5 py-4 border-2 border-gray-100 rounded-b-2xl focus:border-indigo-500 focus:ring-0 transition-all outline-none font-mono text-sm bg-gray-50/50"
                                     placeholder="Write your email body here... (Rich text editor integration coming in Composer)"
                                 />
-                                <p className="mt-2 text-xs text-gray-400 italic">Available placeholders: {"{{name}}, {{link}}, {{buildingName}}, {{unitNumber}}, {{rentAmount}}..."}</p>
+                                <p className="mt-2 text-xs text-gray-400 italic">Formatting tip: Use HTML tags like &lt;b&gt;bold&lt;/b&gt;, &lt;br/&gt; for line breaks, etc.</p>
                             </div>
 
                             <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
