@@ -26,6 +26,17 @@ const SMSCampaigns = () => {
         recipientType: 'TENANTS'
     });
 
+    // Granular Selection States
+    const [tenants, setTenants] = useState([]);
+    const [coworkers, setCoworkers] = useState([]);
+    const [selection, setSelection] = useState({
+        buildingIds: [],
+        excludedTenantIds: [],
+        extraTenantIds: [],
+        coworkerIds: []
+    });
+    const [tenantSearchTerm, setTenantSearchTerm] = useState('');
+
     // Pagination for Campaign List
     const [currentPage, setCurrentPage] = useState(1);
     const campaignsPerPage = 4;
@@ -42,7 +53,9 @@ const SMSCampaigns = () => {
             await Promise.all([
                 fetchCampaigns(),
                 fetchTemplates(),
-                fetchBuildings()
+                fetchBuildings(),
+                fetchTenants(),
+                fetchCoworkers()
             ]);
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -79,10 +92,83 @@ const SMSCampaigns = () => {
         }
     };
 
+    const fetchTenants = async () => {
+        try {
+            const res = await api.get('/api/admin/tenants?limit=1000');
+            setTenants(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+        } catch (e) {
+            console.error('Error fetching tenants:', e);
+        }
+    };
+
+    const fetchCoworkers = async () => {
+        try {
+            const res = await api.get('/api/admin/coworkers');
+            setCoworkers(Array.isArray(res.data) ? res.data : (res.data?.data || []));
+        } catch (e) {
+            console.error('Error fetching coworkers:', e);
+        }
+    };
+
+    const getFilteredRecipients = () => {
+        const selectedMap = new Map();
+
+        // 1. If "All Buildings" or specific buildings selected in NEW logic
+        const targetBIds = newCampaign.buildingId ? [parseInt(newCampaign.buildingId)] : [];
+        
+        if (newCampaign.recipientType === 'TENANTS' || newCampaign.recipientType === 'ALL') {
+            tenants.forEach(t => {
+                const bId = t.buildingId || t.propertyId;
+                
+                // If building matches OR no building filter (All Buildings)
+                const matchesBuilding = targetBIds.length === 0 || targetBIds.includes(bId);
+                
+                if (matchesBuilding) {
+                    if (!selection.excludedTenantIds.includes(t.id)) {
+                        selectedMap.set(`tenant-${t.id}`, { ...t, type: 'TENANT' });
+                    }
+                }
+            });
+        }
+
+        // 2. Extra tenants manually added (Future feature or via search)
+        selection.extraTenantIds.forEach(id => {
+            const t = tenants.find(x => x.id === id);
+            if (t && !selection.excludedTenantIds.includes(id)) {
+                selectedMap.set(`tenant-${t.id}`, { ...t, type: 'TENANT' });
+            }
+        });
+
+        // 3. Coworkers
+        if (newCampaign.recipientType === 'COWORKERS' || newCampaign.recipientType === 'ALL') {
+            coworkers.forEach(c => {
+                if (!selection.excludedTenantIds.includes(`coworker-${c.id}`)) {
+                    selectedMap.set(`coworker-${c.id}`, { ...c, type: 'COWORKER' });
+                }
+            });
+        }
+
+        return Array.from(selectedMap.values());
+    };
+
+    const toggleExclusion = (id, isCoworker = false) => {
+        const key = isCoworker ? `coworker-${id}` : id;
+        setSelection(prev => ({
+            ...prev,
+            excludedTenantIds: prev.excludedTenantIds.includes(key)
+                ? prev.excludedTenantIds.filter(x => x !== key)
+                : [...prev.excludedTenantIds, key]
+        }));
+    };
+
     const handleCreateCampaign = async (e) => {
         e.preventDefault();
         try {
-            const payload = { ...newCampaign };
+            const recipients = getFilteredRecipients();
+            const payload = { 
+                ...newCampaign,
+                recipientIds: recipients.map(r => r.id) 
+            };
             if (useTemplate) {
                 payload.customContent = '';
             } else {
@@ -92,6 +178,7 @@ const SMSCampaigns = () => {
             await api.post('/api/communication/campaign', payload);
             setIsModalOpen(false);
             setNewCampaign({ name: '', templateId: '', customContent: '', buildingId: '', recipientType: 'TENANTS' });
+            setSelection({ buildingIds: [], excludedTenantIds: [], extraTenantIds: [], coworkerIds: [] });
             fetchCampaigns();
         } catch (error) {
             console.error('Error creating campaign:', error);
@@ -378,136 +465,218 @@ const SMSCampaigns = () => {
                 {/* Create Campaign Modal */}
                 {isModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-gray-900/60 backdrop-blur-sm overflow-y-auto">
-                        <div className="bg-white w-full max-w-xl rounded-[2rem] md:rounded-[2.5rem] shadow-2xl flex flex-col animate-in fade-in zoom-in duration-200 my-auto">
-                            <div className="px-6 md:px-10 py-6 md:py-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/30 shrink-0">
-                                <h2 className="text-xl md:text-2xl font-black text-gray-900 uppercase tracking-tight">New Broadcast</h2>
-                                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white rounded-full transition-colors shadow-sm">
-                                    <X className="h-5 md:h-6 w-5 md:w-6 text-gray-400" />
-                                </button>
+                        <div className="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl flex flex-col animate-in fade-in zoom-in duration-200 my-auto h-[90vh]">
+                            <div className="px-10 py-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/30 shrink-0">
+                                <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">New Broadcast</h2>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full font-bold uppercase">
+                                        {getFilteredRecipients().length} Recipients
+                                    </span>
+                                    <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white rounded-full transition-colors shadow-sm">
+                                        <X className="h-6 w-6 text-gray-400" />
+                                    </button>
+                                </div>
                             </div>
                             
-                            <div className="overflow-y-auto max-h-[calc(100vh-180px)]">
-                                <form onSubmit={handleCreateCampaign} className="p-6 md:p-10 space-y-6 md:space-y-8">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Campaign Name</label>
-                                        <input 
-                                            type="text" 
-                                            required
-                                            value={newCampaign.name}
-                                            onChange={(e) => setNewCampaign({...newCampaign, name: e.target.value})}
-                                            className="w-full px-5 md:px-6 py-3 md:py-4 border-2 border-gray-100 rounded-2xl md:rounded-3xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/30 font-bold text-gray-700"
-                                            placeholder="e.g. October Maintenance Alert"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Target Audience</label>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
-                                            {['TENANTS', 'COWORKERS', 'ALL'].map(type => (
-                                                <button
-                                                    key={type}
-                                                    type="button"
-                                                    onClick={() => setNewCampaign({...newCampaign, recipientType: type})}
-                                                    className={`px-4 py-3 rounded-xl md:rounded-2xl border-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                                                        newCampaign.recipientType === type 
-                                                        ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-sm' 
-                                                        : 'border-gray-50 bg-gray-50 text-gray-400 hover:border-gray-100'
-                                                    }`}
-                                                >
-                                                    {type.replace('_', ' ')}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="flex flex-wrap gap-2 md:gap-4 mb-4">
-                                            <button 
-                                                type="button"
-                                                onClick={() => setUseTemplate(true)}
-                                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${useTemplate ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}
-                                            >
-                                                Use Template
-                                            </button>
-                                            <button 
-                                                type="button"
-                                                onClick={() => setUseTemplate(false)}
-                                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!useTemplate ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}
-                                            >
-                                                Custom Message
-                                            </button>
+                            <div className="overflow-hidden flex flex-1">
+                                <div className="flex-1 overflow-y-auto p-10 space-y-8 border-r border-gray-100">
+                                    <form id="campaign-form" onSubmit={handleCreateCampaign} className="space-y-8">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 text-right">Campaign Name</label>
+                                            <input 
+                                                type="text" 
+                                                required
+                                                value={newCampaign.name}
+                                                onChange={(e) => setNewCampaign({...newCampaign, name: e.target.value})}
+                                                className="w-full px-6 py-4 border-2 border-gray-100 rounded-3xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/30 font-bold text-gray-700"
+                                                placeholder="e.g. October Maintenance Alert"
+                                            />
                                         </div>
 
-                                        {useTemplate ? (
+                                        <div>
+                                            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 text-right">Target Audience</label>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                {['TENANTS', 'COWORKERS', 'ALL'].map(type => (
+                                                    <button
+                                                        key={type}
+                                                        type="button"
+                                                        onClick={() => setNewCampaign({...newCampaign, recipientType: type})}
+                                                        className={`px-4 py-3 rounded-2xl border-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                                                            newCampaign.recipientType === type 
+                                                            ? 'border-indigo-600 bg-indigo-50 text-indigo-600 shadow-sm' 
+                                                            : 'border-gray-50 bg-gray-50 text-gray-400 hover:border-gray-100'
+                                                        }`}
+                                                    >
+                                                        {type.replace('_', ' ')}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {newCampaign.recipientType !== 'COWORKERS' && (
                                             <div>
-                                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Message Template</label>
+                                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 text-right">Target Building</label>
                                                 <select 
-                                                    required={useTemplate}
-                                                    value={newCampaign.templateId}
-                                                    onChange={(e) => setNewCampaign({...newCampaign, templateId: e.target.value})}
-                                                    className="w-full px-5 md:px-6 py-3 md:py-4 border-2 border-gray-100 rounded-2xl md:rounded-3xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/30 font-bold text-gray-700 appearance-none"
+                                                    value={newCampaign.buildingId}
+                                                    onChange={(e) => setNewCampaign({...newCampaign, buildingId: e.target.value})}
+                                                    className="w-full px-6 py-4 border-2 border-gray-100 rounded-3xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/30 font-bold text-gray-700 appearance-none disabled:opacity-30 disabled:cursor-not-allowed"
                                                 >
-                                                    <option value="">Select a Template</option>
-                                                    {templates.map(t => (
-                                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                                    <option value="">All Buildings</option>
+                                                    {buildings.map(b => (
+                                                        <option key={b.id} value={b.id}>{b.name}</option>
                                                     ))}
                                                 </select>
                                             </div>
-                                        ) : (
-                                            <div>
-                                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Your Message</label>
-                                                <textarea 
-                                                    required={!useTemplate}
-                                                    value={newCampaign.customContent}
-                                                    onChange={(e) => setNewCampaign({...newCampaign, customContent: e.target.value})}
-                                                    rows="4"
-                                                    className="w-full px-5 md:px-6 py-3 md:py-4 border-2 border-gray-100 rounded-2xl md:rounded-3xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/30 font-bold text-gray-700"
-                                                    placeholder="Type your bulk message here..."
+                                        )}
+
+                                        <div>
+                                            <div className="flex gap-4 mb-4">
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setUseTemplate(true)}
+                                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${useTemplate ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}
+                                                >
+                                                    Use Template
+                                                </button>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setUseTemplate(false)}
+                                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!useTemplate ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}
+                                                >
+                                                    Custom Message
+                                                </button>
+                                            </div>
+
+                                            {useTemplate ? (
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 text-right">Message Template</label>
+                                                    <select 
+                                                        required={useTemplate}
+                                                        value={newCampaign.templateId}
+                                                        onChange={(e) => setNewCampaign({...newCampaign, templateId: e.target.value})}
+                                                        className="w-full px-6 py-4 border-2 border-gray-100 rounded-3xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/30 font-bold text-gray-700 appearance-none"
+                                                    >
+                                                        <option value="">Select a Template</option>
+                                                        {templates.map(t => (
+                                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 text-right">Your Message</label>
+                                                    <textarea 
+                                                        required={!useTemplate}
+                                                        value={newCampaign.customContent}
+                                                        onChange={(e) => setNewCampaign({...newCampaign, customContent: e.target.value})}
+                                                        rows="4"
+                                                        className="w-full px-6 py-4 border-2 border-gray-100 rounded-3xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/30 font-bold text-gray-700"
+                                                        placeholder="Type your bulk message here..."
+                                                    />
+                                                    <p className="mt-2 text-[10px] text-gray-400 font-bold italic">Character count: {newCampaign.customContent.length}</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100 flex gap-4">
+                                            <AlertCircle className="h-6 w-6 text-amber-500 shrink-0" />
+                                            <p className="text-[10px] text-amber-800 font-bold uppercase leading-relaxed tracking-wider">
+                                                Note: Messages are sent at 1 req/sec. Max selection recommended: 50.
+                                            </p>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                {/* Right Side: Population Summary */}
+                                <div className="w-[380px] bg-gray-50 flex flex-col overflow-hidden">
+                                    <div className="p-8 border-b border-gray-100 bg-white/50">
+                                        <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4">Recipient List</h3>
+                                        <div className="relative">
+                                            <Search className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Filter list..." 
+                                                className="w-full pl-10 pr-4 py-3 bg-white border border-gray-100 rounded-2xl text-xs focus:ring-2 focus:ring-indigo-100 outline-none"
+                                                value={tenantSearchTerm}
+                                                onChange={(e) => setTenantSearchTerm(e.target.value)}
+                                            />
+                                        </div>
+
+                                        {/* Add Individual Tenant Search */}
+                                        <div className="mt-4 pt-4 border-t border-gray-100">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Add Individual</p>
+                                            <div className="relative group/search">
+                                                <Plus className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400" />
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Search all tenants..." 
+                                                    className="w-full pl-10 pr-4 py-3 bg-indigo-50/50 border-2 border-transparent rounded-2xl text-xs focus:border-indigo-100 focus:bg-white transition-all outline-none"
+                                                    onChange={(e) => {
+                                                        const term = e.target.value.toLowerCase();
+                                                        if (term.length > 2) {
+                                                            const match = tenants.find(t => 
+                                                                (t.name?.toLowerCase().includes(term) || t.email?.toLowerCase().includes(term)) && 
+                                                                !getFilteredRecipients().some(r => r.id === t.id)
+                                                            );
+                                                            if (match) {
+                                                                setSelection(prev => ({
+                                                                    ...prev,
+                                                                    extraTenantIds: [...new Set([...prev.extraTenantIds, match.id])],
+                                                                    excludedTenantIds: prev.excludedTenantIds.filter(id => id !== match.id)
+                                                                }));
+                                                                e.target.value = '';
+                                                            }
+                                                        }
+                                                    }}
                                                 />
-                                                <p className="mt-2 text-[10px] text-gray-400 font-bold italic">Character count: {newCampaign.customContent.length}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto p-8 space-y-3">
+                                        {getFilteredRecipients().filter(r => 
+                                            r.name.toLowerCase().includes(tenantSearchTerm.toLowerCase()) || 
+                                            r.email?.toLowerCase().includes(tenantSearchTerm.toLowerCase())
+                                        ).map(r => (
+                                            <div key={`${r.type}-${r.id}`} className="bg-white p-4 rounded-2xl border border-gray-100 flex justify-between items-center group hover:border-red-100 transition-all">
+                                                <div>
+                                                    <div className="text-xs font-bold text-gray-800 line-clamp-1">{r.name}</div>
+                                                    <div className="text-[10px] text-gray-400 flex items-center gap-1 font-medium mt-0.5">
+                                                        <span className={`px-1.5 py-0.5 rounded ${r.type === 'TENANT' ? 'bg-indigo-50 text-indigo-500' : 'bg-amber-50 text-amber-500'}`}>
+                                                            {r.type}
+                                                        </span>
+                                                        {r.building?.name || r.role}
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={() => toggleExclusion(r.id, r.type === 'COWORKER')}
+                                                    className="p-1.5 hover:bg-red-50 text-gray-300 hover:text-red-500 rounded-lg transition-all"
+                                                    title="Exclude recipient"
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        {getFilteredRecipients().length === 0 && (
+                                            <div className="py-20 text-center opacity-30 select-none">
+                                                <Users className="h-10 w-10 mx-auto mb-2" />
+                                                <p className="text-[10px] font-black uppercase tracking-widest">No Recipients</p>
                                             </div>
                                         )}
                                     </div>
-
-                                    <div>
-                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Target Building</label>
-                                        <select 
-                                            value={newCampaign.buildingId}
-                                            disabled={newCampaign.recipientType === 'COWORKERS'}
-                                            onChange={(e) => setNewCampaign({...newCampaign, buildingId: e.target.value})}
-                                            className="w-full px-5 md:px-6 py-3 md:py-4 border-2 border-gray-100 rounded-2xl md:rounded-3xl focus:border-indigo-500 focus:ring-0 transition-all outline-none bg-gray-50/30 font-bold text-gray-700 appearance-none disabled:opacity-30 disabled:cursor-not-allowed"
-                                        >
-                                            <option value="">All Buildings</option>
-                                            {buildings.map(b => (
-                                                <option key={b.id} value={b.id}>{b.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="bg-amber-50 p-6 rounded-2xl md:rounded-3xl border border-amber-100 flex gap-4">
-                                        <AlertCircle className="h-6 w-6 text-amber-500 shrink-0" />
-                                        <p className="text-xs text-amber-800 font-medium leading-relaxed">
-                                            Note: This will send individual SMS messages according to your selection. This process runs at a rate of 1 message per second.
-                                        </p>
-                                    </div>
-
-                                    <div className="flex flex-col-reverse md:flex-row justify-end gap-3 md:gap-4 pt-4">
+                                    
+                                    <div className="p-8 border-t border-gray-100 bg-white">
                                         <button 
-                                            type="button"
-                                            onClick={() => setIsModalOpen(false)}
-                                            className="w-full md:w-auto px-8 py-3 md:py-4 border-2 border-gray-100 text-gray-500 font-black uppercase tracking-widest rounded-2xl md:rounded-3xl hover:bg-gray-50 transition-all"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button 
+                                            form="campaign-form"
                                             type="submit"
-                                            className="w-full md:w-auto px-10 md:px-12 py-3 md:py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest rounded-2xl md:rounded-3xl transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-2"
+                                            className="w-full py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest rounded-3xl transition-all shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 active:scale-95"
                                         >
                                             <Send className="h-4 w-4" />
                                             Start Broadcast
                                         </button>
                                     </div>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     </div>

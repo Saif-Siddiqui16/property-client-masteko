@@ -60,6 +60,8 @@ import { TeamInvite } from "./pages/TeamInvite";
 import SMSInbox from "./pages/SMSInbox";
 import SMSCampaigns from "./pages/SMSCampaigns";
 import SMSTemplates from "./pages/SMSTemplates";
+import { PrivacyPolicy } from "./pages/PrivacyPolicy";
+import { Support } from "./pages/Support";
 
 /* TENANT PORTAL */
 import { TenantProtectedRoute } from "./components/TenantProtectedRoute";
@@ -158,6 +160,10 @@ function App() {
           <Route path="/admin/sms/campaigns" element={<SMSCampaigns />} />
           <Route path="/admin/sms/templates" element={<SMSTemplates />} />
         </Route>
+
+        {/* 📄 PUBLIC PAGES */}
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/support" element={<Support />} />
 
         {/* 🏢 TENANT PORTAL */}
         <Route path="/tenant/login" element={<Navigate to="/login" replace />} />

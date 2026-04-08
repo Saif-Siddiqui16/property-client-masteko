@@ -158,13 +158,15 @@ const RefundsAdjustments = () => {
       payload.proofUrl = proofUrl;
 
       const isEdit = !!editingRecord;
-      if (editingRecord) {
+      
+      // Include proposed allocations if they exist
+      if (calcData?.proposedAllocations && calcData.proposedAllocations.length > 0) {
+        payload.allocations = calcData.proposedAllocations;
+      }
+
+      if (isEdit) {
         await api.put(`/api/admin/refunds/${editingRecord.id}`, payload);
       } else {
-        // Include proposed allocations from calcData if they exist
-        if (calcData?.proposedAllocations) {
-          payload.allocations = calcData.proposedAllocations;
-        }
         await api.post('/api/admin/refunds', payload);
       }
 
@@ -380,9 +382,9 @@ const RefundsAdjustments = () => {
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <label className="text-xs font-bold text-slate-500 uppercase">Status</label>
-                      <select name="status" defaultValue={editingRecord?.status || 'Completed'} className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white">
-                        <option value="Completed">Completed</option>
+                      <select name="status" defaultValue={editingRecord?.status || 'Pending'} className="px-4 py-2 rounded-lg border border-slate-200 outline-none focus:border-indigo-500 font-medium bg-white">
                         <option value="Pending">Pending</option>
+                        <option value="Completed">Completed</option>
                         <option value="Issued">Issued</option>
                         <option value="Received">Received</option>
                         <option value="Cancelled">Cancelled</option>
