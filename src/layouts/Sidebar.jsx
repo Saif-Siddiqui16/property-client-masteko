@@ -47,7 +47,8 @@ const NAV_ITEMS = [
     path: "/properties/buildings",
     children: [
       { label: "Buildings", tKey: "sidebar.buildings", path: "/properties/buildings" },
-      { label: "Units", tKey: "sidebar.units", path: "/units" }
+      { label: "Units", tKey: "sidebar.units", path: "/units" },
+      { label: "Unit Readiness", path: "/unit-readiness" }
     ]
   },
   {
@@ -327,6 +328,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               'Properties': 'Properties',
               'Buildings': 'Buildings',
               'Units': 'Units',
+              'Unit Readiness': 'Buildings', // Reuse Buildings permission for now
               'Tenants': 'Tenants',
               'Tenant List': 'Tenant List',
               'Vehicle Management': 'Vehicles',

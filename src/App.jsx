@@ -19,6 +19,7 @@ import { PropertyDetail } from "./pages/PropertyDetail";
 import { UnitDetail } from "./pages/UnitDetail";
 import { BedroomSetup } from "./pages/BedroomSetup";
 import { RentalModeSwitch } from "./pages/RentalModeSwitch";
+import UnitReadiness from "./pages/UnitReadiness";
 
 /* TENANTS */
 import { Tenants } from "./pages/Tenants";
@@ -115,6 +116,7 @@ function App() {
           <Route path="/units/:id" element={<UnitDetail />} />
           <Route path="/units/:id/bedrooms" element={<BedroomSetup />} />
           <Route path="/units/:id/switch-mode" element={<RentalModeSwitch />} />
+          <Route path="/unit-readiness" element={<UnitReadiness />} />
 
           {/* TENANTS */}
           <Route path="/tenants" element={<Tenants />} />

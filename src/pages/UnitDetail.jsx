@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
-import { ArrowLeft, Edit2, Loader2, FileText, Download } from 'lucide-react';
+import { ArrowLeft, Edit2, Loader2, FileText, Download, AlertCircle, ArrowRight } from 'lucide-react';
 import api from '../api/client';
 
 export const UnitDetail = () => {
@@ -13,6 +13,17 @@ export const UnitDetail = () => {
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [activeTab, setActiveTab] = useState('general');
+
+    const steps = [
+        { key: 'gc_delivered', label: 'GC Delivered' },
+        { key: 'gc_deficiencies', label: 'Deficiencies' },
+        { key: 'gc_cleaned', label: 'GC Cleaning' },
+        { key: 'ffe_installed', label: 'FF&E Installed' },
+        { key: 'ose_installed', label: 'OS&E Installed' },
+        { key: 'final_cleaning', label: 'Final Cleaning' },
+        { key: 'unit_ready', label: 'Unit Ready' },
+    ];
 
     useEffect(() => {
         if (id) fetchUnitDetails();
@@ -71,43 +82,220 @@ export const UnitDetail = () => {
                     </Button>
                 </div>
 
-                {/* Top Info Section - Excel Fields */}
-                <section className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
-                    <Card className="p-4 flex flex-col gap-2">
-                        <div className="text-xs text-slate-500 uppercase font-semibold">Unit Number</div>
-                        <div className="text-lg font-bold text-slate-800">{unit.unitNumber}</div>
-                    </Card>
-                    <Card className="p-4 flex flex-col gap-2">
-                        <div className="text-xs text-slate-500 uppercase font-semibold">Unit Type</div>
-                        <div className="text-lg font-bold text-slate-800">{unit.unitType || '-'}</div>
-                    </Card>
-                    <Card className="p-4 flex flex-col gap-2">
-                        <div className="text-xs text-slate-500 uppercase font-semibold">Civic Number</div>
-                        <div className="text-lg font-bold text-indigo-600">{unit.civicNumber || unit.building}</div>
-                    </Card>
-                    <Card className="p-4 flex flex-col gap-2">
-                        <div className="text-xs text-slate-500 uppercase font-semibold">Floor</div>
-                        <div className="text-lg font-bold text-slate-800">{unit.floor || '-'}</div>
-                    </Card>
-                    <Card className="p-4 flex flex-col gap-2">
-                        <div className="text-xs text-slate-500 uppercase font-semibold">Bedrooms</div>
-                        <div className="text-lg font-bold text-slate-800">{unit.bedrooms || 1}</div>
-                    </Card>
-                    <Card className="p-4 flex flex-col gap-2">
-                        <div className="text-xs text-slate-500 uppercase font-semibold">Status</div>
-                        <div className={`text-lg font-bold ${unit.status === 'Occupied' ? 'text-green-600' : 'text-red-600'}`}>
-                            {unit.status}
-                        </div>
-                    </Card>
-                </section>
+                {/* Tab Navigation */}
+                <div className="flex gap-4 border-b border-slate-200">
+                    <button 
+                        onClick={() => setActiveTab('general')}
+                        className={`pb-4 px-2 text-sm font-bold transition-all ${activeTab === 'general' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        General Overview
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('construction')}
+                        className={`pb-4 px-2 text-sm font-bold transition-all ${activeTab === 'construction' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Construction Workflow
+                    </button>
+                </div>
 
-                {/* Actions */}
-                <section className="flex gap-4 items-center py-4 border-b border-dashed border-slate-200">
-                    <Button variant="primary" onClick={() => navigate(`/units`)}>
-                        <Edit2 size={16} />
-                        Edit Unit
-                    </Button>
-                </section>
+                {activeTab === 'general' ? (
+                    <>
+                        {/* Top Info Section - Excel Fields */}
+                        <section className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
+                            <Card className="p-4 flex flex-col gap-2">
+                                <div className="text-xs text-slate-500 uppercase font-semibold">Unit Number</div>
+                                <div className="text-lg font-bold text-slate-800">{unit.unitNumber}</div>
+                            </Card>
+                            <Card className="p-4 flex flex-col gap-2">
+                                <div className="text-xs text-slate-500 uppercase font-semibold">Unit Type</div>
+                                <div className="text-lg font-bold text-slate-800">{unit.unitType || '-'}</div>
+                            </Card>
+                            <Card className="p-4 flex flex-col gap-2">
+                                <div className="text-xs text-slate-500 uppercase font-semibold">Civic Number</div>
+                                <div className="text-lg font-bold text-indigo-600">{unit.civicNumber || unit.building}</div>
+                            </Card>
+                            <Card className="p-4 flex flex-col gap-2">
+                                <div className="text-xs text-slate-500 uppercase font-semibold">Floor</div>
+                                <div className="text-lg font-bold text-slate-800">{unit.floor || '-'}</div>
+                            </Card>
+                            <Card className="p-4 flex flex-col gap-2">
+                                <div className="text-xs text-slate-500 uppercase font-semibold">Bedrooms</div>
+                                <div className="text-lg font-bold text-slate-800">{unit.bedrooms || 1}</div>
+                            </Card>
+                            <Card className="p-4 flex flex-col gap-2">
+                                <div className="text-xs text-slate-500 uppercase font-semibold">Status</div>
+                                <div className={`text-lg font-bold ${unit.status === 'Occupied' ? 'text-green-600' : 'text-red-600'}`}>
+                                    {unit.status}
+                                </div>
+                            </Card>
+                        </section>
+
+                        {/* Actions */}
+                        <section className="flex gap-4 items-center py-4 border-b border-dashed border-slate-200">
+                            <Button variant="primary" onClick={() => navigate(`/units`)}>
+                                <Edit2 size={16} />
+                                Edit Unit
+                            </Button>
+                        </section>
+                    </>
+                ) : (
+                    <div className="space-y-6">
+                        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                             <Card className="p-4 flex flex-col gap-1 border-emerald-100 bg-emerald-50/20">
+                                <div className="text-xs text-emerald-600 uppercase font-bold tracking-wider">Unit Activation</div>
+                                <div className="text-lg font-black text-slate-800">{unit.unit_status || 'INACTIVE'}</div>
+                            </Card>
+                            <Card className="p-4 flex flex-col gap-1 border-blue-100 bg-blue-50/20">
+                                <div className="text-xs text-blue-600 uppercase font-bold tracking-wider">Availability</div>
+                                <div className="text-lg font-black text-slate-800">{unit.availability_status || 'Unavailable'}</div>
+                            </Card>
+                            <Card className="p-4 flex flex-col gap-1 border-amber-100 bg-amber-50/20">
+                                <div className="text-xs text-amber-600 uppercase font-bold tracking-wider">Current Owner</div>
+                                <div className="text-lg font-black text-slate-800">{unit.current_owner || 'GC'}</div>
+                            </Card>
+                            <Card className={`p-4 flex flex-col gap-1 border-blue-100 ${unit.reserved_flag ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-50'}`}>
+                                <div className={`text-xs uppercase font-bold tracking-wider ${unit.reserved_flag ? 'text-blue-100' : 'text-slate-400'}`}>Reservation Status</div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-lg font-black">{unit.reserved_flag ? 'RESERVED' : 'NONE'}</span>
+                                    {unit.reserved_flag && <AlertCircle size={18} className="text-blue-200" />}
+                                </div>
+                                {unit.reserved_flag && (
+                                    <p className="text-[10px] font-bold text-blue-100 mt-1">
+                                        Locked for: {unit.reserved_by_user?.name || 'Assigned Prospect'}
+                                    </p>
+                                )}
+                            </Card>
+                        </section>
+
+                        <section>
+                            <Card title="Construction Milestone Tracking">
+                                <div className={`mb-6 p-4 rounded-2xl flex justify-between items-center shadow-lg transition-all ${
+                                    steps.slice(0, 6).every(s => unit[`${s.key}_completed`]) 
+                                    ? 'bg-indigo-600 shadow-indigo-100' 
+                                    : 'bg-slate-300 shadow-none opacity-60 grayscale'
+                                }`}>
+                                    <div className="flex flex-col">
+                                        <span className="text-white font-black uppercase text-xs tracking-widest">Final Property Activation</span>
+                                        <span className="text-indigo-100 text-[10px]">
+                                            {steps.slice(0, 6).every(s => unit[`${s.key}_completed`]) 
+                                                ? "Ready to enable leasing and vacancy tracking" 
+                                                : "Locked: Complete all construction steps first"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 bg-white/10 p-2 rounded-xl border border-white/20">
+                                        <input 
+                                            type="checkbox" 
+                                            disabled={!steps.slice(0, 6).every(s => unit[`${s.key}_completed`])}
+                                            className={`w-6 h-6 ${steps.slice(0, 6).every(s => unit[`${s.key}_completed`]) ? 'cursor-pointer' : 'cursor-not-allowed'}`}
+                                            checked={unit.ready_for_leasing || false}
+                                            onChange={async (e) => {
+                                                try {
+                                                    await api.put(`/api/admin/readiness/activate/${unit.id}`, { ready: e.target.checked });
+                                                    fetchUnitDetails();
+                                                } catch (err) { alert('Error activating unit'); }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    {steps.map((step, idx) => {
+                                        const isCompleted = unit[`${step.key}_completed`];
+                                        const targetDate = unit[`${step.key}_target_date`] ? new Date(unit[`${step.key}_target_date`]) : null;
+                                        const isOverdue = !isCompleted && targetDate && targetDate < new Date().setHours(0,0,0,0);
+                                        const prevStepKey = idx > 0 ? steps[idx - 1].key : null;
+                                        const isLocked = idx > 0 && !unit[`${prevStepKey}_completed`];
+
+                                        let colorClass = "bg-slate-50 text-slate-400"; // Default Grey
+                                        let borderClass = "border-slate-100";
+                                        let badgeColor = "bg-slate-200 text-slate-500";
+
+                                        if (isCompleted) {
+                                            colorClass = "bg-emerald-50 text-emerald-900";
+                                            borderClass = "border-emerald-200";
+                                            badgeColor = "bg-emerald-500 text-white";
+                                        } else if (isOverdue) {
+                                            colorClass = "bg-red-50 text-red-900 animate-pulse";
+                                            borderClass = "border-red-200";
+                                            badgeColor = "bg-red-600 text-white";
+                                        } else if (!isLocked) {
+                                            colorClass = "bg-amber-50 text-amber-900";
+                                            borderClass = "border-amber-200";
+                                            badgeColor = "bg-amber-400 text-white";
+                                        }
+
+                                        return (
+                                            <div key={step.key} className={`flex items-center justify-between p-4 border-b ${borderClass} ${colorClass} transition-all rounded-lg mb-1`}>
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${badgeColor} shadow-sm`}>
+                                                        {idx + 1}
+                                                    </div>
+                                                    <div>
+                                                        <p className={`text-sm font-bold ${isLocked ? 'text-slate-400' : ''}`}>{step.label}</p>
+                                                        <div className="flex items-center gap-1 mt-1">
+                                                            <span className="text-[10px] uppercase font-bold opacity-60">Target:</span>
+                                                            <input 
+                                                                type="date"
+                                                                disabled={isLocked && idx !== 0}
+                                                                className={`text-[11px] bg-white/50 border-0 p-1 rounded focus:ring-1 focus:ring-indigo-500 outline-none font-medium ${isLocked ? 'opacity-50' : ''}`}
+                                                                value={unit[`${step.key}_target_date`] ? new Date(unit[`${step.key}_target_date`]).toISOString().split('T')[0] : ''}
+                                                                onChange={(e) => {
+                                                                    api.put(`/api/admin/readiness/update-step/${unit.id}`, { 
+                                                                        stepKey: step.key, 
+                                                                        targetDate: e.target.value,
+                                                                        completed: unit[`${step.key}_completed`]
+                                                                    })
+                                                                    .then(() => fetchUnitDetails())
+                                                                    .catch(err => alert('Error updating target date'));
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    {isCompleted ? (
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-[10px] font-black uppercase text-emerald-700 bg-white/50 px-3 py-1 rounded-full border border-emerald-200">✔ Completed</span>
+                                                            <span className="text-[9px] opacity-70 mt-1">{new Date(unit[`${step.key}_completed_date`]).toLocaleDateString()}</span>
+                                                            {step.key === 'gc_delivered' && (
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const confirmed = window.confirm("Do you want to recalculate future target dates based on this completion?");
+                                                                        if (confirmed) {
+                                                                            api.put(`/api/admin/readiness/update-step/${unit.id}`, { stepKey: 'gc_delivered', completed: true, recalculate: true })
+                                                                            .then(() => fetchUnitDetails())
+                                                                            .catch(err => alert(err.response?.data?.message || 'Error updating step'));
+                                                                        }
+                                                                    }}
+                                                                    className="text-[9px] text-indigo-700 font-bold hover:underline mt-1"
+                                                                >
+                                                                    ↻ Recalculate Timeline
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <Button 
+                                                            variant={isOverdue ? "danger" : "secondary"} 
+                                                            size="sm"
+                                                            disabled={isLocked}
+                                                            onClick={() => {
+                                                                const recalculate = step.key === 'gc_delivered' && window.confirm("Recalculate future target dates based on today?");
+                                                                api.put(`/api/admin/readiness/update-step/${unit.id}`, { stepKey: step.key, completed: true, recalculate })
+                                                                .then(() => fetchUnitDetails())
+                                                                .catch(err => alert(err.response?.data?.message || 'Error updating step'));
+                                                            }}
+                                                        >
+                                                            {isLocked ? "Locked" : "Mark Done"}
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </Card>
+                        </section>
+                    </div>
+                )}
 
                 {/* Lease Information Section */}
                 <section>

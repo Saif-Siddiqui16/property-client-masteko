@@ -24,11 +24,11 @@ export const Units = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showInactive, setShowInactive] = useState(localStorage.getItem('showUnitsInConstruction') === 'true');
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
   const [unitTypes, setUnitTypes] = useState([]);
   const [showTypesModal, setShowTypesModal] = useState(false);
 
-  // Form state for controlled inputs
   const [formData, setFormData] = useState({
     propertyId: '',
     unitNumber: '',
@@ -37,8 +37,15 @@ export const Units = () => {
     rentalMode: 'FULL_UNIT',
     bedrooms: '1',
     status: 'Vacant',
-    bedroomIdentifiers: ['Unit-1']
+    bedroomIdentifiers: ['Unit-1'],
+    // readiness fields
+    unit_status: 'INACTIVE',
+    gc_delivered_target_date: '',
+    reserved_flag: false,
+    reserved_by_id: '',
+    tentative_move_in_date: ''
   });
+  const [tenants, setTenants] = useState([]);
 
   const [typeFilter, setTypeFilter] = useState('');
   const [buildingFilter, setBuildingFilter] = useState('');
@@ -53,7 +60,7 @@ export const Units = () => {
       fetchData(pagination.page);
     }, 400); // Debounce search/filter
     return () => clearTimeout(timer);
-  }, [pagination.page, typeFilter, buildingFilter, search]);
+  }, [pagination.page, typeFilter, buildingFilter, search, showInactive]);
 
   useEffect(() => {
     if (showModal || viewUnit || editUnit || deleteConfirm) {
@@ -93,7 +100,8 @@ export const Units = () => {
         limit: pagination.limit.toString(),
         search: search || '',
         unitType: typeFilter || '',
-        propertyId: buildingFilter || ''
+        propertyId: buildingFilter || '',
+        showInactive: showInactive ? 'true' : 'false'
       });
 
       const [unitsRes, buildingsRes] = await Promise.all([
@@ -101,6 +109,13 @@ export const Units = () => {
         api.get('/api/admin/properties'),
         fetchUnitTypes() // Fetch unit types too
       ]);
+
+      const tenantsRes = await api.get('/api/admin/tenants?limit=1000');
+      setTenants(tenantsRes.data?.data || tenantsRes.data || []);
+
+      if (buildingsRes.data && buildingsRes.data.length > 0 && !formData.propertyId) {
+        setFormData(prev => ({ ...prev, propertyId: buildingsRes.data[0].id.toString() }));
+      }
 
       if (unitsRes.data) {
         setUnits(unitsRes.data.data || []);
@@ -131,12 +146,23 @@ export const Units = () => {
       rentalMode: 'FULL_UNIT',
       bedrooms: '1',
       status: 'Vacant',
-      bedroomIdentifiers: ['Unit-1']
+      bedroomIdentifiers: ['Unit-1'],
+      unit_status: 'INACTIVE',
+      gc_delivered_target_date: '',
+      reserved_flag: false,
+      reserved_by_id: '',
+      tentative_move_in_date: ''
     });
   };
 
   const openAddModal = async () => {
     resetForm();
+    if (buildings.length > 0) {
+      setFormData(prev => ({ 
+        ...prev, 
+        propertyId: buildings[0].id.toString() 
+      }));
+    }
     setEditUnit(null);
     setShowModal(true);
     // Refresh buildings when opening modal to ensure new buildings appear
@@ -162,7 +188,12 @@ export const Units = () => {
         rentalMode: fullUnit.rentalMode || 'FULL_UNIT',
         bedrooms: fullUnit.bedrooms?.toString() || '1',
         status: fullUnit.status || 'Vacant',
-        bedroomIdentifiers: fullUnit.bedroomsList?.map(b => b.bedroomNumber) || []
+        bedroomIdentifiers: fullUnit.bedroomsList?.map(b => b.bedroomNumber) || [],
+        unit_status: fullUnit.unit_status || 'INACTIVE',
+        gc_delivered_target_date: fullUnit.gc_delivered_target_date ? new Date(fullUnit.gc_delivered_target_date).toISOString().split('T')[0] : '',
+        reserved_flag: fullUnit.reserved_flag || false,
+        reserved_by_id: fullUnit.reserved_by_id?.toString() || '',
+        tentative_move_in_date: fullUnit.tentative_move_in_date ? new Date(fullUnit.tentative_move_in_date).toISOString().split('T')[0] : ''
       });
       setEditUnit(fullUnit);
       setShowModal(true);
@@ -241,8 +272,16 @@ export const Units = () => {
         building: selectedProperty ? selectedProperty.name : 'Unknown',
         rentalMode: formData.rentalMode,
         status: formData.status,
-        bedroomIdentifiers: formData.bedroomIdentifiers
+        bedroomIdentifiers: formData.bedroomIdentifiers,
+        // readiness fields
+        unit_status: formData.unit_status,
+        gc_delivered_target_date: formData.gc_delivered_target_date || null,
+        reserved_flag: formData.reserved_flag,
+        reserved_by_id: formData.reserved_by_id || null,
+        tentative_move_in_date: formData.tentative_move_in_date || null
       };
+
+      console.log('SENDING UNIT PAYLOAD:', payload);
 
       if (editUnit) {
         // Update existing unit
@@ -280,7 +319,10 @@ export const Units = () => {
       setSubmitting(false);
     }
   };
-  const filteredUnits = units; // Server now returns already filtered units
+  const filteredUnits = units.filter(u => {
+    if (showInactive) return true;
+    return u.unit_status !== 'INACTIVE';
+  });
 
   const getPageNumbers = () => {
     const total = Math.max(1, pagination.totalPages || 1);
@@ -365,6 +407,24 @@ export const Units = () => {
                 className="border-none outline-none text-sm w-48 text-slate-700 placeholder:text-slate-400"
               />
             </div>
+
+            <label className="flex items-center gap-2 cursor-pointer group">
+               <div className="relative">
+                 <input 
+                    type="checkbox" 
+                    className="sr-only" 
+                    checked={showInactive}
+                    onChange={() => {
+                      const newValue = !showInactive;
+                      setShowInactive(newValue);
+                      localStorage.setItem('showUnitsInConstruction', newValue.toString());
+                    }} 
+                 />
+                 <div className={`w-10 h-6 rounded-full transition-colors ${showInactive ? 'bg-indigo-600' : 'bg-slate-200'}`}></div>
+                 <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${showInactive ? 'translate-x-4' : ''}`}></div>
+               </div>
+               <span className="text-xs font-bold text-slate-500 uppercase tracking-tight">Show units in construction</span>
+            </label>
           </div>
 
           <div className="flex gap-2">
@@ -417,11 +477,16 @@ export const Units = () => {
                       <span className="text-slate-600">{unit.unitType || '-'}</span>
                       <span className="text-slate-600">{unit.floor || '-'}</span>
                       <span className="text-slate-600">{unit.bedrooms || '-'}</span>
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold w-fit ${unit.status === 'Occupied' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold w-fit ${
+                        unit.unit_status === 'INACTIVE' ? (unit.reserved_flag ? 'bg-blue-100 text-blue-700 border border-blue-200 uppercase tracking-tighter' : 'bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-tighter') :
+                        unit.status === 'Occupied' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
                         unit.status === 'Fully Booked' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
-                          'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                        }`}>
-                        {unit.status}
+                        'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                      }`}>
+                        {unit.unit_status === 'INACTIVE' 
+                          ? (unit.reserved_flag ? 'Reserved - Not Ready' : 'In Construction') 
+                          : (unit.reserved_flag ? 'Reserved - Ready for Move-In' : unit.status)
+                        }
                       </span>
                       <div className="flex items-center gap-2">
                         <Link to={`/units/${unit.id}`}>
@@ -661,7 +726,7 @@ export const Units = () => {
                             name="status"
                             value={formData.status}
                             onChange={handleInputChange}
-                            className="w-full p-3.5 rounded-xl border-2 border-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 bg-white text-sm appearance-none pr-10 transition-all"
+                            className="w-full p-3.5 rounded-xl border-2 border-slate-200 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 bg-white text-sm appearance-none pr-10 transition-all font-medium"
                           >
                             <option value="Vacant">Vacant</option>
                             <option value="Occupied">Occupied</option>
@@ -672,6 +737,112 @@ export const Units = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* 9.2 Activation Control */}
+                    <div className="pt-4 border-t border-slate-100">
+                      <div className="flex items-center justify-between mb-2">
+                         <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                           <CheckCircle size={16} /> Activation Control
+                         </h4>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-2">
+                        <div className="flex items-center justify-between">
+                           <div>
+                              <p className="text-sm font-bold text-slate-800">Unit Status</p>
+                              <p className="text-[11px] text-slate-500 max-w-[280px]">
+                                This unit will remain inactive and will not appear in the rent roll until Ready for Leasing = Yes.
+                              </p>
+                           </div>
+                           <span className={`px-3 py-1 rounded-full text-xs font-black border ${
+                              formData.unit_status === 'ACTIVE' 
+                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                                : 'bg-amber-100 text-amber-700 border-amber-200'
+                           }`}>
+                             {formData.unit_status || 'INACTIVE'}
+                           </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 9.3 Construction Workflow Setup */}
+                    <div className="pt-4 border-t border-slate-100">
+                       <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2 mb-4">
+                         <Settings size={16} /> Construction Setup
+                       </h4>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">GC Delivered Date</label>
+                             <input 
+                                type="date"
+                                name="gc_delivered_target_date"
+                                value={formData.gc_delivered_target_date}
+                                onChange={handleInputChange}
+                                className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none"
+                             />
+                          </div>
+                          <div className="flex items-end pb-3">
+                             <p className="text-[10px] text-slate-400 font-medium italic">
+                               💡 Once entered, future dates will auto-calculate based on PMS settings.
+                             </p>
+                          </div>
+                       </div>
+                    </div>
+
+                    {/* 9.5 Reservation */}
+                    <div className="pt-4 border-t border-slate-100">
+                      <div className="flex items-center justify-between mb-4">
+                         <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
+                           <AlertCircle size={16} /> Unit Reservation
+                         </h4>
+                         <label className="flex items-center gap-2 cursor-pointer">
+                            <span className="text-xs font-bold text-slate-500 uppercase">Reserve Unit</span>
+                            <div className="relative">
+                               <input 
+                                  type="checkbox" 
+                                  className="sr-only" 
+                                  checked={formData.reserved_flag}
+                                  onChange={() => setFormData(p => ({ ...p, reserved_flag: !p.reserved_flag }))}
+                               />
+                               <div className={`w-8 h-5 rounded-full transition-colors ${formData.reserved_flag ? 'bg-blue-600' : 'bg-slate-200'}`}></div>
+                               <div className={`absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform ${formData.reserved_flag ? 'translate-x-3' : ''}`}></div>
+                            </div>
+                         </label>
+                      </div>
+
+                      {formData.reserved_flag && (
+                        <div className="space-y-4 p-4 bg-blue-50/30 rounded-2xl border border-blue-100 animate-in fade-in slide-in-from-top-2">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reserved By</label>
+                              <select 
+                                name="reserved_by_id"
+                                value={formData.reserved_by_id}
+                                onChange={handleInputChange}
+                                className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white"
+                              >
+                                <option value="">Select Tenant / Prospect</option>
+                                {tenants.map(t => (
+                                  <option key={t.id} value={t.id}>{t.name || `${t.firstName} ${t.lastName}`}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                               <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Tentative Move-In</label>
+                               <input 
+                                  type="date"
+                                  name="tentative_move_in_date"
+                                  value={formData.tentative_move_in_date}
+                                  onChange={handleInputChange}
+                                  className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none"
+                               />
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-blue-500 font-bold bg-blue-50 p-2 rounded-lg border border-blue-100">
+                             ⚠️ HARD LOCK ENABLED: This unit will be blocked from other lease assignments until the reservation is cleared.
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </form>
                 </div>
 
