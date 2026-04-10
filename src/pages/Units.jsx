@@ -319,10 +319,7 @@ export const Units = () => {
       setSubmitting(false);
     }
   };
-  const filteredUnits = units.filter(u => {
-    if (showInactive) return true;
-    return u.unit_status !== 'INACTIVE';
-  });
+  const filteredUnits = units;
 
   const getPageNumbers = () => {
     const total = Math.max(1, pagination.totalPages || 1);
@@ -794,12 +791,15 @@ export const Units = () => {
                          <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
                            <AlertCircle size={16} /> Unit Reservation
                          </h4>
-                         <label className="flex items-center gap-2 cursor-pointer">
-                            <span className="text-xs font-bold text-slate-500 uppercase">Reserve Unit</span>
+                         <label className={`flex items-center gap-2 ${editUnit?.activeLease ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+                            <span className="text-xs font-bold text-slate-500 uppercase">
+                              {editUnit?.activeLease ? 'Unit Occupied (Locked)' : 'Reserve Unit'}
+                            </span>
                             <div className="relative">
                                <input 
                                   type="checkbox" 
                                   className="sr-only" 
+                                  disabled={!!editUnit?.activeLease}
                                   checked={formData.reserved_flag}
                                   onChange={() => setFormData(p => ({ ...p, reserved_flag: !p.reserved_flag }))}
                                />
@@ -808,6 +808,12 @@ export const Units = () => {
                             </div>
                          </label>
                       </div>
+
+                      {editUnit?.activeLease && (
+                        <p className="text-[10px] text-amber-600 font-bold bg-amber-50 p-2 rounded-lg border border-amber-100 flex items-center gap-2 mb-2">
+                           <AlertCircle size={14} /> Unit is leased to {editUnit.activeLease.tenantName}. Reservation is disabled.
+                        </p>
+                      )}
 
                       {formData.reserved_flag && (
                         <div className="space-y-4 p-4 bg-blue-50/30 rounded-2xl border border-blue-100 animate-in fade-in slide-in-from-top-2">

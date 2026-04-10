@@ -17,11 +17,11 @@ export const UnitDetail = () => {
 
     const steps = [
         { key: 'gc_delivered', label: 'GC Delivered' },
-        { key: 'gc_deficiencies', label: 'Deficiencies' },
-        { key: 'gc_cleaned', label: 'GC Cleaning' },
+        { key: 'gc_deficiencies', label: 'GC Deficiencies' },
+        { key: 'gc_cleaned', label: 'GC Complete' },
         { key: 'ffe_installed', label: 'FF&E Installed' },
-        { key: 'ose_installed', label: 'OS&E Installed' },
         { key: 'final_cleaning', label: 'Final Cleaning' },
+        { key: 'ose_installed', label: 'OS&E Installed' },
         { key: 'unit_ready', label: 'Unit Ready' },
     ];
 
@@ -76,10 +76,16 @@ export const UnitDetail = () => {
             <div className="flex flex-col gap-6">
                 {/* Back Button */}
                 <div>
+                <div className="flex gap-3">
                     <Button variant="secondary" onClick={() => navigate('/units')}>
                         <ArrowLeft size={16} />
                         Back to Units
                     </Button>
+                    <Button variant="secondary" onClick={() => navigate('/unit-readiness')}>
+                        <ArrowLeft size={16} />
+                        Back to Unit Readiness
+                    </Button>
+                </div>
                 </div>
 
                 {/* Tab Navigation */}
@@ -101,30 +107,30 @@ export const UnitDetail = () => {
                 {activeTab === 'general' ? (
                     <>
                         {/* Top Info Section - Excel Fields */}
-                        <section className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-4">
-                            <Card className="p-4 flex flex-col gap-2">
-                                <div className="text-xs text-slate-500 uppercase font-semibold">Unit Number</div>
-                                <div className="text-lg font-bold text-slate-800">{unit.unitNumber}</div>
+                        <section className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-3">
+                            <Card className="p-3 flex flex-col gap-1">
+                                <div className="text-[10px] text-slate-500 uppercase font-bold">Unit Number</div>
+                                <div className="text-base font-bold text-slate-800">{unit.unitNumber}</div>
                             </Card>
-                            <Card className="p-4 flex flex-col gap-2">
-                                <div className="text-xs text-slate-500 uppercase font-semibold">Unit Type</div>
-                                <div className="text-lg font-bold text-slate-800">{unit.unitType || '-'}</div>
+                            <Card className="p-3 flex flex-col gap-1">
+                                <div className="text-[10px] text-slate-500 uppercase font-bold">Unit Type</div>
+                                <div className="text-base font-bold text-slate-800">{unit.unitType || '-'}</div>
                             </Card>
-                            <Card className="p-4 flex flex-col gap-2">
-                                <div className="text-xs text-slate-500 uppercase font-semibold">Civic Number</div>
-                                <div className="text-lg font-bold text-indigo-600">{unit.civicNumber || unit.building}</div>
+                            <Card className="p-3 flex flex-col gap-1">
+                                <div className="text-[10px] text-slate-500 uppercase font-bold">Civic Number</div>
+                                <div className="text-base font-bold text-indigo-600">{unit.civicNumber || unit.building}</div>
                             </Card>
-                            <Card className="p-4 flex flex-col gap-2">
-                                <div className="text-xs text-slate-500 uppercase font-semibold">Floor</div>
-                                <div className="text-lg font-bold text-slate-800">{unit.floor || '-'}</div>
+                            <Card className="p-3 flex flex-col gap-1">
+                                <div className="text-[10px] text-slate-500 uppercase font-bold">Floor</div>
+                                <div className="text-base font-bold text-slate-800">{unit.floor || '-'}</div>
                             </Card>
-                            <Card className="p-4 flex flex-col gap-2">
-                                <div className="text-xs text-slate-500 uppercase font-semibold">Bedrooms</div>
-                                <div className="text-lg font-bold text-slate-800">{unit.bedrooms || 1}</div>
+                            <Card className="p-3 flex flex-col gap-1">
+                                <div className="text-[10px] text-slate-500 uppercase font-bold">Bedrooms</div>
+                                <div className="text-base font-bold text-slate-800">{unit.bedrooms || 1}</div>
                             </Card>
-                            <Card className="p-4 flex flex-col gap-2">
-                                <div className="text-xs text-slate-500 uppercase font-semibold">Status</div>
-                                <div className={`text-lg font-bold ${unit.status === 'Occupied' ? 'text-green-600' : 'text-red-600'}`}>
+                            <Card className="p-3 flex flex-col gap-1">
+                                <div className="text-[10px] text-slate-500 uppercase font-bold">Status</div>
+                                <div className={`text-base font-bold ${unit.status === 'Occupied' ? 'text-green-600' : 'text-red-600'}`}>
                                     {unit.status}
                                 </div>
                             </Card>
@@ -140,36 +146,41 @@ export const UnitDetail = () => {
                     </>
                 ) : (
                     <div className="space-y-6">
-                        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                             <Card className="p-4 flex flex-col gap-1 border-emerald-100 bg-emerald-50/20">
-                                <div className="text-xs text-emerald-600 uppercase font-bold tracking-wider">Unit Activation</div>
-                                <div className="text-lg font-black text-slate-800">{unit.unit_status || 'INACTIVE'}</div>
+                        <section className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                             <Card className="p-3 flex flex-col gap-0.5 border-emerald-100 bg-emerald-50/20">
+                                <div className="text-[9px] text-emerald-600 uppercase font-bold tracking-wider">Unit Activation</div>
+                                <div className="text-base font-black text-slate-800">{unit.unit_status || 'INACTIVE'}</div>
                             </Card>
-                            <Card className="p-4 flex flex-col gap-1 border-blue-100 bg-blue-50/20">
-                                <div className="text-xs text-blue-600 uppercase font-bold tracking-wider">Availability</div>
-                                <div className="text-lg font-black text-slate-800">{unit.availability_status || 'Unavailable'}</div>
+                            <Card className="p-3 flex flex-col gap-0.5 border-blue-100 bg-blue-50/20">
+                                <div className="text-[9px] text-blue-600 uppercase font-bold tracking-wider">Availability</div>
+                                <div className="text-base font-black text-slate-800">{unit.availability_status || 'Unavailable'}</div>
                             </Card>
-                            <Card className="p-4 flex flex-col gap-1 border-amber-100 bg-amber-50/20">
-                                <div className="text-xs text-amber-600 uppercase font-bold tracking-wider">Current Owner</div>
-                                <div className="text-lg font-black text-slate-800">{unit.current_owner || 'GC'}</div>
+                            <Card className="p-3 flex flex-col gap-0.5 border-amber-100 bg-amber-50/20">
+                                <div className="text-[9px] text-amber-600 uppercase font-bold tracking-wider">Market Age</div>
+                                <div className="text-base font-black text-slate-800">{unit.marketAge || 0} days</div>
+                                <p className="text-[8px] font-black text-slate-400 uppercase">{unit.marketAgeLabel || 'Days on Market'}</p>
                             </Card>
-                            <Card className={`p-4 flex flex-col gap-1 border-blue-100 ${unit.reserved_flag ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-50'}`}>
-                                <div className={`text-xs uppercase font-bold tracking-wider ${unit.reserved_flag ? 'text-blue-100' : 'text-slate-400'}`}>Reservation Status</div>
+                            <Card className="p-3 flex flex-col gap-0.5 border-amber-100 bg-amber-50/20">
+                                <div className="text-[9px] text-amber-600 uppercase font-bold tracking-wider">Current Owner</div>
+                                <div className="text-base font-black text-slate-800">{unit.current_owner || 'GC'}</div>
+                            </Card>
+                            <Card className={`p-3 flex flex-col gap-0.5 border-blue-100 ${unit.reserved_flag ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-slate-50'}`}>
+                                <div className={`text-[9px] uppercase font-bold tracking-wider ${unit.reserved_flag ? 'text-blue-100' : 'text-slate-400'}`}>Reservation Status</div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-lg font-black">{unit.reserved_flag ? 'RESERVED' : 'NONE'}</span>
-                                    {unit.reserved_flag && <AlertCircle size={18} className="text-blue-200" />}
+                                    <span className="text-base font-black">{unit.reserved_flag ? 'RESERVED' : 'NONE'}</span>
+                                    {unit.reserved_flag && <AlertCircle size={14} className="text-blue-200" />}
                                 </div>
                                 {unit.reserved_flag && (
-                                    <p className="text-[10px] font-bold text-blue-100 mt-1">
-                                        Locked for: {unit.reserved_by_user?.name || 'Assigned Prospect'}
+                                    <p className="text-[9px] font-bold text-blue-100 mt-0.5">
+                                        For: {unit.reserved_by_user?.name || 'Prospect'}
                                     </p>
                                 )}
                             </Card>
                         </section>
 
                         <section>
-                            <Card title="Construction Milestone Tracking">
-                                <div className={`mb-6 p-4 rounded-2xl flex justify-between items-center shadow-lg transition-all ${
+                            <Card title="Construction Tracking" className="p-1">
+                                <div className={`mb-3 p-3 rounded-xl flex justify-between items-center shadow-lg transition-all ${
                                     steps.slice(0, 6).every(s => unit[`${s.key}_completed`]) 
                                     ? 'bg-indigo-600 shadow-indigo-100' 
                                     : 'bg-slate-300 shadow-none opacity-60 grayscale'
@@ -203,7 +214,14 @@ export const UnitDetail = () => {
                                         const targetDate = unit[`${step.key}_target_date`] ? new Date(unit[`${step.key}_target_date`]) : null;
                                         const isOverdue = !isCompleted && targetDate && targetDate < new Date().setHours(0,0,0,0);
                                         const prevStepKey = idx > 0 ? steps[idx - 1].key : null;
-                                        const isLocked = idx > 0 && !unit[`${prevStepKey}_completed`];
+                                        
+                                        // Logic Enhancement (Rule 3): GC Deficiencies is NO LONGER a blocking step
+                                        let isLocked = false;
+                                        if (idx > 0) {
+                                            const stepsUpToThis = steps.slice(0, idx);
+                                            const blockingSteps = stepsUpToThis.filter(s => s.key !== 'gc_deficiencies');
+                                            isLocked = blockingSteps.some(s => !unit[`${s.key}_completed`]);
+                                        }
 
                                         let colorClass = "bg-slate-50 text-slate-400"; // Default Grey
                                         let borderClass = "border-slate-100";
@@ -224,19 +242,31 @@ export const UnitDetail = () => {
                                         }
 
                                         return (
-                                            <div key={step.key} className={`flex items-center justify-between p-4 border-b ${borderClass} ${colorClass} transition-all rounded-lg mb-1`}>
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${badgeColor} shadow-sm`}>
+                                            <div key={step.key} className={`flex items-center justify-between p-2.5 border-b ${borderClass} ${colorClass} transition-all rounded-lg mb-1`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] ${badgeColor} shadow-sm`}>
                                                         {idx + 1}
                                                     </div>
                                                     <div>
-                                                        <p className={`text-sm font-bold ${isLocked ? 'text-slate-400' : ''}`}>{step.label}</p>
-                                                        <div className="flex items-center gap-1 mt-1">
-                                                            <span className="text-[10px] uppercase font-bold opacity-60">Target:</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className={`text-xs font-bold leading-none ${isLocked ? 'text-slate-400' : ''}`}>{step.label}</p>
+                                                            {step.key === 'gc_deficiencies' && !isCompleted && (
+                                                                <span className="text-[9px] font-black text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded flex items-center gap-1 animate-pulse">
+                                                                    ⚠ Pending
+                                                                </span>
+                                                            )}
+                                                            {step.key === 'unit_ready' && !unit.gc_deficiencies_completed && (
+                                                                <span className="text-[9px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                                     ⚠ Deficiencies still open
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex items-center gap-1 mt-0.5">
+                                                            <span className="text-[9px] uppercase font-bold opacity-60">Target:</span>
                                                             <input 
                                                                 type="date"
                                                                 disabled={isLocked && idx !== 0}
-                                                                className={`text-[11px] bg-white/50 border-0 p-1 rounded focus:ring-1 focus:ring-indigo-500 outline-none font-medium ${isLocked ? 'opacity-50' : ''}`}
+                                                                className={`text-[10px] bg-white/50 border-0 p-0.5 rounded focus:ring-1 focus:ring-indigo-500 outline-none font-medium ${isLocked ? 'opacity-50' : ''}`}
                                                                 value={unit[`${step.key}_target_date`] ? new Date(unit[`${step.key}_target_date`]).toISOString().split('T')[0] : ''}
                                                                 onChange={(e) => {
                                                                     api.put(`/api/admin/readiness/update-step/${unit.id}`, { 
@@ -325,9 +355,6 @@ export const UnitDetail = () => {
                         ) : (
                             <div className="py-6 text-center">
                                 <p className="text-slate-400 italic">No active lease found for this unit.</p>
-                                <Button variant="primary" className="mt-4" onClick={() => navigate('/leases')}>
-                                    Create New Lease
-                                </Button>
                             </div>
                         )}
                     </Card>

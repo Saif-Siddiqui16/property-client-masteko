@@ -69,16 +69,17 @@ const RefundsAdjustments = () => {
 
   useEffect(() => {
     if (selectedTenantId) {
-      fetchCalculation(selectedTenantId);
+      fetchCalculation(selectedTenantId, selectedUnitId);
     } else {
       setCalcData(null);
     }
-  }, [selectedTenantId]);
+  }, [selectedTenantId, selectedUnitId]);
 
-  const fetchCalculation = async (tid) => {
+  const fetchCalculation = async (tid, uid) => {
     setLoadingCalc(true);
     try {
-      const res = await api.get(`/api/admin/refunds/calculate/${tid}`);
+      const url = uid ? `/api/admin/refunds/calculate/${tid}?unitId=${uid}` : `/api/admin/refunds/calculate/${tid}`;
+      const res = await api.get(url);
       setCalcData(res.data);
       if (res.data?.finalRefundAmount != null) {
         setAmountValue(res.data.finalRefundAmount.toString());
@@ -280,7 +281,7 @@ const RefundsAdjustments = () => {
                           setAmountValue(Math.abs(r.amount).toString());
                           setSelectedTenantId(r.tenantId);
                           setSelectedUnitId(r.unitId);
-                          fetchCalculation(r.tenantId); // Fetch fresh calculations for this tenant
+                          fetchCalculation(r.tenantId, r.unitId); // Fetch fresh calculations for this tenant
                           setShowModal(true);
                         }} className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-md transition-colors" title="Edit Refund">
                           <FileCheck size={16} />

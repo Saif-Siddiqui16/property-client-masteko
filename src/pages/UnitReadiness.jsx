@@ -24,16 +24,21 @@ const UnitReadiness = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [propertyFilter, setPropertyFilter] = useState('');
+  const [showLeasedUnits, setShowLeasedUnits] = useState(false);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHolidays, setShowHolidays] = useState(false);
+  const [holidays, setHolidays] = useState([]);
+  const [newHoliday, setNewHoliday] = useState({ name: '', date: '' });
   const [timelineSettings, setTimelineSettings] = useState([]);
+  const [recalculateAll, setRecalculateAll] = useState(false);
   const limit = 15;
 
   useEffect(() => {
     fetchData();
     fetchSettings();
-  }, [searchTerm, statusFilter, page, propertyFilter]);
+  }, [searchTerm, statusFilter, page, propertyFilter, showLeasedUnits]);
 
   useEffect(() => {
     fetchBuildings();
@@ -66,6 +71,7 @@ const UnitReadiness = () => {
           search: searchTerm, 
           status: statusFilter, 
           propertyId: propertyFilter,
+          showLeased: showLeasedUnits,
           page, 
           limit 
         }
@@ -83,28 +89,62 @@ const UnitReadiness = () => {
     try {
       const resp = await axios.get('/api/admin/readiness/settings');
       setTimelineSettings(resp.data);
+      const hResp = await axios.get('/api/admin/readiness/holidays');
+      setHolidays(hResp.data);
     } catch (err) { console.error(err); }
+  };
+
+  const handleAddHoliday = async () => {
+    if (!newHoliday.name || !newHoliday.date) return;
+    try {
+      await axios.post('/api/admin/readiness/holidays', newHoliday);
+      setNewHoliday({ name: '', date: '' });
+      fetchSettings();
+    } catch (err) { alert('Error adding holiday'); }
+  };
+
+  const handleDeleteHoliday = async (id) => {
+    try {
+      await axios.delete(`/api/admin/readiness/holidays/${id}`);
+      fetchSettings();
+    } catch (err) { alert('Error deleting holiday'); }
   };
 
   const saveSettings = async () => {
     try {
-      await axios.put('/api/admin/readiness/settings', { settings: timelineSettings });
+      if (recalculateAll && !window.confirm("This will recalculate target dates for all units currently in construction. Existing manual dates won't be changed unless you haven't marked them. Proceed?")) {
+          return;
+      }
+      await axios.put('/api/admin/readiness/settings', { 
+          settings: timelineSettings,
+          triggerRecalculate: recalculateAll
+      });
       setShowSettings(false);
       fetchData();
     } catch (err) { alert('Error saving settings'); }
   };
 
-  const handleUpdateStep = async (unitId, stepKey, completed, recalculate = false) => {
+  const handleUpdateStep = async (unitId, stepKey, completed, recalculate = false, force = false) => {
     try {
-      await axios.put(`/api/admin/readiness/update-step/${unitId}`, {
+      const payload = {
         stepKey,
         completed,
         recalculate
-      });
+      };
+      if (force) payload.force = true;
+
+      await axios.put(`/api/admin/readiness/update-step/${unitId}`, payload);
       fetchData(); // Refresh UI
     } catch (err) {
-      const msg = err.response?.data?.message || 'Error updating step';
-      alert(msg);
+      if (err.response?.status === 409) {
+          // Manual Override Prompt
+          if (window.confirm(`${err.response.data.message}\n\nExisting: ${err.response.data.current ? format(new Date(err.response.data.current), 'MMM d') : 'None'}\nProposed: ${format(new Date(err.response.data.proposed), 'MMM d')}\n\nDo you want to OVERWRITE this manual entry?`)) {
+              handleUpdateStep(unitId, stepKey, completed, recalculate, true);
+          }
+      } else {
+          const msg = err.response?.data?.message || 'Error updating step';
+          alert(msg);
+      }
     }
   };
 
@@ -116,14 +156,16 @@ const UnitReadiness = () => {
     const isOverdue = !isCompleted && targetDateValue && targetDateValue < new Date().setHours(0,0,0,0);
     
     // Logic for Locked: If any previous step is not completed
-    const stepsKeys = ['gc_delivered', 'gc_deficiencies', 'gc_cleaned', 'ffe_installed', 'ose_installed', 'final_cleaning', 'unit_ready'];
+    const stepsKeys = ['gc_delivered', 'gc_deficiencies', 'gc_cleaned', 'ffe_installed', 'final_cleaning', 'ose_installed', 'unit_ready'];
     const prevSteps = stepsKeys.slice(0, stepsKeys.indexOf(stepKey));
-    const isLocked = prevSteps.some(key => !unit.completion?.[key]);
+    // Rule: GC Deficiencies is NO LONGER a blocking step (Rule 3)
+    const filteredPrev = prevSteps.filter(k => k !== 'gc_deficiencies');
+    const isLocked = filteredPrev.some(key => !unit.completion?.[key]);
 
-    if (isCompleted) return { icon: "🟢", label: "Completed", date: unit.dates?.[stepKey] };
-    if (isOverdue) return { icon: "🔴", label: "Overdue", date: unit.dates?.[stepKey] };
+    if (isCompleted) return { icon: "🟢", label: "Completed", date: unit.targetDates?.[stepKey] };
+    if (isOverdue) return { icon: "🔴", label: "Overdue", date: unit.targetDates?.[stepKey] };
     if (isLocked) return { icon: "⚪", label: "Locked", date: null };
-    return { icon: "🟡", label: "Pending", date: unit.dates?.[stepKey] };
+    return { icon: "🟡", label: "Pending", date: unit.targetDates?.[stepKey] };
   };
 
   const handleExport = () => {
@@ -144,24 +186,47 @@ const UnitReadiness = () => {
                   <button onClick={() => setShowSettings(false)} className="hover:rotate-90 transition-all">✕</button>
                 </div>
                 <div className="p-6 space-y-4">
-                  {timelineSettings.map((s, idx) => (
-                    <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <span className="text-sm font-bold text-slate-700 capitalize">{s.key.replace(/_/g, ' ')}</span>
-                      <div className="flex items-center gap-2">
-                        <input 
-                          type="number" 
-                          className="w-20 px-3 py-1 bg-white border border-slate-200 rounded-lg text-right font-bold outline-none focus:ring-2 focus:ring-indigo-500"
-                          value={s.days}
-                          onChange={(e) => {
-                            const newSets = [...timelineSettings];
-                            newSets[idx].days = e.target.value;
-                            setTimelineSettings(newSets);
-                          }}
-                        />
-                        <span className="text-xs text-slate-400 font-bold">days</span>
+                  {timelineSettings.map((s, idx) => {
+                    const labelMap = {
+                      'gc_to_deficiencies': 'GC Delivered to Deficiencies',
+                      'deficiencies_to_cleaned': 'Deficiencies to GC Complete',
+                      'cleaned_to_ffe': 'GC Complete to FF&E Installed',
+                      'ffe_to_final': 'FF&E to Final Cleaning',
+                      'final_to_ose': 'Final Cleaning to OS&E',
+                      'ose_to_ready': 'OS&E to Unit Ready'
+                    };
+                    return (
+                      <div key={s.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-black text-slate-400 uppercase tracking-tighter">Timeline Offset</span>
+                          <span className="text-sm font-bold text-slate-700">{labelMap[s.key] || s.key.replace(/_/g, ' ')}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="number" 
+                            className="w-16 px-2 py-1 bg-white border border-slate-200 rounded-lg text-center font-black text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500"
+                            value={s.days}
+                            onChange={(e) => {
+                              const newSets = [...timelineSettings];
+                              newSets[idx].days = e.target.value;
+                              setTimelineSettings(newSets);
+                            }}
+                          />
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">days</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
+
+                  <label className="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-100 rounded-xl cursor-pointer">
+                    <span className="text-xs font-bold text-indigo-700 uppercase">Apply to all active units?</span>
+                    <input 
+                      type="checkbox" 
+                      className="w-5 h-5 rounded text-indigo-600"
+                      checked={recalculateAll}
+                      onChange={(e) => setRecalculateAll(e.target.checked)}
+                    />
+                  </label>
                 </div>
                 <div className="p-6 bg-slate-50 flex gap-3">
                   <button onClick={() => setShowSettings(false)} className="flex-1 py-3 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all">Cancel</button>
@@ -171,7 +236,48 @@ const UnitReadiness = () => {
             </div>
           )}
 
-          {/* Top Summary Row (Exact as Photo) */}
+          {/* Holiday Modal */}
+          {showHolidays && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-emerald-600 text-white">
+                  <h2 className="text-xl font-bold">Canadian Holiday Calendar</h2>
+                  <button onClick={() => setShowHolidays(false)} className="hover:rotate-90 transition-all">✕</button>
+                </div>
+                <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
+                  <div className="flex gap-2 mb-4">
+                     <input 
+                       type="text" 
+                       placeholder="Holiday Name"
+                       className="flex-1 px-3 py-2 border rounded-lg text-sm font-bold"
+                       value={newHoliday.name}
+                       onChange={e => setNewHoliday({...newHoliday, name: e.target.value})}
+                     />
+                     <input 
+                       type="date" 
+                       className="px-3 py-2 border rounded-lg text-sm font-bold"
+                       value={newHoliday.date}
+                       onChange={e => setNewHoliday({...newHoliday, date: e.target.value})}
+                     />
+                     <button onClick={handleAddHoliday} className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Add</button>
+                  </div>
+                  {holidays.map((h) => (
+                    <div key={h.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-700">{h.name}</p>
+                        <p className="text-xs text-slate-400 font-bold">{format(new Date(h.date), 'MMMM do, yyyy')}</p>
+                      </div>
+                      <button onClick={() => handleDeleteHoliday(h.id)} className="text-red-400 hover:text-red-600 text-xs font-bold px-2 py-1">Delete</button>
+                    </div>
+                  ))}
+                  {holidays.length === 0 && <p className="text-center text-slate-400 text-xs py-4">No holidays added yet.</p>}
+                </div>
+                <div className="p-6 bg-slate-50">
+                  <button onClick={() => setShowHolidays(false)} className="w-full py-3 bg-white border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-100 transition-all">Close</button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-0 border border-slate-300 rounded-lg overflow-hidden shadow-md">
             <div className="bg-[#D9E9FF] p-4 text-center border-r border-slate-300">
                 <p className="text-xs font-bold text-slate-700 mb-1">Total Units</p>
@@ -243,7 +349,24 @@ const UnitReadiness = () => {
                 </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+               {/* Show Leased Toggle (Rule 5) */}
+               <label className="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                  <span className="text-xs font-bold text-slate-500">Show Leased Units</span>
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                    checked={showLeasedUnits}
+                    onChange={(e) => setShowLeasedUnits(e.target.checked)}
+                  />
+               </label>
+              <button 
+                  onClick={() => setShowHolidays(!showHolidays)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+              >
+                  <Calendar size={16} />
+                  <span>Holidays</span>
+              </button>
               <button 
                   onClick={() => setShowSettings(!showSettings)}
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
@@ -264,7 +387,7 @@ const UnitReadiness = () => {
                     <th colSpan="2" className="bg-[#E2F0D9] border-b border-r border-slate-400"></th>
                     <th colSpan="3" className="bg-[#D9D9D9] px-2 py-2 border-b border-r border-slate-400 tracking-widest font-black">GC</th>
                     <th colSpan="4" className="bg-[#DDEBF7] px-2 py-2 border-b border-r border-slate-400 tracking-widest font-black">Operations</th>
-                    <th colSpan="6" className="bg-[#FCE4D6] px-2 py-2 border-b border-slate-400 tracking-widest font-black">Leasing / Summary</th>
+                    <th colSpan="5" className="bg-[#FCE4D6] px-2 py-2 border-b border-slate-400 tracking-widest font-black">Leasing / Summary</th>
                   </tr>
                   {/* Column Header */}
                   <tr className="text-[10px] font-black uppercase text-slate-700 text-center leading-tight">
@@ -273,21 +396,20 @@ const UnitReadiness = () => {
                     
                     {/* GC */}
                     <th className="bg-[#D9D9D9] px-2 py-3 border border-slate-400 w-24">GC Delivered</th>
-                    <th className="bg-[#D9D9D9] px-2 py-3 border border-slate-400 w-24">GC Deficiencies</th>
-                    <th className="bg-[#D9D9D9] px-2 py-3 border border-slate-400 w-24">GC Cleaned</th>
+                    <th className="bg-[#D9D9D9] px-2 py-3 border border-slate-400 w-24 font-black">GC Deficiencies</th>
+                    <th className="bg-[#D9D9D9] px-2 py-3 border border-slate-400 w-24">GC Complete</th>
                     
-                    {/* Ops */}
+                    {/* Ops (Rule 2 Sequence) */}
                     <th className="bg-[#DDEBF7] px-2 py-3 border border-slate-400 w-24">FF&E Installed</th>
-                    <th className="bg-[#DDEBF7] px-2 py-3 border border-slate-400 w-24">OS&E Installed</th>
                     <th className="bg-[#DDEBF7] px-2 py-3 border border-slate-400 w-24">Final Cleaning</th>
+                    <th className="bg-[#DDEBF7] px-2 py-3 border border-slate-400 w-24">OS&E Installed</th>
                     <th className="bg-[#DDEBF7] px-2 py-3 border border-slate-400 w-24">Unit Ready</th>
                     
                     {/* Summary */}
-                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400">Reserved</th>
-                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400">Move-In Date</th>
-                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400">Current Stage</th>
-                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400">Owner</th>
-                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400">Days Late</th>
+                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400 tracking-tighter">Reserved</th>
+                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400 tracking-tighter">Move-In</th>
+                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400 tracking-tighter">Market Age</th>
+                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400 tracking-tighter">Days Late</th>
                     <th className="bg-[#FCE4D6] px-4 py-3 border border-slate-400">Status Note</th>
                   </tr>
                 </thead>
@@ -303,6 +425,10 @@ const UnitReadiness = () => {
                     } else {
                       statusNote = unit.daysLate > 0 ? "Action Required" : "On Schedule";
                     }
+
+                    // Rule 3.3: GC Deficiencies Warning
+                    const showDeficiencyWarning = !unit.completion?.gc_deficiencies;
+                    const isPhysicallyReady = unit.completion?.unit_ready;
                     
                     return (
                       <tr key={unit.id} className="hover:bg-indigo-50/30 transition-colors group">
@@ -346,8 +472,8 @@ const UnitReadiness = () => {
                           );
                         })}
 
-                        {/* Milestone Icons (Ops) */}
-                        {['ffe_installed', 'ose_installed', 'final_cleaning', 'unit_ready'].map(k => {
+                        {/* Milestone Icons (Ops - Rule 2 Sequence) */}
+                        {['ffe_installed', 'final_cleaning', 'ose_installed', 'unit_ready'].map(k => {
                           const status = getStepStatus(unit, k);
                           const isCompleted = unit.completion?.[k];
                           const isLocked = status.label === "Locked";
@@ -380,20 +506,18 @@ const UnitReadiness = () => {
                         <td className="px-4 py-4 text-[10px] font-bold text-slate-600 text-center">
                            {unit.moveInDate ? format(new Date(unit.moveInDate), 'MMM d') : '-'}
                         </td>
-                        <td className="px-4 py-4 text-[10px] font-black text-slate-600 uppercase text-center max-w-[120px] truncate">
-                           {unit.stage}
-                        </td>
                         <td className="px-4 py-4 text-center">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${unit.owner === 'GC' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'}`}>
-                                {unit.owner}
-                            </span>
+                          <span className={`font-black ${unit.marketAge > 0 ? 'text-indigo-600' : 'text-slate-300'} text-sm`}>
+                            {unit.marketAge || (isPhysicallyReady ? '0' : '-')}
+                          </span>
+                          <p className="text-[8px] font-black text-slate-400 uppercase mt-0.5">{unit.marketAgeLabel}</p>
                         </td>
                         <td className="px-4 py-4 text-center">
                           <span className={`font-black ${unit.daysLate > 0 ? 'text-red-600' : 'text-slate-400 text-sm'}`}>
                             {unit.daysLate}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-4 flex flex-col items-center gap-1">
                            <span className={`text-[10px] font-black px-2 py-1 rounded inline-block min-w-[100px] text-center ${
                              statusNote === 'Unit Ready' || statusNote === 'Reserved – Ready' ? 'bg-emerald-100 text-emerald-800' : 
                              (statusNote.includes('Pending') || statusNote === 'Reserved – Not Ready' ? 'bg-blue-100 text-blue-800' : 
@@ -401,6 +525,11 @@ const UnitReadiness = () => {
                            }`}>
                              {statusNote}
                            </span>
+                           {isPhysicallyReady && showDeficiencyWarning && (
+                             <span className="text-[9px] font-black text-amber-600 flex items-center gap-1 whitespace-nowrap">
+                               <AlertTriangle size={10} /> Deficiencies open
+                             </span>
+                           )}
                         </td>
                       </tr>
                     );

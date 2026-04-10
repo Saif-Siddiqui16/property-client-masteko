@@ -27,6 +27,7 @@ const getModuleDisplayName = (name, t) => {
     'Properties': t('sidebar.properties'),
     'Buildings': `↳ ${t('sidebar.buildings')}`,
     'Units': `↳ ${t('sidebar.units')}`,
+    'Unit Readiness': `↳ ${t('sidebar.unit_readiness')}`,
     'Tenants': t('sidebar.tenants'),
     'Tenant List': `↳ ${t('sidebar.tenant_list')}`,
     'Vehicles': `↳ ${t('sidebar.vehicles')}`,
@@ -62,7 +63,7 @@ const getModuleDisplayName = (name, t) => {
 
 const MODULES = [
   'Dashboard', 'Overview', 'Vacancy Dashboard', 'Revenue Dashboard',
-  'Properties', 'Buildings', 'Units',
+  'Properties', 'Buildings', 'Units', 'Unit Readiness',
   'Tenants', 'Tenant List', 'Vehicles', 'Insurance', 
   'Leases',
   'Rent Roll',
