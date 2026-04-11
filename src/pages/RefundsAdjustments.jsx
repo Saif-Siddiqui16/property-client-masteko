@@ -161,8 +161,9 @@ const RefundsAdjustments = () => {
       const isEdit = !!editingRecord;
       
       // Include proposed allocations if they exist
-      if (calcData?.proposedAllocations && calcData.proposedAllocations.length > 0) {
-        payload.allocations = calcData.proposedAllocations;
+      const finalAllocations = calcData?.proposedAllocations || [];
+      if (finalAllocations.length > 0) {
+        payload.allocations = finalAllocations;
       }
 
       if (isEdit) {

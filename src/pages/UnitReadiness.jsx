@@ -240,7 +240,7 @@ const UnitReadiness = () => {
           {showHolidays && (
             <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-emerald-600 text-white">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-600 text-white">
                   <h2 className="text-xl font-bold">Canadian Holiday Calendar</h2>
                   <button onClick={() => setShowHolidays(false)} className="hover:rotate-90 transition-all">✕</button>
                 </div>
@@ -259,7 +259,7 @@ const UnitReadiness = () => {
                        value={newHoliday.date}
                        onChange={e => setNewHoliday({...newHoliday, date: e.target.value})}
                      />
-                     <button onClick={handleAddHoliday} className="p-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">Add</button>
+                     <button onClick={handleAddHoliday} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">Add</button>
                   </div>
                   {holidays.map((h) => (
                     <div key={h.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -384,15 +384,15 @@ const UnitReadiness = () => {
                 <thead>
                   {/* Category Header */}
                   <tr className="text-[11px] font-bold text-slate-800 text-center uppercase tracking-wider">
-                    <th colSpan="2" className="bg-[#E2F0D9] border-b border-r border-slate-400"></th>
+                    <th colSpan="2" className="bg-[#E2F0D9] border-b border-r border-slate-400 sticky left-0 z-30"></th>
                     <th colSpan="3" className="bg-[#D9D9D9] px-2 py-2 border-b border-r border-slate-400 tracking-widest font-black">GC</th>
                     <th colSpan="4" className="bg-[#DDEBF7] px-2 py-2 border-b border-r border-slate-400 tracking-widest font-black">Operations</th>
                     <th colSpan="5" className="bg-[#FCE4D6] px-2 py-2 border-b border-slate-400 tracking-widest font-black">Leasing / Summary</th>
                   </tr>
                   {/* Column Header */}
                   <tr className="text-[10px] font-black uppercase text-slate-700 text-center leading-tight">
-                    <th className="bg-[#E2F0D9] px-4 py-3 border border-slate-400">Building</th>
-                    <th className="bg-[#E2F0D9] px-4 py-3 border border-slate-400">Unit</th>
+                    <th className="bg-[#E2F0D9] px-4 py-3 border border-slate-400 sticky left-0 z-30 min-w-[140px]">Building</th>
+                    <th className="bg-[#E2F0D9] px-4 py-3 border border-slate-400 sticky left-[140px] z-30 min-w-[100px]">Unit</th>
                     
                     {/* GC */}
                     <th className="bg-[#D9D9D9] px-2 py-3 border border-slate-400 w-24">GC Delivered</th>
@@ -432,10 +432,10 @@ const UnitReadiness = () => {
                     
                     return (
                       <tr key={unit.id} className="hover:bg-indigo-50/30 transition-colors group">
-                        <td className="px-6 py-4 font-bold text-slate-800 border-r border-slate-100 sticky left-0 bg-white group-hover:bg-indigo-50/30 z-20">
+                        <td className="px-4 py-4 font-bold text-slate-800 border-r border-slate-100 sticky left-0 bg-white group-hover:bg-indigo-50/30 z-20 min-w-[140px]">
                            {unit.building}
                         </td>
-                        <td className="px-6 py-4 border-r border-slate-100 sticky left-[120px] bg-white group-hover:bg-indigo-50/30 z-20">
+                        <td className="px-4 py-4 border-r border-slate-100 sticky left-[140px] bg-white group-hover:bg-indigo-50/30 z-20 min-w-[100px]">
                           <button 
                             onClick={() => navigate(`/units/${unit.id}`)}
                             className="flex items-center gap-2 group/link"
