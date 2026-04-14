@@ -124,12 +124,14 @@ const UnitReadiness = () => {
     } catch (err) { alert('Error saving settings'); }
   };
 
-  const handleUpdateStep = async (unitId, stepKey, completed, recalculate = false, force = false) => {
+  const handleUpdateStep = async (unitId, stepKey, completed, recalculate = false, force = false, targetDate = null) => {
     try {
       const payload = {
         stepKey,
         completed,
-        recalculate
+        recalculate,
+        targetDate,
+        isManual: !!targetDate
       };
       if (force) payload.force = true;
 
@@ -149,23 +151,27 @@ const UnitReadiness = () => {
   };
 
   const getStepStatus = (unit, stepKey, idx) => {
-    if (!unit.completion) return { icon: "⚪", label: "Not Started", date: null };
+    const isCompleted = unit.completion?.[stepKey];
+    // Always get the target date if it exists, regardless of completion status
+    const targetDateValue = unit.targetDates && unit.targetDates[stepKey] ? new Date(unit.targetDates[stepKey]) : null;
     
-    const isCompleted = unit.completion[stepKey];
-    const targetDateValue = unit.dates && unit.dates[stepKey] ? new Date(unit.dates[stepKey]) : null;
-    const isOverdue = !isCompleted && targetDateValue && targetDateValue < new Date().setHours(0,0,0,0);
+    // Strict Overdue Logic: Not completed AND the target date is strictly in the past (ignoring today)
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const isOverdue = !isCompleted && targetDateValue && targetDateValue < today;
     
-    // Logic for Locked: If any previous step is not completed
+    // Logic for Locked: Purely visual now, we still show the date
     const stepsKeys = ['gc_delivered', 'gc_deficiencies', 'gc_cleaned', 'ffe_installed', 'final_cleaning', 'ose_installed', 'unit_ready'];
     const prevSteps = stepsKeys.slice(0, stepsKeys.indexOf(stepKey));
-    // Rule: GC Deficiencies is NO LONGER a blocking step (Rule 3)
     const filteredPrev = prevSteps.filter(k => k !== 'gc_deficiencies');
     const isLocked = filteredPrev.some(key => !unit.completion?.[key]);
 
     if (isCompleted) return { icon: "🟢", label: "Completed", date: unit.targetDates?.[stepKey] };
     if (isOverdue) return { icon: "🔴", label: "Overdue", date: unit.targetDates?.[stepKey] };
-    if (isLocked) return { icon: "⚪", label: "Locked", date: null };
-    return { icon: "🟡", label: "Pending", date: unit.targetDates?.[stepKey] };
+    
+    // Default fallback is "Gray" for ALL uncompleted steps (Not Started / Upcoming)
+    // The client specifically asked to "stay in the gray" during this phase.
+    return { icon: "⚪", label: "Upcoming", date: unit.targetDates?.[stepKey] || null, isLocked };
   };
 
   const handleExport = () => {
@@ -174,8 +180,8 @@ const UnitReadiness = () => {
 
   return (
     <MainLayout title="Unit Readiness Dashboard">
-      <div className="p-4 md:p-8 bg-slate-50 min-h-screen font-sans">
-        <div className="max-w-[1600px] mx-auto space-y-8">
+      <div className="bg-slate-50 min-h-screen font-sans -ml-4 lg:-ml-8 -mt-4 lg:-mt-8">
+        <div className="w-full space-y-4">
           
           {/* Settings Modal */}
           {showSettings && (
@@ -380,7 +386,7 @@ const UnitReadiness = () => {
           <div className="bg-white rounded-lg shadow-xl overflow-hidden border border-slate-200">
             {/* The Master Table (Fixed Scroll Fix) */}
             <div className="overflow-x-auto overflow-y-hidden custom-scrollbar">
-              <table className="min-w-[1500px] w-full text-left border-collapse border border-slate-400">
+              <table className="min-w-[1200px] w-full text-left border-collapse border border-slate-400">
                 <thead>
                   {/* Category Header */}
                   <tr className="text-[11px] font-bold text-slate-800 text-center uppercase tracking-wider">
@@ -391,31 +397,31 @@ const UnitReadiness = () => {
                   </tr>
                   {/* Column Header */}
                   <tr className="text-[10px] font-black uppercase text-slate-700 text-center leading-tight">
-                    <th className="bg-[#E2F0D9] px-4 py-3 border border-slate-400 sticky left-0 z-30 min-w-[140px]">Building</th>
-                    <th className="bg-[#E2F0D9] px-4 py-3 border border-slate-400 sticky left-[140px] z-30 min-w-[100px]">Unit</th>
+                    <th className="bg-[#E2F0D9] px-2 py-3 border border-slate-400 sticky left-0 z-30 min-w-[90px]">Building</th>
+                    <th className="bg-[#E2F0D9] px-2 py-3 border border-slate-400 sticky left-[90px] z-30 min-w-[70px]">Unit</th>
                     
                     {/* GC */}
-                    <th className="bg-[#D9D9D9] px-2 py-3 border border-slate-400 w-24">GC Delivered</th>
-                    <th className="bg-[#D9D9D9] px-2 py-3 border border-slate-400 w-24 font-black">GC Deficiencies</th>
-                    <th className="bg-[#D9D9D9] px-2 py-3 border border-slate-400 w-24">GC Complete</th>
+                    <th className="bg-[#D9D9D9] px-1 py-3 border border-slate-400 w-20">GC Delivered</th>
+                    <th className="bg-[#D9D9D9] px-1 py-3 border border-slate-400 w-20 font-black">GC Deficiencies</th>
+                    <th className="bg-[#D9D9D9] px-1 py-3 border border-slate-400 w-20">GC Complete</th>
                     
                     {/* Ops (Rule 2 Sequence) */}
-                    <th className="bg-[#DDEBF7] px-2 py-3 border border-slate-400 w-24">FF&E Installed</th>
-                    <th className="bg-[#DDEBF7] px-2 py-3 border border-slate-400 w-24">Final Cleaning</th>
-                    <th className="bg-[#DDEBF7] px-2 py-3 border border-slate-400 w-24">OS&E Installed</th>
-                    <th className="bg-[#DDEBF7] px-2 py-3 border border-slate-400 w-24">Unit Ready</th>
+                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-20">FF&E Installed</th>
+                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-20">Final Cleaning</th>
+                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-20">OS&E Installed</th>
+                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-20">Unit Ready</th>
                     
                     {/* Summary */}
-                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400 tracking-tighter">Reserved</th>
-                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400 tracking-tighter">Move-In</th>
-                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400 tracking-tighter">Market Age</th>
-                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400 tracking-tighter">Days Late</th>
-                    <th className="bg-[#FCE4D6] px-4 py-3 border border-slate-400">Status Note</th>
+                    <th className="bg-[#FCE4D6] px-1 py-3 border border-slate-400 tracking-tighter w-16">Days Late</th>
+                    <th className="bg-[#FCE4D6] px-1 py-3 border border-slate-400 tracking-tighter w-16">Reserved</th>
+                    <th className="bg-[#FCE4D6] px-1 py-3 border border-slate-400 tracking-tighter w-20">Move-In</th>
+                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400">Status Note</th>
+                    <th className="bg-[#FCE4D6] px-1 py-3 border border-slate-400 tracking-tighter w-16">Days on Market</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {units.map(unit => {
-                    const allDone = Object.values(unit.completion || {}).filter(v => v).length >= 6;
+                    const allDone = Object.values(unit.completion || {}).filter(v => v).length === 7;
                     let statusNote = "";
 
                     if (unit.reserved) {
@@ -432,10 +438,10 @@ const UnitReadiness = () => {
                     
                     return (
                       <tr key={unit.id} className="hover:bg-indigo-50/30 transition-colors group">
-                        <td className="px-4 py-4 font-bold text-slate-800 border-r border-slate-100 sticky left-0 bg-white group-hover:bg-indigo-50/30 z-20 min-w-[140px]">
+                        <td className="px-2 py-4 font-bold text-slate-800 border-r border-slate-100 sticky left-0 bg-white group-hover:bg-indigo-50/30 z-20 min-w-[90px]">
                            {unit.building}
                         </td>
-                        <td className="px-4 py-4 border-r border-slate-100 sticky left-[140px] bg-white group-hover:bg-indigo-50/30 z-20 min-w-[100px]">
+                        <td className="px-2 py-4 border-r border-slate-100 sticky left-[90px] bg-white group-hover:bg-indigo-50/30 z-20 min-w-[70px]">
                           <button 
                             onClick={() => navigate(`/units/${unit.id}`)}
                             className="flex items-center gap-2 group/link"
@@ -451,20 +457,19 @@ const UnitReadiness = () => {
                         {['gc_delivered', 'gc_deficiencies', 'gc_cleaned'].map(k => {
                           const status = getStepStatus(unit, k);
                           const isCompleted = unit.completion?.[k];
-                          const isLocked = status.label === "Locked";
                           
                           return (
                             <td key={k} className={`px-2 py-4 text-center ${k === 'gc_cleaned' ? 'border-r border-slate-100' : ''}`}>
                                 <div className="flex flex-col items-center">
                                     <button 
-                                      disabled={isLocked || loading}
-                                      onClick={() => handleUpdateStep(unit.id, k, !isCompleted, k === 'gc_delivered')}
-                                      className={`text-2xl p-2 transition-all rounded-full ${isLocked ? 'cursor-not-allowed opacity-30 scale-75' : 'hover:scale-125 hover:bg-white cursor-pointer active:scale-90'}`}
-                                      title={isLocked ? "Complete previous steps first" : `Mark ${k.replace(/_/g, ' ')}`}
+                                      disabled={status.isLocked || loading}
+                                      onClick={() => handleUpdateStep(unit.id, k, !isCompleted, k === 'gc_delivered')} 
+                                      className={`text-2xl p-1 transition-all rounded-full ${status.isLocked ? 'cursor-not-allowed opacity-30 grayscale' : 'hover:scale-125 hover:bg-white cursor-pointer active:scale-95'}`}
+                                      title={status.isLocked ? "Complete previous steps first" : `Mark ${k.replace(/_/g, ' ')}`}
                                     >
                                       <span className={loading ? 'animate-pulse' : ''}>{status.icon}</span>
                                     </button>
-                                    <span className="text-[9px] font-black text-slate-400 mt-1 uppercase">
+                                    <span className={`text-[10px] font-black mt-1 uppercase ${status.icon === "🔴" ? 'text-red-500' : 'text-slate-400'}`}>
                                         {status.date ? format(new Date(status.date), 'MMM d') : '-'}
                                     </span>
                                 </div>
@@ -476,20 +481,19 @@ const UnitReadiness = () => {
                         {['ffe_installed', 'final_cleaning', 'ose_installed', 'unit_ready'].map(k => {
                           const status = getStepStatus(unit, k);
                           const isCompleted = unit.completion?.[k];
-                          const isLocked = status.label === "Locked";
 
                           return (
                             <td key={k} className={`px-2 py-4 text-center ${k === 'unit_ready' ? 'border-r border-slate-100' : ''}`}>
                                 <div className="flex flex-col items-center">
                                     <button 
-                                      disabled={isLocked || loading}
+                                      disabled={status.isLocked || loading}
                                       onClick={() => handleUpdateStep(unit.id, k, !isCompleted)}
-                                      className={`text-2xl p-2 transition-all rounded-full ${isLocked ? 'cursor-not-allowed opacity-30 scale-75' : 'hover:scale-125 hover:bg-white cursor-pointer active:scale-90'}`}
-                                      title={isLocked ? "Complete previous steps first" : `Mark ${k.replace(/_/g, ' ')}`}
+                                      className={`text-2xl p-1 transition-all rounded-full ${status.isLocked ? 'cursor-not-allowed opacity-30 grayscale' : 'hover:scale-125 hover:bg-white cursor-pointer active:scale-95'}`}
+                                      title={status.isLocked ? "Complete previous steps first" : `Mark ${k.replace(/_/g, ' ')}`}
                                     >
                                       <span className={loading ? 'animate-pulse' : ''}>{status.icon}</span>
                                     </button>
-                                    <span className="text-[9px] font-black text-slate-400 mt-1 uppercase">
+                                    <span className={`text-[10px] font-black mt-1 uppercase ${status.icon === "🔴" ? 'text-red-500' : 'text-slate-400'}`}>
                                         {status.date ? format(new Date(status.date), 'MMM d') : '-'}
                                     </span>
                                 </div>
@@ -497,28 +501,21 @@ const UnitReadiness = () => {
                           );
                         })}
 
-                        {/* Leasing / Summary */}
-                        <td className="px-4 py-4 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${unit.reserved ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                             {unit.reserved ? 'Yes' : 'No'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-4 text-[10px] font-bold text-slate-600 text-center">
-                           {unit.moveInDate ? format(new Date(unit.moveInDate), 'MMM d') : '-'}
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className={`font-black ${unit.marketAge > 0 ? 'text-indigo-600' : 'text-slate-300'} text-sm`}>
-                            {unit.marketAge || (isPhysicallyReady ? '0' : '-')}
-                          </span>
-                          <p className="text-[8px] font-black text-slate-400 uppercase mt-0.5">{unit.marketAgeLabel}</p>
-                        </td>
-                        <td className="px-4 py-4 text-center">
+                        <td className="px-1 py-4 text-center">
                           <span className={`font-black ${unit.daysLate > 0 ? 'text-red-600' : 'text-slate-400 text-sm'}`}>
                             {unit.daysLate}
                           </span>
                         </td>
-                        <td className="px-4 py-4 flex flex-col items-center gap-1">
-                           <span className={`text-[10px] font-black px-2 py-1 rounded inline-block min-w-[100px] text-center ${
+                        <td className="px-1 py-4 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${unit.reserved ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                             {unit.reserved ? 'Yes' : 'No'}
+                          </span>
+                        </td>
+                        <td className="px-1 py-4 text-[10px] font-bold text-slate-600 text-center">
+                           {unit.moveInDate ? format(new Date(unit.moveInDate), 'MMM d') : '-'}
+                        </td>
+                        <td className="px-2 py-4 flex flex-col items-center gap-1">
+                           <span className={`text-[10px] font-black px-2 py-1 rounded inline-block min-w-[90px] text-center ${
                              statusNote === 'Unit Ready' || statusNote === 'Reserved – Ready' ? 'bg-emerald-100 text-emerald-800' : 
                              (statusNote.includes('Pending') || statusNote === 'Reserved – Not Ready' ? 'bg-blue-100 text-blue-800' : 
                              (statusNote.includes('Required') ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-500'))
@@ -530,6 +527,12 @@ const UnitReadiness = () => {
                                <AlertTriangle size={10} /> Deficiencies open
                              </span>
                            )}
+                        </td>
+                        <td className="px-1 py-4 text-center">
+                          <span className={`font-black ${unit.marketAge > 0 ? 'text-indigo-600' : 'text-slate-300'} text-sm`}>
+                            {unit.marketAge || (isPhysicallyReady ? '0' : '-')}
+                          </span>
+                          <p className="text-[8px] font-black text-slate-400 uppercase mt-0.5">{unit.marketAgeLabel}</p>
                         </td>
                       </tr>
                     );
@@ -583,9 +586,8 @@ const UnitReadiness = () => {
             {/* Legend (Exact as legend in photo) */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex gap-6 items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-500">
                 <div className="flex items-center gap-1"><span>🟢</span> Completed</div>
-                <div className="flex items-center gap-1"><span>🟡</span> Pending / Upcoming</div>
-                <div className="flex items-center gap-1"><span>🔴</span> Overdue</div>
-                <div className="flex items-center gap-1"><span>⚪</span> Not Started / Locked</div>
+                <div className="flex items-center gap-1"><span>🔴</span> Overdue / Late</div>
+                <div className="flex items-center gap-1"><span>⚪</span> Not Started / Upcoming</div>
             </div>
           </div>
         </div>

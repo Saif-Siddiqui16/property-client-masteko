@@ -12,8 +12,10 @@ export const LeaseForm = () => {
   const [tenants, setTenants] = useState([]);
   const [selectedBuilding, setSelectedBuilding] = useState('');
   const [selectedUnit, setSelectedUnit] = useState(null);
+  const [bedrooms, setBedrooms] = useState([]);
   const [form, setForm] = useState({
     unitId: '',
+    bedroomId: '',
     tenantId: '',
     coTenantIds: [],
     startDate: '',
@@ -82,8 +84,13 @@ export const LeaseForm = () => {
     if (unitId) {
       const unit = units.find(u => u.id === parseInt(unitId));
       setSelectedUnit(unit);
+      setBedrooms([]);
 
       try {
+        // Fetch vacant bedrooms for this specific unit
+        const bedroomRes = await api.get(`/api/admin/units/bedrooms/vacant?unitId=${unitId}`);
+        setBedrooms(bedroomRes.data);
+
         // Check if there's a DRAFT lease with tenant for this unit
         const leaseRes = await api.get(`/api/admin/leases/active/${unitId}`);
         if (leaseRes.data && leaseRes.data.tenantId) {
@@ -93,7 +100,7 @@ export const LeaseForm = () => {
           }));
         }
       } catch (error) {
-        console.error('Failed to fetch draft lease', error);
+        console.error('Failed to fetch data for unit', error);
       }
     }
   };
@@ -107,6 +114,7 @@ export const LeaseForm = () => {
     try {
       const payload = {
         unitId: parseInt(form.unitId),
+        bedroomId: form.bedroomId ? parseInt(form.bedroomId) : null,
         tenantId: parseInt(form.tenantId),
         coTenantIds: form.coTenantIds.map(id => parseInt(id)),
         startDate: form.startDate,
@@ -175,9 +183,33 @@ export const LeaseForm = () => {
               >
                 <option value="">Select Unit</option>
                 {units.map(u => (
-
                   <option key={u.id} value={u.id}>
                     {u.unitNumber || u.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <ChevronDown size={18} />
+              </div>
+            </div>
+          </div>
+
+          {/* Bedroom Selection (Optional for Full Lease) */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2 uppercase tracking-wide">Bedroom (Optional)</label>
+            <div className="relative">
+              <Bed size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              <select
+                name="bedroomId"
+                value={form.bedroomId}
+                onChange={(e) => setForm({ ...form, bedroomId: e.target.value })}
+                disabled={!form.unitId}
+                className="w-full pl-12 pr-10 py-3 rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium text-slate-800 appearance-none disabled:opacity-50"
+              >
+                <option value="">Full Unit (No specific room)</option>
+                {bedrooms.map(b => (
+                  <option key={b.id} value={b.id}>
+                    {b.bedroomNumber || b.displayName}
                   </option>
                 ))}
               </select>

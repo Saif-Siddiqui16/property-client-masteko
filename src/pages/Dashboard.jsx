@@ -199,35 +199,6 @@ export const Dashboard = () => {
             {/* TOP SUMMARY CARDS */}
             <section className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
 
-
-              <Card className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 border-l-[6px] border-amber-500 group">
-                <span className="text-sm text-gray-500 tracking-wide font-black uppercase italic flex items-center gap-2">
-                  <BadgeDollarSign size={16} className="text-amber-500" />
-                  Outstanding Rent
-                </span>
-                <h2 className="text-[1.75rem] font-black mt-2 leading-tight truncate text-slate-800" title={`$${(outstandingRent || 0).toLocaleString('en-CA')}`}>
-                  ${(outstandingRent || 0).toLocaleString('en-CA')}
-                </h2>
-                <div className="flex items-center gap-2 mt-2">
-                  <ArrowDownRight size={14} className="text-amber-500" />
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Unpaid Lease Invoices</p>
-                </div>
-              </Card>
-
-              <Card className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 border-l-[6px] border-orange-400 group">
-                <span className="text-sm text-gray-500 tracking-wide font-black uppercase italic flex items-center gap-2">
-                  <BadgeDollarSign size={16} className="text-orange-400" />
-                  Outstanding Deposits
-                </span>
-                <h2 className="text-[1.75rem] font-black mt-2 leading-tight truncate text-slate-800" title={`$${(outstandingDeposits || 0).toLocaleString('en-CA')}`}>
-                  ${(outstandingDeposits || 0).toLocaleString('en-CA')}
-                </h2>
-                <div className="flex items-center gap-2 mt-2">
-                   <Clock size={14} className="text-orange-400" />
-                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Pending Security Payments</p>
-                </div>
-              </Card>
-
               <Card
                 className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 border-l-[6px] border-red-500 cursor-pointer group"
                 onClick={() => window.location.href = '/insurance-alerts'}

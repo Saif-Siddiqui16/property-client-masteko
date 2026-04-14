@@ -55,26 +55,48 @@ export const Accounting = () => {
         }
     };
 
-    // Calculate stats based on business logic (Case-insensitive)
-    const totalReceivables = transactions
-        .filter(t => t.type?.toUpperCase() === 'INVOICE')
-        .reduce((acc, t) => acc + (parseFloat(t.balance) || 0), 0);
+    // Calculate stats based on business logic (Improved categorization)
+    const stats = transactions.reduce((acc, t) => {
+        const desc = (t.description || '').toLowerCase();
+        const cat = (t.category || '').toUpperCase();
+        const type = (t.type || '').toUpperCase();
+        const amount = Math.abs(parseFloat(t.amount) || 0);
 
-    const ytdIncome = transactions
-        .filter(t => t.type?.toUpperCase() === 'PAYMENT')
-        .reduce((acc, t) => acc + Math.abs(parseFloat(t.amount) || 0), 0);
+        // 1. IDENTIFY CATEGORY
+        const isDeposit = cat === 'SECURITY_DEPOSIT' || desc.includes('deposit') || desc.includes('inv-dep');
+        const isFee = cat === 'SERVICE' || cat === 'LATE_FEE' || desc.includes('service') || desc.includes('fee');
+        const isRent = cat === 'RENT' || desc.includes('rent') || desc.includes('inv-lease');
 
-    const depositRefunds = transactions
-        .filter(t => ['LIABILITY DEDUCTION', 'LIABILITY', 'LIABILITY REFUND'].includes(t.type?.toUpperCase()))
-        .reduce((acc, t) => acc + Math.abs(parseFloat(t.amount) || 0), 0);
+        // 2. IDENTIFY IF IT IS A DEDUCTION/REFUND
+        const isLiabilityDeduction = ['LIABILITY', 'LIABILITY TRANSFER', 'LIABILITY DEDUCTION', 'LIABILITY REFUND'].includes(type) || desc.includes('refund');
 
-    const expenses = transactions
-        .filter(t => t.type?.toUpperCase() === 'EXPENSE')
-        .reduce((acc, t) => acc + Math.abs(parseFloat(t.amount) || 0), 0);
+        if (isLiabilityDeduction) {
+            // Subtract from Deposits (Net cash logic)
+            acc.totalDeposits -= amount;
+            acc.totalRefunds += amount;
+            
+            // If it was moved "to the other side"
+            if (desc.includes('(rent)') || desc.includes('inv-lease')) {
+                acc.totalRent += amount;
+            } else if (desc.includes('(service)') || desc.includes('fee')) {
+                acc.totalFees += amount;
+            }
+        } else {
+            // Normal Income/Payment logic
+            if (isDeposit) acc.totalDeposits += amount;
+            else if (isFee) acc.totalFees += amount;
+            else if (isRent || (!isDeposit && !isFee)) acc.totalRent += amount;
+        }
+
+        return acc;
+    }, { totalRent: 0, totalDeposits: 0, totalFees: 0, totalRefunds: 0 });
+
+    const { totalRent, totalDeposits, totalFees, totalRefunds } = stats;
 
     // Pagination Logic
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    // Sort transactions by date descending for the list display
     const currentItems = transactions.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(transactions.length / itemsPerPage);
 
@@ -84,14 +106,22 @@ export const Accounting = () => {
                 <div>{/* Buttons removed as requested */}</div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <Card className="p-4 bg-slate-50 border-slate-200">
-                    <div className="text-sm text-slate-500 mb-1">Deposit Refunds</div>
-                    <div className="text-2xl font-bold text-red-600">${depositRefunds.toLocaleString('en-CA')}</div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <Card className="p-4 bg-white border-slate-200 shadow-sm border-l-4 border-blue-500">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Rent Revenue</div>
+                    <div className="text-2xl font-black text-slate-800">${totalRent.toLocaleString('en-CA')}</div>
                 </Card>
-                <Card className="p-4 bg-slate-50 border-slate-200">
-                    <div className="text-sm text-slate-500 mb-1">Expenses</div>
-                    <div className="text-2xl font-bold text-slate-700">${expenses.toLocaleString('en-CA')}</div>
+                <Card className="p-4 bg-white border-slate-200 shadow-sm border-l-4 border-purple-500">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Deposits</div>
+                    <div className="text-2xl font-black text-slate-800">${totalDeposits.toLocaleString('en-CA')}</div>
+                </Card>
+                <Card className="p-4 bg-white border-slate-200 shadow-sm border-l-4 border-orange-500">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Fees</div>
+                    <div className="text-2xl font-black text-slate-800">${totalFees.toLocaleString('en-CA')}</div>
+                </Card>
+                <Card className="p-4 bg-white border-slate-200 shadow-sm border-l-4 border-red-500">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Deposit Refunds</div>
+                    <div className="text-2xl font-black text-red-600">${totalRefunds.toLocaleString('en-CA')}</div>
                 </Card>
             </div>
 

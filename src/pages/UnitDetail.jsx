@@ -34,10 +34,16 @@ export const UnitDetail = () => {
             const response = await api.get(`/api/admin/units/${id}`);
             setUnit(response.data);
 
-            // Fetch linked documents
-            const docsRes = await api.get('/api/admin/documents');
-            const linkedDocs = docsRes.data.filter(d => d.unitId === parseInt(id));
-            setDocuments(linkedDocs);
+            // Fetch linked documents ONLY if user has permissions
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
+            const canViewDocs = user.role === 'ADMIN' || permissions.find(p => p.moduleName === 'Documents')?.canView;
+
+            if (canViewDocs) {
+                const docsRes = await api.get('/api/admin/documents');
+                const linkedDocs = docsRes.data.filter(d => d.unitId === parseInt(id));
+                setDocuments(linkedDocs);
+            }
         } catch (error) {
             console.error('Error fetching unit:', error);
             setError('Failed to load unit details');
@@ -45,6 +51,10 @@ export const UnitDetail = () => {
             setLoading(false);
         }
     };
+
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const permissions = JSON.parse(localStorage.getItem('permissions') || '[]');
+    const canViewDocs = user.role === 'ADMIN' || permissions.find(p => p.moduleName === 'Documents')?.canView;
 
     if (loading) {
         return (
@@ -232,13 +242,14 @@ export const UnitDetail = () => {
                                             borderClass = "border-emerald-200";
                                             badgeColor = "bg-emerald-500 text-white";
                                         } else if (isOverdue) {
-                                            colorClass = "bg-red-50 text-red-900 animate-pulse";
+                                            colorClass = "bg-red-50 text-red-900";
                                             borderClass = "border-red-200";
                                             badgeColor = "bg-red-600 text-white";
-                                        } else if (!isLocked) {
-                                            colorClass = "bg-amber-50 text-amber-900";
-                                            borderClass = "border-amber-200";
-                                            badgeColor = "bg-amber-400 text-white";
+                                        } else {
+                                            // Future/Upcoming is Gray ('Stay in the gray')
+                                            colorClass = "bg-slate-50 text-slate-400";
+                                            borderClass = "border-slate-100";
+                                            badgeColor = "bg-slate-200 text-slate-400";
                                         }
 
                                         return (
@@ -269,11 +280,12 @@ export const UnitDetail = () => {
                                                                 className={`text-[10px] bg-white/50 border-0 p-0.5 rounded focus:ring-1 focus:ring-indigo-500 outline-none font-medium ${isLocked ? 'opacity-50' : ''}`}
                                                                 value={unit[`${step.key}_target_date`] ? new Date(unit[`${step.key}_target_date`]).toISOString().split('T')[0] : ''}
                                                                 onChange={(e) => {
-                                                                    api.put(`/api/admin/readiness/update-step/${unit.id}`, { 
-                                                                        stepKey: step.key, 
-                                                                        targetDate: e.target.value,
-                                                                        completed: unit[`${step.key}_completed`]
-                                                                    })
+                                                                  api.put(`/api/admin/readiness/update-step/${unit.id}`, { 
+                                                                      stepKey: step.key, 
+                                                                      targetDate: e.target.value,
+                                                                      isManual: true, // This fixes the 409 conflict error
+                                                                      completed: unit[`${step.key}_completed`]
+                                                                  })
                                                                     .then(() => fetchUnitDetails())
                                                                     .catch(err => alert('Error updating target date'));
                                                                 }}
@@ -400,48 +412,50 @@ export const UnitDetail = () => {
                         )}
                     </Card>
 
-                    {/* Documents section */}
-                    <Card title={`Linked Documents (${documents.length})`} className="min-h-[300px]">
-                        <p className="text-slate-500 text-sm mb-6 -mt-2">
-                            Access all files and documents linked specifically to this unit.
-                        </p>
-                        {documents.length > 0 ? (
-                            <div className="grid grid-cols-1 gap-4">
-                                {documents.map(doc => (
-                                    <div key={doc.id} className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl bg-white hover:bg-slate-50 transition-all hover:shadow-md group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-xl bg-slate-50 shadow-sm flex items-center justify-center text-indigo-600 border border-slate-100">
-                                                <FileText size={20} />
+                    {/* Documents section - CONDITIONALLY RENDERED */}
+                    {canViewDocs && (
+                        <Card title={`Linked Documents (${documents.length})`} className="min-h-[300px]">
+                            <p className="text-slate-500 text-sm mb-6 -mt-2">
+                                Access all files and documents linked specifically to this unit.
+                            </p>
+                            {documents.length > 0 ? (
+                                <div className="grid grid-cols-1 gap-4">
+                                    {documents.map(doc => (
+                                        <div key={doc.id} className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl bg-white hover:bg-slate-50 transition-all hover:shadow-md group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-xl bg-slate-50 shadow-sm flex items-center justify-center text-indigo-600 border border-slate-100">
+                                                    <FileText size={20} />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-slate-800">{doc.name}</span>
+                                                    <span className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">
+                                                        {doc.type} • {new Date(doc.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-slate-800">{doc.name}</span>
-                                                <span className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">
-                                                    {doc.type} • {new Date(doc.createdAt).toLocaleDateString()}
-                                                </span>
-                                            </div>
+                                            <a
+                                                href={`${api.defaults.baseURL}/api/admin/documents/${doc.id}/download`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-indigo-100 shadow-none hover:shadow-sm"
+                                                title="Download"
+                                            >
+                                                <Download size={18} />
+                                            </a>
                                         </div>
-                                        <a
-                                            href={`${api.defaults.baseURL}/api/admin/documents/${doc.id}/download`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-indigo-100 shadow-none hover:shadow-sm"
-                                            title="Download"
-                                        >
-                                            <Download size={18} />
-                                        </a>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-12 text-center">
-                                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-300">
-                                    <FileText size={32} />
+                                    ))}
                                 </div>
-                                <p className="text-slate-400 italic">No documents currently linked to this unit.</p>
-                                <p className="text-slate-300 text-xs mt-1">Upload documents via the Document Library to see them here.</p>
-                            </div>
-                        )}
-                    </Card>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-300">
+                                        <FileText size={32} />
+                                    </div>
+                                    <p className="text-slate-400 italic">No documents currently linked to this unit.</p>
+                                    <p className="text-slate-300 text-xs mt-1">Upload documents via the Document Library to see them here.</p>
+                                </div>
+                            )}
+                        </Card>
+                    )}
                 </section>
 
             </div>

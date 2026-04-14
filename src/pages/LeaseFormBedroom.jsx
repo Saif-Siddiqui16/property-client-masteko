@@ -275,7 +275,9 @@ export const LeaseFormBedroom = () => {
                                 >
                                     <option value="">Select Bedroom</option>
                                     {bedrooms.map(b => (
-                                        <option key={b.id} value={b.id}>{b.bedroomNumber}</option>
+                                        <option key={b.id} value={b.id}>
+                                            {b.bedroomNumber || b.displayName}
+                                        </option>
                                     ))}
                                 </select>
                                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">

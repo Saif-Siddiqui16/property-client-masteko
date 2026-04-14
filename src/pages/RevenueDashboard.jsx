@@ -149,27 +149,30 @@ export const RevenueDashboard = () => {
           </div>
         ) : (
           <>
-            {/* TOP STATS */}
+            {/* TOP STATS - Split into 3 Separate Boxes per Client Request */}
             <section className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-6">
-              <Card className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 border-l-[6px] border-emerald-500">
-                <span className="text-sm text-gray-500">Actual Revenue (Paid)</span>
-                <h2 className="text-[1.75rem] font-black mt-2 leading-tight truncate" title={`$${(stats.actualRevenue || stats.totalRevenue || 0).toLocaleString('en-CA')}`}>
-                  ${(stats.actualRevenue || stats.totalRevenue || 0).toLocaleString('en-CA')}
+              <Card className="rounded-[18px] bg-white shadow-[0_15px_35px_rgba(0,0,0,0.05)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_25px_50px_rgba(0,0,0,0.1)] border-l-[6px] border-blue-500">
+                <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total Rent</span>
+                <h2 className="text-[1.85rem] font-black mt-2 leading-tight text-slate-800" title={`$${(stats.actualRent || 0).toLocaleString('en-CA')}`}>
+                  ${(stats.actualRent || 0).toLocaleString('en-CA')}
                 </h2>
-                <p className="text-xs text-gray-400 mt-1">Total payments received to date</p>
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600 font-medium">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span>Rent: ${(stats.actualRent || 0).toLocaleString('en-CA')}</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500"></span>Deposit: ${(stats.actualDeposit || 0).toLocaleString('en-CA')}</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500"></span>Fees: ${(stats.actualServiceFees || 0).toLocaleString('en-CA')}</span>
-                </div>
+                <p className="text-xs text-gray-400 mt-2 font-medium">Net rental income collected</p>
               </Card>
 
-              <Card className="rounded-[18px] bg-white shadow-[0_20px_45px_rgba(0,0,0,0.08)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_40px_80px_rgba(0,0,0,0.15)] hover:rotate-1 border-l-[6px] border-indigo-500">
-                <span className="text-sm text-gray-500">Projected Revenue</span>
-                <h2 className="text-[1.75rem] font-black mt-2 leading-tight truncate" title={`$${(stats.projectedRevenue || 0).toLocaleString('en-CA')}`}>
-                  ${(stats.projectedRevenue || 0).toLocaleString('en-CA')}
+              <Card className="rounded-[18px] bg-white shadow-[0_15px_35px_rgba(0,0,0,0.05)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_25px_50px_rgba(0,0,0,0.1)] border-l-[6px] border-purple-500">
+                <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total Deposits</span>
+                <h2 className="text-[1.85rem] font-black mt-2 leading-tight text-slate-800" title={`$${(stats.actualDeposit || 0).toLocaleString('en-CA')}`}>
+                  ${(stats.actualDeposit || 0).toLocaleString('en-CA')}
                 </h2>
-                <p className="text-xs text-gray-400 mt-1">Expected this month from all active leases</p>
+                <p className="text-xs text-gray-400 mt-2 font-medium">Security deposits received</p>
+              </Card>
+
+              <Card className="rounded-[18px] bg-white shadow-[0_15px_35px_rgba(0,0,0,0.05)] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_25px_50px_rgba(0,0,0,0.1)] border-l-[6px] border-orange-500">
+                <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total Fees</span>
+                <h2 className="text-[1.85rem] font-black mt-2 leading-tight text-slate-800" title={`$${(stats.actualServiceFees || 0).toLocaleString('en-CA')}`}>
+                  ${(stats.actualServiceFees || 0).toLocaleString('en-CA')}
+                </h2>
+                <p className="text-xs text-gray-400 mt-2 font-medium">Service and late fees collected</p>
               </Card>
             </section>
 

@@ -114,10 +114,21 @@ const EmailComposer = () => {
 
     const handleTemplateSelect = (template) => {
         setSelectedTemplate(template);
+        
+        // Convert plain text newlines to HTML paragraphs for ReactQuill
+        // This fixes the "messy" formatting where templates appear on a single line.
+        let formattedBody = template.body;
+        if (!template.body.includes('<p>') && !template.body.includes('<div>')) {
+            formattedBody = template.body
+                .split('\n')
+                .map(line => line.trim() === '' ? '<p><br></p>' : `<p>${line}</p>`)
+                .join('');
+        }
+
         setEmailDraft({
             ...emailDraft,
             subject: template.subject,
-            body: template.body
+            body: formattedBody
         });
         setStep(3);
     };
@@ -313,6 +324,18 @@ const EmailComposer = () => {
 
     return (
         <MainLayout title="Professional Email Broadcasting">
+            <style>
+                {`
+                    .ql-container {
+                        height: calc(100% - 42px) !important;
+                        font-size: 14px;
+                    }
+                    .ql-editor {
+                        min-height: 100%;
+                        padding-bottom: 30px !important;
+                    }
+                `}
+            </style>
             <div className="text-slate-800">
                 {/* Multi-step Header */}
                 <div className="mb-10">
@@ -642,7 +665,7 @@ const EmailComposer = () => {
                                         placeholder="Add subject..."
                                     />
                                 </div>
-                                <div className="flex flex-col h-[450px]">
+                                <div className="flex flex-col h-[500px]">
                                     <label className="block text-sm font-bold text-gray-700 mb-2">Email Body</label>
                                     <div className="flex-1 rounded-2xl overflow-hidden border-2 border-gray-100">
                                         <ReactQuill 

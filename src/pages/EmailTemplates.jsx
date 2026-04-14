@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import api from '../api/client';
 import { Mail, Edit2, Trash2, Plus, X, Search, FileText, Paperclip, Check } from 'lucide-react';
 import { MainLayout } from '../layouts/MainLayout';
@@ -124,8 +126,18 @@ const EmailTemplates = () => {
     };
 
     const openModal = (template = { name: '', subject: '', body: '', language: 'en', type: '', documentIds: [] }) => {
+        // Convert old plain text newlines to HTML for the new Rich Text Editor
+        let formattedBody = template.body || '';
+        if (formattedBody && !formattedBody.includes('<p>') && !formattedBody.includes('<div>')) {
+            formattedBody = formattedBody
+                .split('\n')
+                .map(line => line.trim() === '' ? '<p><br></p>' : `<p>${line}</p>`)
+                .join('');
+        }
+
         setCurrentTemplate({
             ...template,
+            body: formattedBody,
             language: template.language || 'en',
             type: template.type || '',
             documentIds: template.documents?.map(d => d.id) || []
@@ -148,6 +160,18 @@ const EmailTemplates = () => {
 
     return (
         <MainLayout title="Email Templates">
+            <style>
+                {`
+                    .ql-container {
+                        height: calc(100% - 42px) !important;
+                        font-size: 14px;
+                    }
+                    .ql-editor {
+                        min-height: 100%;
+                        padding-bottom: 20px !important;
+                    }
+                `}
+            </style>
             <div className="space-y-6 text-slate-800">
                 <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                 <div>
@@ -319,18 +343,18 @@ const EmailTemplates = () => {
                                 </div>
                             </div>
 
-                            <div>
+                            <div className="flex flex-col h-[500px]">
                                 <div className="flex justify-between items-center bg-gray-100 px-4 py-1.5 rounded-t-xl border-x-2 border-t-2 border-gray-100">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                                        Email Body (HTML)
+                                        Email Body Content
                                     </label>
                                     <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-                                        <span className="text-[9px] text-gray-400 font-bold uppercase italic mr-1">Insert:</span>
+                                        <span className="text-[9px] text-gray-400 font-bold uppercase italic mr-1">Placeholders:</span>
                                         {PLACEHOLDERS.map(p => (
                                             <button 
                                                 key={p.code}
                                                 type="button" 
-                                                onClick={() => insertPlaceholder('body', p.code)}
+                                                onClick={() => setCurrentTemplate({...currentTemplate, body: currentTemplate.body + p.code})}
                                                 className="px-2.5 py-1 text-[10px] font-black uppercase bg-white border border-gray-200 text-indigo-600 rounded-lg hover:border-indigo-500 hover:shadow-sm transition-all whitespace-nowrap active:scale-95"
                                             >
                                                 {p.label}
@@ -338,16 +362,23 @@ const EmailTemplates = () => {
                                         ))}
                                     </div>
                                 </div>
-                                <textarea 
-                                    id="editor-body"
-                                    rows="10"
-                                    required
-                                    value={currentTemplate.body}
-                                    onChange={(e) => setCurrentTemplate({...currentTemplate, body: e.target.value})}
-                                    className="w-full px-5 py-4 border-2 border-gray-100 rounded-b-2xl focus:border-indigo-500 focus:ring-0 transition-all outline-none font-mono text-sm bg-gray-50/50"
-                                    placeholder="Write your email body here... (Rich text editor integration coming in Composer)"
-                                />
-                                <p className="mt-2 text-xs text-gray-400 italic">Formatting tip: Use HTML tags like &lt;b&gt;bold&lt;/b&gt;, &lt;br/&gt; for line breaks, etc.</p>
+                                <div className="flex-1 rounded-b-2xl overflow-hidden border-2 border-gray-100">
+                                    <ReactQuill 
+                                        theme="snow" 
+                                        value={currentTemplate.body}
+                                        onChange={(content) => setCurrentTemplate({...currentTemplate, body: content})}
+                                        className="h-full bg-white"
+                                        modules={{
+                                            toolbar: [
+                                                [{ 'header': [1, 2, false] }],
+                                                ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                                                [{'list': 'ordered'}, {'list': 'bullet'}],
+                                                ['link'],
+                                                ['clean']
+                                            ],
+                                        }}
+                                    />
+                                </div>
                             </div>
 
                             <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
