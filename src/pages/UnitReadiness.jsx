@@ -15,6 +15,14 @@ import {
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
+// Timezone-safe date parser: extracts YYYY-MM-DD and parses at local noon.
+// This prevents UTC midnight dates from shifting back 1 day in Canadian timezones (UTC-3:30 to UTC-8).
+const safeDate = (dateStr) => {
+  if (!dateStr) return null;
+  const datePart = String(dateStr).substring(0, 10); // e.g. "2026-04-01"
+  return new Date(datePart + 'T12:00:00');           // local noon = same day in all of Canada
+};
+
 const UnitReadiness = () => {
   const navigate = useNavigate();
   const [units, setUnits] = useState([]);
@@ -140,7 +148,7 @@ const UnitReadiness = () => {
     } catch (err) {
       if (err.response?.status === 409) {
           // Manual Override Prompt
-          if (window.confirm(`${err.response.data.message}\n\nExisting: ${err.response.data.current ? format(new Date(err.response.data.current), 'MMM d') : 'None'}\nProposed: ${format(new Date(err.response.data.proposed), 'MMM d')}\n\nDo you want to OVERWRITE this manual entry?`)) {
+          if (window.confirm(`${err.response.data.message}\n\nExisting: ${err.response.data.current ? format(safeDate(err.response.data.current), 'MMM d') : 'None'}\nProposed: ${format(safeDate(err.response.data.proposed), 'MMM d')}\n\nDo you want to OVERWRITE this manual entry?`)) {
               handleUpdateStep(unitId, stepKey, completed, recalculate, true);
           }
       } else {
@@ -245,7 +253,7 @@ const UnitReadiness = () => {
           {/* Holiday Modal */}
           {showHolidays && (
             <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-600 text-white">
                   <h2 className="text-xl font-bold">Canadian Holiday Calendar</h2>
                   <button onClick={() => setShowHolidays(false)} className="hover:rotate-90 transition-all">✕</button>
@@ -271,7 +279,7 @@ const UnitReadiness = () => {
                     <div key={h.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                       <div>
                         <p className="text-sm font-bold text-slate-700">{h.name}</p>
-                        <p className="text-xs text-slate-400 font-bold">{format(new Date(h.date), 'MMMM do, yyyy')}</p>
+                        <p className="text-xs text-slate-400 font-bold">{format(safeDate(h.date), 'MMMM do, yyyy')}</p>
                       </div>
                       <button onClick={() => handleDeleteHoliday(h.id)} className="text-red-400 hover:text-red-600 text-xs font-bold px-2 py-1">Delete</button>
                     </div>
@@ -470,7 +478,7 @@ const UnitReadiness = () => {
                                       <span className={loading ? 'animate-pulse' : ''}>{status.icon}</span>
                                     </button>
                                     <span className={`text-[10px] font-black mt-1 uppercase ${status.icon === "🔴" ? 'text-red-500' : 'text-slate-400'}`}>
-                                        {status.date ? format(new Date(status.date), 'MMM d') : '-'}
+                                        {status.date ? format(safeDate(status.date), 'MMM d') : '-'}
                                     </span>
                                 </div>
                             </td>
@@ -494,7 +502,7 @@ const UnitReadiness = () => {
                                       <span className={loading ? 'animate-pulse' : ''}>{status.icon}</span>
                                     </button>
                                     <span className={`text-[10px] font-black mt-1 uppercase ${status.icon === "🔴" ? 'text-red-500' : 'text-slate-400'}`}>
-                                        {status.date ? format(new Date(status.date), 'MMM d') : '-'}
+                                        {status.date ? format(safeDate(status.date), 'MMM d') : '-'}
                                     </span>
                                 </div>
                             </td>
@@ -512,7 +520,7 @@ const UnitReadiness = () => {
                           </span>
                         </td>
                         <td className="px-1 py-4 text-[10px] font-bold text-slate-600 text-center">
-                           {unit.moveInDate ? format(new Date(unit.moveInDate), 'MMM d') : '-'}
+                           {unit.moveInDate ? format(safeDate(unit.moveInDate), 'MMM d') : '-'}
                         </td>
                         <td className="px-2 py-4 flex flex-col items-center gap-1">
                            <span className={`text-[10px] font-black px-2 py-1 rounded inline-block min-w-[90px] text-center ${

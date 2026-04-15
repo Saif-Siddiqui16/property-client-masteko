@@ -71,6 +71,7 @@ const OutstandingDues = () => {
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Invoice</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Tenant</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Unit</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Type</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Lease Type</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Amount</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Due Date</th>
@@ -85,6 +86,17 @@ const OutstandingDues = () => {
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 font-mono whitespace-nowrap">{d.invoice}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{d.tenant}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{d.unit}</td>
+                    <td className="p-4 border-b border-gray-100 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
+                        d.category === 'DEPOSIT'
+                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                          : d.category === 'SERVICE'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      }`}>
+                        {d.category === 'DEPOSIT' ? 'Deposit' : d.category === 'SERVICE' ? 'Service' : 'Rent'}
+                      </span>
+                    </td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{d.leaseType}</td>
                     <td className="p-4 border-b border-gray-100 text-sm font-medium font-mono text-slate-700 whitespace-nowrap">${d.amount.toLocaleString('en-CA')}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{d.dueDate}</td>

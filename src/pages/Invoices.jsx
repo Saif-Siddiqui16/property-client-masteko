@@ -258,6 +258,7 @@ export const Invoices = () => {
     const [filterUnit, setFilterUnit] = useState('');
     const [filterYear, setFilterYear] = useState('');
     const [filterMonth, setFilterMonth] = useState('');
+    const [filterType, setFilterType] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 15;
 
@@ -286,9 +287,17 @@ export const Invoices = () => {
         const { month, year } = getMonthYear(inv.month);
         const matchesYear = !filterYear || (year.toString() === filterYear);
         const matchesMonth = !filterMonth || (month.toString() === filterMonth);
+        const matchesType = !filterType || (inv.category || 'RENT') === filterType;
 
-        return matchesBuilding && matchesUnit && matchesYear && matchesMonth;
+        return matchesBuilding && matchesUnit && matchesYear && matchesMonth && matchesType;
     });
+
+    // Summary calculations for the filtered view
+    const filteredTotal = filteredInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const rentTotal = filteredInvoices.filter(inv => (inv.category || 'RENT') === 'RENT').reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const depositTotal = filteredInvoices.filter(inv => inv.category === 'DEPOSIT').reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const serviceTotal = filteredInvoices.filter(inv => inv.category === 'SERVICE').reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const hasActiveFilters = filterBuilding || filterUnit || filterYear || filterMonth || filterType;
 
     const totalPages = Math.ceil(filteredInvoices.length / itemsPerPage);
     const currentInvoices = filteredInvoices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -311,7 +320,7 @@ export const Invoices = () => {
                         <select 
                             className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
                             value={filterBuilding}
-                            onChange={(e) => setFilterBuilding(e.target.value)}
+                            onChange={(e) => { setFilterBuilding(e.target.value); setCurrentPage(1); }}
                         >
                             <option value="">All Buildings</option>
                             {buildings.map(b => (
@@ -327,7 +336,7 @@ export const Invoices = () => {
                             placeholder="e.g. 301"
                             className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
                             value={filterUnit}
-                            onChange={(e) => setFilterUnit(e.target.value)}
+                            onChange={(e) => { setFilterUnit(e.target.value); setCurrentPage(1); }}
                         />
                     </div>
 
@@ -336,7 +345,7 @@ export const Invoices = () => {
                         <select 
                             className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
                             value={filterYear}
-                            onChange={(e) => setFilterYear(e.target.value)}
+                            onChange={(e) => { setFilterYear(e.target.value); setCurrentPage(1); }}
                         >
                             <option value="">Year</option>
                             {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -348,7 +357,7 @@ export const Invoices = () => {
                         <select 
                             className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
                             value={filterMonth}
-                            onChange={(e) => setFilterMonth(e.target.value)}
+                            onChange={(e) => { setFilterMonth(e.target.value); setCurrentPage(1); }}
                         >
                             <option value="">Month</option>
                             {months.map(m => (
@@ -357,15 +366,103 @@ export const Invoices = () => {
                         </select>
                     </div>
 
-                    {(filterBuilding || filterUnit || filterYear || filterMonth) && (
+                    <div className="w-44">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Type</label>
+                        <select 
+                            className="w-full p-2.5 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500/10"
+                            value={filterType}
+                            onChange={(e) => { setFilterType(e.target.value); setCurrentPage(1); }}
+                        >
+                            <option value="">All Types</option>
+                            <option value="RENT">Rent</option>
+                            <option value="DEPOSIT">Deposit</option>
+                            <option value="SERVICE">Service Fees</option>
+                        </select>
+                    </div>
+
+                    {hasActiveFilters && (
                         <button 
-                            onClick={() => { setFilterBuilding(''); setFilterUnit(''); setFilterYear(''); setFilterMonth(''); }}
+                            onClick={() => { setFilterBuilding(''); setFilterUnit(''); setFilterYear(''); setFilterMonth(''); setFilterType(''); setCurrentPage(1); }}
                             className="mt-5 text-xs font-bold text-rose-500 hover:text-rose-700 underline"
                         >
                             Reset
                         </button>
                     )}
                 </div>
+
+                {/* ACCOUNTING SUMMARY BAR — dynamic based on filterType */}
+                {!filterType ? (
+                    /* All Types view: full breakdown */
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-6 py-4 flex flex-wrap items-center gap-6">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total Invoices</span>
+                            <span className="text-lg font-black text-slate-800 mt-0.5">{filteredInvoices.length} <span className="text-sm font-semibold text-slate-400">Invoice{filteredInvoices.length !== 1 ? 's' : ''}</span></span>
+                        </div>
+                        <div className="h-10 w-px bg-slate-100"></div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Grand Total</span>
+                            <span className="text-lg font-black text-slate-800 font-mono mt-0.5">$ {filteredTotal.toLocaleString('en-CA')}</span>
+                        </div>
+                        <div className="h-10 w-px bg-slate-100"></div>
+                        <div className="flex gap-5 flex-wrap">
+                            <div className="flex flex-col items-start bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2.5">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">Rent Total</span>
+                                <span className="text-base font-black text-indigo-700 font-mono mt-0.5">$ {rentTotal.toLocaleString('en-CA')}</span>
+                            </div>
+                            <div className="flex flex-col items-start bg-purple-50 border border-purple-100 rounded-xl px-4 py-2.5">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-purple-400">Deposit Total</span>
+                                <span className="text-base font-black text-purple-700 font-mono mt-0.5">$ {depositTotal.toLocaleString('en-CA')}</span>
+                            </div>
+                            <div className="flex flex-col items-start bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Service Fees Total</span>
+                                <span className="text-base font-black text-amber-700 font-mono mt-0.5">$ {serviceTotal.toLocaleString('en-CA')}</span>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    /* Single-type selected: focused summary card */
+                    <div className={`rounded-2xl border shadow-sm px-6 py-4 flex flex-wrap items-center gap-8 ${
+                        filterType === 'RENT' ? 'bg-indigo-50 border-indigo-200' :
+                        filterType === 'DEPOSIT' ? 'bg-purple-50 border-purple-200' :
+                        'bg-amber-50 border-amber-200'
+                    }`}>
+                        <div className="flex flex-col">
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                filterType === 'RENT' ? 'text-indigo-400' :
+                                filterType === 'DEPOSIT' ? 'text-purple-400' : 'text-amber-400'
+                            }`}>
+                                {filterType === 'RENT' ? 'Rent Invoices' : filterType === 'DEPOSIT' ? 'Deposit Invoices' : 'Service Fee Invoices'}
+                            </span>
+                            <span className={`text-2xl font-black mt-0.5 ${
+                                filterType === 'RENT' ? 'text-indigo-700' :
+                                filterType === 'DEPOSIT' ? 'text-purple-700' : 'text-amber-700'
+                            }`}>{filteredInvoices.length} <span className="text-sm font-semibold opacity-60">Invoice{filteredInvoices.length !== 1 ? 's' : ''}</span></span>
+                        </div>
+                        <div className={`h-12 w-px ${
+                            filterType === 'RENT' ? 'bg-indigo-200' :
+                            filterType === 'DEPOSIT' ? 'bg-purple-200' : 'bg-amber-200'
+                        }`}></div>
+                        <div className="flex flex-col">
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                filterType === 'RENT' ? 'text-indigo-400' :
+                                filterType === 'DEPOSIT' ? 'text-purple-400' : 'text-amber-400'
+                            }`}>
+                                {filterType === 'RENT' ? 'Total Rent Collected' : filterType === 'DEPOSIT' ? 'Total Deposits Collected' : 'Total Service Fees'}
+                            </span>
+                            <span className={`text-3xl font-black font-mono mt-0.5 ${
+                                filterType === 'RENT' ? 'text-indigo-700' :
+                                filterType === 'DEPOSIT' ? 'text-purple-700' : 'text-amber-700'
+                            }`}>$ {filteredTotal.toLocaleString('en-CA')}</span>
+                        </div>
+                        <div className={`ml-auto text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border ${
+                            filterType === 'RENT' ? 'text-indigo-600 border-indigo-300 bg-indigo-100' :
+                            filterType === 'DEPOSIT' ? 'text-purple-600 border-purple-300 bg-purple-100' :
+                            'text-amber-600 border-amber-300 bg-amber-100'
+                        }`}>
+                            Filtered View
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex justify-end gap-3 px-1">
                     {hasPermission('Invoices', 'edit') && (
@@ -435,7 +532,7 @@ export const Invoices = () => {
                                             <span className={clsx(
                                                 "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase whitespace-nowrap shadow-sm border",
                                                 inv.category === 'SERVICE' ? "bg-amber-50 text-amber-700 border-amber-100" : 
-                                                inv.category === 'SECURITY_DEPOSIT' ? "bg-purple-50 text-purple-700 border-purple-100" :
+                                                inv.category === 'DEPOSIT' ? "bg-purple-50 text-purple-700 border-purple-100" :
                                                 "bg-indigo-50 text-indigo-700 border-indigo-100"
                                             )}>
                                                 {inv.category || 'RENT'}
