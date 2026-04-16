@@ -515,9 +515,16 @@ const UnitReadiness = () => {
                           </span>
                         </td>
                         <td className="px-1 py-4 text-center">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${unit.reserved ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                             {unit.reserved ? 'Yes' : 'No'}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${unit.reserved ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                               {unit.reserved ? 'Yes' : 'No'}
+                            </span>
+                            {unit.reserved && unit.reservedBy && (
+                              <span className="text-[9px] font-black text-blue-600 block max-w-[80px] truncate leading-tight uppercase" title={unit.reservedBy}>
+                                {unit.reservedBy}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-1 py-4 text-[10px] font-bold text-slate-600 text-center">
                            {unit.moveInDate ? format(safeDate(unit.moveInDate), 'MMM d') : '-'}

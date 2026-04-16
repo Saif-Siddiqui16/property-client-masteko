@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/Button';
-import { Plus, Search, Filter, Eye, Edit2, Trash2, X, ChevronDown, Loader2, CheckCircle, AlertCircle, Settings } from 'lucide-react';
+import { Plus, Search, Filter, Eye, Edit2, Trash2, X, ChevronDown, Loader2, CheckCircle, AlertCircle, Settings, User, Shield } from 'lucide-react';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
 
@@ -46,6 +46,14 @@ export const Units = () => {
     tentative_move_in_date: ''
   });
   const [tenants, setTenants] = useState([]);
+  const [showQuickAddTenant, setShowQuickAddTenant] = useState(false);
+  const [quickAddTenantType, setQuickAddTenantType] = useState('Individual');
+  const [quickAddFormStep, setQuickAddFormStep] = useState(1);
+  const [quickAddErrors, setQuickAddErrors] = useState({});
+  const [isSavingQuickAdd, setIsSavingQuickAdd] = useState(false);
+  
+  const [billableTenants, setBillableTenants] = useState([]);
+  const [selectedParentId, setSelectedParentId] = useState('');
 
   const [typeFilter, setTypeFilter] = useState('');
   const [buildingFilter, setBuildingFilter] = useState('');
@@ -111,7 +119,9 @@ export const Units = () => {
       ]);
 
       const tenantsRes = await api.get('/api/admin/tenants?limit=1000');
-      setTenants(tenantsRes.data?.data || tenantsRes.data || []);
+      const allTenants = tenantsRes.data?.data || tenantsRes.data || [];
+      setTenants(allTenants);
+      setBillableTenants(allTenants.filter(t => t.type !== 'RESIDENT' && t.type !== 'Resident'));
 
       if (buildingsRes.data && buildingsRes.data.length > 0 && !formData.propertyId) {
         setFormData(prev => ({ ...prev, propertyId: buildingsRes.data[0].id.toString() }));
@@ -820,17 +830,31 @@ export const Units = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reserved By</label>
-                              <select 
-                                name="reserved_by_id"
-                                value={formData.reserved_by_id}
-                                onChange={handleInputChange}
-                                className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white"
-                              >
-                                <option value="">Select Tenant / Prospect</option>
-                                {tenants.map(t => (
-                                  <option key={t.id} value={t.id}>{t.name || `${t.firstName} ${t.lastName}`}</option>
-                                ))}
-                              </select>
+                              <div className="flex flex-col gap-1.5">
+                                <select 
+                                  name="reserved_by_id"
+                                  value={formData.reserved_by_id}
+                                  onChange={handleInputChange}
+                                  className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white font-medium"
+                                >
+                                  <option value="">Select Tenant / Prospect</option>
+                                  {tenants.map(t => (
+                                    <option key={t.id} value={t.id}>{t.name || `${t.firstName} ${t.lastName}`}</option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setQuickAddFormStep(1);
+                                    setQuickAddTenantType('Individual');
+                                    setQuickAddErrors({});
+                                    setShowQuickAddTenant(true);
+                                  }}
+                                  className="text-[11px] font-black text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 ml-1 w-fit uppercase tracking-wider"
+                                >
+                                  <Plus size={12} /> Add New Tenant
+                                </button>
+                              </div>
                             </div>
                             <div>
                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Tentative Move-In</label>
@@ -987,6 +1011,205 @@ export const Units = () => {
           />
         )}
       </div >
+      {/* QUICK ADD TENANT MODAL (PHASE 2) */}
+      {showQuickAddTenant && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[10000] animate-in fade-in duration-300">
+          <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-400 max-h-[90vh] overflow-hidden flex flex-col mx-4">
+            {/* MODAL HEADER */}
+            <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <div>
+                <h3 className="text-2xl font-black text-slate-800 tracking-tight">
+                  {quickAddFormStep === 1 ? 'Select Tenant Type' : 
+                   quickAddTenantType === 'Individual' ? 'Individual Tenant' : 
+                   quickAddTenantType === 'Company' ? 'Company Tenant' : 'Resident Participant'}
+                </h3>
+                <p className="text-slate-500 font-medium text-sm mt-1">
+                  {quickAddFormStep === 1 ? 'Step 1 of 2: Classification' : 'Step 2 of 2: Information'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuickAddTenant(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-all duration-300"
+              >
+                <Plus className="rotate-45" size={24} />
+              </button>
+            </div>
+
+            {/* MODAL CONTENT */}
+            <div className="flex-1 overflow-y-auto px-10 py-8 custom-scrollbar">
+              {quickAddFormStep === 1 ? (
+                /* STEP 1: TYPE SELECTION */
+                <div className="grid grid-cols-1 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => { setQuickAddTenantType('Individual'); setQuickAddFormStep(2); }}
+                    className="group p-6 rounded-2xl border-2 border-slate-100 hover:border-indigo-500 hover:bg-indigo-50/30 text-left transition-all duration-300 flex items-center gap-6"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                      <User size={32} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-lg">Individual Tenant</h4>
+                      <p className="text-slate-500 text-sm font-medium mt-1">Single legal leaseholder.</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setQuickAddTenantType('Company'); setQuickAddFormStep(2); }}
+                    className="group p-6 rounded-2xl border-2 border-slate-100 hover:border-purple-500 hover:bg-purple-50/30 text-left transition-all duration-300 flex items-center gap-6"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                      <Shield size={32} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-lg">Company Tenant</h4>
+                      <p className="text-slate-500 text-sm font-medium mt-1">Corporate leaseholder / Business Entity.</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setQuickAddTenantType('Resident'); setQuickAddFormStep(2); }}
+                    className="group p-6 rounded-2xl border-2 border-slate-100 hover:border-amber-500 hover:bg-amber-50/30 text-left transition-all duration-300 flex items-center gap-6"
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                      <User size={32} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-lg">Resident (Occupant Only)</h4>
+                      <p className="text-slate-500 text-sm font-medium mt-1">Non-billable occupant linked to a primary tenant.</p>
+                    </div>
+                  </button>
+                </div>
+              ) : (
+                /* STEP 2: FORM FIELDS */
+                <form id="quickAddTenantForm" className="space-y-8" onSubmit={async (e) => {
+                  e.preventDefault();
+                  setIsSavingQuickAdd(true);
+                  setQuickAddErrors({});
+                  
+                  const fData = new FormData(e.target);
+                  const getVal = (n) => fData.get(n) || '';
+
+                  // Phone Formatting
+                  const rawPhone = getVal('phone');
+                  let cleanPhone = rawPhone.replace(/[\s-()]/g, '');
+                  if (cleanPhone.length === 10 && /^\d+$/.test(cleanPhone)) cleanPhone = '+1' + cleanPhone;
+                  else if (cleanPhone.length === 11 && cleanPhone.startsWith('1')) cleanPhone = '+' + cleanPhone;
+
+                  const payload = {
+                    firstName: getVal('firstName'),
+                    lastName: getVal('lastName'),
+                    type: quickAddTenantType,
+                    email: getVal('email'),
+                    phone: cleanPhone,
+                    companyName: quickAddTenantType === 'Company' ? getVal('companyName') : null,
+                    parentId: quickAddTenantType === 'Resident' ? selectedParentId : null,
+                    // Auto-link to THIS property if available
+                    propertyId: formData.propertyId || null
+                  };
+
+                  try {
+                    const res = await api.post('/api/admin/tenants', payload);
+                    const newTenant = res.data?.data || res.data;
+                    
+                    // Show success
+                    alert(`${quickAddTenantType} created successfully!`);
+                    
+                    // 1. Update tenants list so it appears in dropdown
+                    const updatedTenants = await api.get('/api/admin/tenants?limit=1000');
+                    const allTenants = updatedTenants.data?.data || updatedTenants.data || [];
+                    setTenants(allTenants);
+                    
+                    // 2. Auto-Select this new tenant in the Unit Form
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      reserved_by_id: (newTenant.id || newTenant).toString() 
+                    }));
+                    
+                    // 3. Close modal
+                    setShowQuickAddTenant(false);
+                  } catch (error) {
+                    console.error("Quick Add Failed:", error);
+                    const sErrors = error.response?.data?.errors;
+                    if (sErrors) setQuickAddErrors(sErrors);
+                    else alert(error.response?.data?.message || "Failed to create tenant");
+                  } finally {
+                    setIsSavingQuickAdd(false);
+                  }
+                }}>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">First Name</label>
+                        <input name="firstName" required className="px-5 py-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all" placeholder="John" />
+                        {quickAddErrors.firstName && <p className="text-red-500 text-xs ml-1">{quickAddErrors.firstName}</p>}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Last Name</label>
+                        <input name="lastName" required className="px-5 py-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all" placeholder="Doe" />
+                        {quickAddErrors.lastName && <p className="text-red-500 text-xs ml-1">{quickAddErrors.lastName}</p>}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Email Address</label>
+                        <input name="email" type="email" required={quickAddTenantType !== 'Resident'} className="px-5 py-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all" placeholder="email@example.com" />
+                         {quickAddErrors.email && <p className="text-red-500 text-xs ml-1">{quickAddErrors.email}</p>}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Mobile Number</label>
+                        <div className="relative">
+                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">+1</span>
+                           <input name="phone" required className="pl-10 pr-5 py-3.5 w-full rounded-2xl border border-slate-200 bg-slate-50/50 outline-none focus:bg-white focus:border-indigo-500 transition-all" placeholder="514-123-4567" />
+                        </div>
+                        {quickAddErrors.phone && <p className="text-red-500 text-xs ml-1">{quickAddErrors.phone}</p>}
+                      </div>
+                    </div>
+
+                    {quickAddTenantType === 'Company' && (
+                      <div className="flex flex-col gap-2 p-6 bg-purple-50 rounded-2xl border border-purple-100">
+                        <label className="text-sm font-bold text-purple-700">Company Legal Name</label>
+                        <input name="companyName" required className="px-4 py-3 rounded-xl border border-purple-200 bg-white" placeholder="Corp / LLC" />
+                         {quickAddErrors.companyName && <p className="text-red-500 text-xs ml-1">{quickAddErrors.companyName}</p>}
+                      </div>
+                    )}
+
+                    {quickAddTenantType === 'Resident' && (
+                      <div className="flex flex-col gap-2 p-6 bg-amber-50 rounded-2xl border border-amber-100">
+                        <label className="text-sm font-bold text-amber-700">Responsible Tenant</label>
+                        <select 
+                          value={selectedParentId} 
+                          onChange={(e) => setSelectedParentId(e.target.value)}
+                          required 
+                          className="px-4 py-3 rounded-xl border border-amber-200 bg-white"
+                        >
+                          <option value="">Select Primary Tenant...</option>
+                          {billableTenants.map(t => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                         {quickAddErrors.parentId && <p className="text-red-500 text-xs ml-1">{quickAddErrors.parentId}</p>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center bg-slate-50 -mx-10 -mb-8 px-10 py-6 border-t border-slate-200 shrink-0">
+                    <Button type="button" variant="secondary" onClick={() => setQuickAddFormStep(1)}>Back</Button>
+                    <div className="flex gap-3">
+                      <Button type="button" variant="secondary" onClick={() => setShowQuickAddTenant(false)}>Cancel</Button>
+                      <Button type="submit" isLoading={isSavingQuickAdd}>Create & Select</Button>
+                    </div>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </MainLayout >
   );
 };

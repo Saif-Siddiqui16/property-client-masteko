@@ -181,6 +181,16 @@ export const Dashboard = () => {
     return val;
   };
 
+  // NEW: Fix for the "One-Day Backup" bug (Ignores timezone shifting)
+  const formatTableDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    // dateString looks like "2026-04-30T00:00:00.000Z"
+    // We only care about the part BEFORE the 'T'
+    const [year, month, day] = dateString.split('T')[0].split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[parseInt(month, 10) - 1]} ${parseInt(day, 10)}, ${year}`;
+  };
+
   return (
     <MainLayout title="Dashboard Overview">
       <div className="flex flex-col gap-8">
@@ -304,7 +314,7 @@ export const Dashboard = () => {
                           </td>
                           <td className="py-5 text-center">
                             <span className="text-sm font-medium text-gray-500">
-                              {new Date(alert.expiryDate).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
+                              {formatTableDate(alert.expiryDate)}
                             </span>
                           </td>
                           <td className="py-5 text-center">
@@ -407,7 +417,7 @@ export const Dashboard = () => {
                           </td>
                           <td className="py-5 text-center">
                             <span className="text-sm font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full text-xs font-bold">
-                              {item.leaseExpiryDate ? new Date(item.leaseExpiryDate).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' }) : 'N/A'}
+                              {formatTableDate(item.leaseExpiryDate)}
                             </span>
                           </td>
                           <td className="py-5 text-center">

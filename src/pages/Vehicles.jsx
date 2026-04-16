@@ -17,7 +17,8 @@ import {
   Camera,
   X,
   Filter,
-  Eye
+  Eye,
+  Phone
 } from 'lucide-react';
 import api from '../api/client';
 import { VehicleForm } from './VehicleForm';
@@ -201,9 +202,17 @@ export const Vehicles = () => {
                         </div>
                       </td>
                       <td className="px-6 py-5">
-                        <div className="flex items-center gap-2">
-                          <User size={14} className="text-slate-400" />
-                          <span className="text-sm font-bold text-slate-700">{v.tenantName}</span>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <User size={14} className="text-slate-400" />
+                            <span className="text-sm font-bold text-slate-700">{v.tenantName}</span>
+                          </div>
+                          {v.tenantPhone && (
+                            <div className="flex items-center gap-1.5 mt-0.5 ml-0.5">
+                              <Phone size={10} className="text-indigo-400" />
+                              <span className="text-[11px] font-semibold text-slate-500">{v.tenantPhone}</span>
+                            </div>
+                          )}
                         </div>
                         {v.parkingSpace && (
                           <div className="text-[10px] font-bold text-slate-400 uppercase mt-1 flex items-center gap-1">
@@ -378,6 +387,12 @@ export const Vehicles = () => {
                   <div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registrant (Tenant)</p>
                     <p className="text-sm font-bold text-slate-800">{viewingVehicle.tenantName}</p>
+                    {viewingVehicle.tenantPhone && (
+                      <a href={`tel:${viewingVehicle.tenantPhone}`} className="text-xs font-bold text-indigo-600 flex items-center gap-1 mt-0.5 hover:underline">
+                        <Phone size={10} />
+                        {viewingVehicle.tenantPhone}
+                      </a>
+                    )}
                   </div>
                 </div>
 

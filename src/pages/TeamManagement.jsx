@@ -54,6 +54,7 @@ const getModuleDisplayName = (name, t) => {
     'Send Email': `↳ ${t('sidebar.send_email')}`,
     'Email Templates': `↳ ${t('sidebar.email_templates')}`,
     'Sent Emails': `↳ ${t('sidebar.email_history')}`,
+    'Shuttle': t('sidebar.shuttle'),
     'Maintenance': t('sidebar.maintenance'),
     'Tickets': t('sidebar.tickets'),
     'Settings': t('sidebar.team')
@@ -65,6 +66,7 @@ const MODULES = [
   'Dashboard', 'Overview', 'Vacancy Dashboard', 'Revenue Dashboard',
   'Properties', 'Buildings', 'Units', 'Unit Readiness',
   'Tenants', 'Tenant List', 'Vehicles', 'Insurance', 
+  'Shuttle',
   'Leases',
   'Rent Roll',
   'Documents',
@@ -196,13 +198,16 @@ export const TeamManagement = () => {
       phone: member.phone || '',
       title: member.title || '',
       preferredLanguage: member.preferredLanguage || 'English',
-      permissions: member.permissions || MODULES.map(m => ({
-        moduleName: m,
-        canView: false,
-        canAdd: false,
-        canEdit: false,
-        canDelete: false
-      }))
+      permissions: MODULES.map(m => {
+        const existing = member.permissions?.find(p => p.moduleName === m);
+        return existing || {
+          moduleName: m,
+          canView: false,
+          canAdd: false,
+          canEdit: false,
+          canDelete: false
+        };
+      })
     });
     setIsEditing(true);
     setShowModal(true);
@@ -222,24 +227,50 @@ export const TeamManagement = () => {
         // Find member and update locally for snappy UI
         const updatedCoworkers = coworkers.map(c => {
             if (c.id === selectedMember.id) {
-                return {
-                    ...c,
-                    permissions: c.permissions.map(p => 
+                let permissionExists = c.permissions.some(p => p.id === permissionId || p.moduleName === p.moduleName);
+                let newPermissions = [];
+                
+                if (c.permissions.some(p => p.id === permissionId)) {
+                    // Update existing
+                    newPermissions = c.permissions.map(p => 
                         p.id === permissionId ? { ...p, [field]: value } : p
-                    )
-                };
+                    );
+                } else {
+                    // Find module name from permissionId if it's temp-
+                    const moduleName = permissionId.startsWith('temp-') ? permissionId.replace('temp-', '') : null;
+                    if (moduleName) {
+                        // Create and add
+                        newPermissions = [...c.permissions, {
+                            id: permissionId,
+                            moduleName,
+                            canView: field === 'canView' ? value : false,
+                            canAdd: field === 'canAdd' ? value : false,
+                            canEdit: field === 'canEdit' ? value : false,
+                            canDelete: field === 'canDelete' ? value : false
+                        }];
+                    } else {
+                        newPermissions = c.permissions;
+                    }
+                }
+
+                return { ...c, permissions: newPermissions };
             }
             return c;
         });
         setCoworkers(updatedCoworkers);
 
-        // Update selectedMember as well
+        // Find the full permission object to get the moduleName
         const member = updatedCoworkers.find(c => c.id === selectedMember.id);
+        const permObj = member.permissions.find(p => p.id === permissionId);
         setSelectedMember(member);
 
-        // Sync with backend
+        // Sync with backend - include moduleName for new permissions (temp- IDs)
         await api.put(`/api/admin/coworkers/${selectedMember.id}/permissions`, {
-            permissions: [{ id: permissionId, [field]: value }]
+            permissions: [{ 
+                id: permissionId, 
+                moduleName: permObj.moduleName,
+                [field]: value 
+            }]
         });
     } catch (error) {
         console.error('Error updating permission:', error);
@@ -468,7 +499,12 @@ export const TeamManagement = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {selectedMember.permissions && sortPermissions(selectedMember.permissions)
+                                    {selectedMember.permissions && sortPermissions(
+                                        MODULES.map(m => {
+                                            const existing = selectedMember.permissions.find(p => p.moduleName === m);
+                                            return existing || { moduleName: m, canView: false, canAdd: false, canEdit: false, canDelete: false, id: `temp-${m}` };
+                                        })
+                                    )
                                         .filter(p => MODULES.includes(p.moduleName) && !['Settings', 'Team Access Control'].includes(p.moduleName))
                                         .map(perm => {
                                         const isParent = PARENTS.includes(perm.moduleName);

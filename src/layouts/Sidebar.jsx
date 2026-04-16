@@ -64,6 +64,12 @@ const NAV_ITEMS = [
     ]
   },
   {
+    icon: Car,
+    label: "Shuttle Management",
+    tKey: "sidebar.shuttle",
+    path: "/shuttle"
+  },
+  {
     icon: Landmark,
     label: "Owners",
     tKey: "sidebar.owners",
@@ -333,6 +339,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               'Tenant List': 'Tenant List',
               'Vehicle Management': 'Vehicles',
               'Insurance Alerts': 'Insurance',
+              'Shuttle Management': 'Shuttle',
               'Owners': 'Owners',
               'Leases': 'Leases',
               'Rent Roll': 'Rent Roll',

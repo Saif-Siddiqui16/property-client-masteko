@@ -36,6 +36,7 @@ export const Accounting = () => {
     }
 
     const [transactions, setTransactions] = useState([]);
+    const [stats, setStats] = useState({ totalRent: 0, totalDeposits: 0, totalFees: 0, totalRefunds: 0 });
     const [selectedInvoice, setSelectedInvoice] = useState(null);
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -48,48 +49,17 @@ export const Accounting = () => {
     const fetchTxs = async () => {
         try {
             const res = await api.get('/api/admin/accounting/transactions');
-            setTransactions(res.data || []);
+            if (res.data && res.data.stats) {
+                setTransactions(res.data.transactions || []);
+                setStats(res.data.stats);
+            } else {
+                setTransactions(res.data || []);
+            }
         } catch (e) {
             console.error(e);
             setTransactions([]);
         }
     };
-
-    // Calculate stats based on business logic (Improved categorization)
-    const stats = transactions.reduce((acc, t) => {
-        const desc = (t.description || '').toLowerCase();
-        const cat = (t.category || '').toUpperCase();
-        const type = (t.type || '').toUpperCase();
-        const amount = Math.abs(parseFloat(t.amount) || 0);
-
-        // 1. IDENTIFY CATEGORY
-        const isDeposit = cat === 'SECURITY_DEPOSIT' || desc.includes('deposit') || desc.includes('inv-dep');
-        const isFee = cat === 'SERVICE' || cat === 'LATE_FEE' || desc.includes('service') || desc.includes('fee');
-        const isRent = cat === 'RENT' || desc.includes('rent') || desc.includes('inv-lease');
-
-        // 2. IDENTIFY IF IT IS A DEDUCTION/REFUND
-        const isLiabilityDeduction = ['LIABILITY', 'LIABILITY TRANSFER', 'LIABILITY DEDUCTION', 'LIABILITY REFUND'].includes(type) || desc.includes('refund');
-
-        if (isLiabilityDeduction) {
-            // Subtract from Deposits (Net cash logic)
-            acc.totalDeposits -= amount;
-            acc.totalRefunds += amount;
-            
-            // If it was moved "to the other side"
-            if (desc.includes('(rent)') || desc.includes('inv-lease')) {
-                acc.totalRent += amount;
-            } else if (desc.includes('(service)') || desc.includes('fee')) {
-                acc.totalFees += amount;
-            }
-        } else {
-            // Normal Income/Payment logic
-            if (isDeposit) acc.totalDeposits += amount;
-            else if (isFee) acc.totalFees += amount;
-            else if (isRent || (!isDeposit && !isFee)) acc.totalRent += amount;
-        }
-
-        return acc;
-    }, { totalRent: 0, totalDeposits: 0, totalFees: 0, totalRefunds: 0 });
 
     const { totalRent, totalDeposits, totalFees, totalRefunds } = stats;
 

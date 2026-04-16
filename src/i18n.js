@@ -29,6 +29,7 @@ i18n
                         "tenant_list": "Tenant List",
                         "vehicles": "Vehicle Management",
                         "insurance": "Insurance Alerts",
+                        "shuttle": "Shuttle Management",
                         "owners": "Owners",
                         "leases": "Leases",
                         "rent_roll": "Rent Roll",
@@ -126,6 +127,18 @@ i18n
                         "location": "Location",
                         "identification_note": "Associate a vehicle with a tenant profile for parking security.",
                         "expiry": "Expiry Date"
+                    },
+                    "shuttle": {
+                        "title": "Shuttle Management",
+                        "requests": "Requests",
+                        "schedule": "Schedule",
+                        "access": "Access",
+                        "drivers": "Drivers",
+                        "history": "History",
+                        "no_requests": "No ride requests found.",
+                        "no_trips": "No trips scheduled.",
+                        "add_base_trip": "Add Base Trip",
+                        "add_driver": "Add Driver"
                     }
                 }
             },
@@ -151,6 +164,7 @@ i18n
                         "tenant_list": "Liste des locataires",
                         "vehicles": "Gestion des véhicules",
                         "insurance": "Alertes d'assurance",
+                        "shuttle": "Gestion des navettes",
                         "owners": "Propriétaires",
                         "leases": "Baux",
                         "rent_roll": "État locatif",
@@ -248,6 +262,18 @@ i18n
                         "location": "Emplacement",
                         "identification_note": "Associer un véhicule à un profil de locataire pour la sécurité du stationnement.",
                         "expiry": "Date d'expiration"
+                    },
+                    "shuttle": {
+                        "title": "Gestion des navettes",
+                        "requests": "Requêtes",
+                        "schedule": "Horaire",
+                        "access": "Accès",
+                        "drivers": "Chauffeurs",
+                        "history": "Historique",
+                        "no_requests": "Aucune demande de trajet trouvée.",
+                        "no_trips": "Aucun trajet prévu.",
+                        "add_base_trip": "Ajouter un trajet",
+                        "add_driver": "Ajouter un chauffeur"
                     }
                 }
             }
