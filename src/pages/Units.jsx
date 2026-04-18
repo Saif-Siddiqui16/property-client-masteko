@@ -43,6 +43,10 @@ export const Units = () => {
     gc_delivered_target_date: '',
     reserved_flag: false,
     reserved_by_id: '',
+    reserve_firstName: '',
+    reserve_lastName: '',
+    reserve_email: '',
+    reserve_phone: '',
     tentative_move_in_date: ''
   });
   const [tenants, setTenants] = useState([]);
@@ -118,10 +122,16 @@ export const Units = () => {
         fetchUnitTypes() // Fetch unit types too
       ]);
 
-      const tenantsRes = await api.get('/api/admin/tenants?limit=1000');
-      const allTenants = tenantsRes.data?.data || tenantsRes.data || [];
-      setTenants(allTenants);
-      setBillableTenants(allTenants.filter(t => t.type !== 'RESIDENT' && t.type !== 'Resident'));
+      try {
+        const tenantsRes = await api.get('/api/admin/tenants?limit=1000');
+        const allTenants = tenantsRes.data?.data || tenantsRes.data || [];
+        setTenants(allTenants);
+        setBillableTenants(allTenants.filter(t => t.type !== 'RESIDENT' && t.type !== 'Resident'));
+      } catch (tenantError) {
+        console.warn("User lacks Tenant List permissions, skipping tenant load for dropdowns.");
+        setTenants([]);
+        setBillableTenants([]);
+      }
 
       if (buildingsRes.data && buildingsRes.data.length > 0 && !formData.propertyId) {
         setFormData(prev => ({ ...prev, propertyId: buildingsRes.data[0].id.toString() }));
@@ -161,6 +171,10 @@ export const Units = () => {
       gc_delivered_target_date: '',
       reserved_flag: false,
       reserved_by_id: '',
+      reserve_firstName: '',
+      reserve_lastName: '',
+      reserve_email: '',
+      reserve_phone: '',
       tentative_move_in_date: ''
     });
   };
@@ -203,6 +217,10 @@ export const Units = () => {
         gc_delivered_target_date: fullUnit.gc_delivered_target_date ? new Date(fullUnit.gc_delivered_target_date).toISOString().split('T')[0] : '',
         reserved_flag: fullUnit.reserved_flag || false,
         reserved_by_id: fullUnit.reserved_by_id?.toString() || '',
+        reserve_firstName: fullUnit.reserved_by_user?.firstName || '',
+        reserve_lastName: fullUnit.reserved_by_user?.lastName || '',
+        reserve_email: fullUnit.reserved_by_user?.email || '',
+        reserve_phone: fullUnit.reserved_by_user?.phone || '',
         tentative_move_in_date: fullUnit.tentative_move_in_date ? new Date(fullUnit.tentative_move_in_date).toISOString().split('T')[0] : ''
       });
       setEditUnit(fullUnit);
@@ -288,6 +306,10 @@ export const Units = () => {
         gc_delivered_target_date: formData.gc_delivered_target_date || null,
         reserved_flag: formData.reserved_flag,
         reserved_by_id: formData.reserved_by_id || null,
+        reserve_firstName: formData.reserve_firstName,
+        reserve_lastName: formData.reserve_lastName,
+        reserve_email: formData.reserve_email,
+        reserve_phone: formData.reserve_phone,
         tentative_move_in_date: formData.tentative_move_in_date || null
       };
 
@@ -828,32 +850,42 @@ export const Units = () => {
                       {formData.reserved_flag && (
                         <div className="space-y-4 p-4 bg-blue-50/30 rounded-2xl border border-blue-100 animate-in fade-in slide-in-from-top-2">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reserved By</label>
-                              <div className="flex flex-col gap-1.5">
-                                <select 
-                                  name="reserved_by_id"
-                                  value={formData.reserved_by_id}
+                            <div className="col-span-full">
+                              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Reserved Prospect (Quick Entry)</label>
+                              <div className="grid grid-cols-2 gap-3 mb-3">
+                                <input 
+                                  name="reserve_firstName"
+                                  value={formData.reserve_firstName}
                                   onChange={handleInputChange}
-                                  className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white font-medium"
-                                >
-                                  <option value="">Select Tenant / Prospect</option>
-                                  {tenants.map(t => (
-                                    <option key={t.id} value={t.id}>{t.name || `${t.firstName} ${t.lastName}`}</option>
-                                  ))}
-                                </select>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setQuickAddFormStep(1);
-                                    setQuickAddTenantType('Individual');
-                                    setQuickAddErrors({});
-                                    setShowQuickAddTenant(true);
-                                  }}
-                                  className="text-[11px] font-black text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 ml-1 w-fit uppercase tracking-wider"
-                                >
-                                  <Plus size={12} /> Add New Tenant
-                                </button>
+                                  placeholder="First Name"
+                                  className="w-full p-2.5 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white"
+                                />
+                                <input 
+                                  name="reserve_lastName"
+                                  value={formData.reserve_lastName}
+                                  onChange={handleInputChange}
+                                  placeholder="Last Name"
+                                  className="w-full p-2.5 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white"
+                                />
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <input 
+                                  name="reserve_email"
+                                  value={formData.reserve_email}
+                                  onChange={handleInputChange}
+                                  placeholder="Email Address"
+                                  className="w-full p-2.5 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white"
+                                />
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">+1</span>
+                                  <input 
+                                    name="reserve_phone"
+                                    value={formData.reserve_phone}
+                                    onChange={handleInputChange}
+                                    placeholder="Phone"
+                                    className="w-full pl-8 p-2.5 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white"
+                                  />
+                                </div>
                               </div>
                             </div>
                             <div>

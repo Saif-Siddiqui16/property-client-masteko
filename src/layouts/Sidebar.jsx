@@ -334,7 +334,7 @@ export const Sidebar = ({ isOpen, onClose }) => {
               'Properties': 'Properties',
               'Buildings': 'Buildings',
               'Units': 'Units',
-              'Unit Readiness': 'Buildings', // Reuse Buildings permission for now
+              'Unit Readiness': 'Unit Readiness', // Now using its own independent permission
               'Tenants': 'Tenants',
               'Tenant List': 'Tenant List',
               'Vehicle Management': 'Vehicles',

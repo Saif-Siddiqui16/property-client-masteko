@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Pencil, Trash2, X, FileText, Calendar, User, Home, Bed, AlertTriangle, CheckCircle, Search } from 'lucide-react';
+import { Eye, Pencil, Trash2, X, FileText, Calendar, User, Home, Bed, AlertTriangle, CheckCircle, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../components/Button';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
@@ -23,21 +23,34 @@ export const LeaseHistory = () => {
     const [search, setSearch] = useState('');
     const [buildingFilter, setBuildingFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
+    const [page, setPage] = useState(1);
+    const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+    const [isLoading, setIsLoading] = useState(false);
 
     /* LOAD DATA */
-    useEffect(() => {
-        const fetchLeases = async () => {
-            // ... existing correct implementation ...
-            try {
-                const res = await api.get('/api/admin/leases');
+    const fetchLeases = async () => {
+        setIsLoading(true);
+        try {
+            const res = await api.get('/api/admin/leases', {
+                params: { page, limit: 15 }
+            });
+            // Handle new paginated response structure
+            if (res.data.status === 'success') {
+                setLeases(res.data.data);
+                setPagination(res.data.pagination);
+            } else {
                 setLeases(res.data);
-            } catch (error) {
-                console.error('Failed to fetch leases', error);
             }
-        };
+        } catch (error) {
+            console.error('Failed to fetch leases', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    useEffect(() => {
         fetchLeases();
-    }, []);
+    }, [page]);
 
     useEffect(() => {
         const fetchBuildings = async () => {
@@ -56,9 +69,7 @@ export const LeaseHistory = () => {
         try {
             await api.post(`/api/admin/leases/${leaseId}/send-credentials`);
             alert('Credentials sent successfully!');
-            // Refresh
-            const res = await api.get('/api/admin/leases');
-            setLeases(res.data);
+            fetchLeases();
         } catch (error) {
             console.error(error);
             alert('Failed to send credentials');
@@ -95,11 +106,7 @@ export const LeaseHistory = () => {
             };
 
             await api.put(`/api/admin/leases/${editLease.id}`, payload);
-
-            // Refresh list
-            const res = await api.get('/api/admin/leases');
-            setLeases(res.data);
-
+            fetchLeases();
             setEditLease(null);
         } catch (error) {
             console.error(error);
@@ -268,6 +275,50 @@ export const LeaseHistory = () => {
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                    {/* Pagination Controls */}
+                    <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider order-2 sm:order-1">
+                            Showing Page {pagination.page} of {pagination.totalPages} <span className="mx-1">•</span> {pagination.total} Total Leases
+                        </div>
+                        <div className="flex items-center gap-1.5 order-1 sm:order-2">
+                            <Button 
+                                variant="secondary" 
+                                size="sm" 
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={pagination.page <= 1 || isLoading}
+                                className="!px-2 !py-1"
+                            >
+                                <ChevronLeft size={14} />
+                            </Button>
+
+                            <div className="flex items-center gap-1">
+                                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(pageNum => (
+                                    <button
+                                        key={pageNum}
+                                        onClick={() => setPage(pageNum)}
+                                        disabled={isLoading}
+                                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-200 ${
+                                            pagination.page === pageNum
+                                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                                            : 'bg-white text-slate-600 border border-slate-200 hover:border-indigo-300 hover:text-indigo-600'
+                                        }`}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <Button 
+                                variant="secondary" 
+                                size="sm" 
+                                onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+                                disabled={pagination.page >= pagination.totalPages || isLoading}
+                                className="!px-2 !py-1"
+                            >
+                                <ChevronRight size={14} />
+                            </Button>
+                        </div>
                     </div>
                 </div>
 

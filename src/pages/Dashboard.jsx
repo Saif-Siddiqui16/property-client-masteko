@@ -27,7 +27,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Calendar,
+  UserPlus
 } from 'lucide-react';
 
 import { OwnerSelector } from '../components/OwnerSelector';
@@ -66,7 +68,9 @@ export const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedOwnerId, setSelectedOwnerId] = useState('');
   const [leaseAlertPage, setLeaseAlertPage] = useState(1);
+  const [reservedUnitPage, setReservedUnitPage] = useState(1);
   const leaseAlertsPerPage = 5;
+  const reservedUnitsPerPage = 5;
 
 
   const fetchStats = async (ownerId = '') => {
@@ -125,7 +129,7 @@ export const Dashboard = () => {
     recentActivity: []
   };
 
-  const { totalProperties, totalUnits, occupancy, projectedRevenue, actualRevenue, outstandingRent, outstandingDeposits, insuranceAlerts, leaseAlerts, leaseAlertList, recentActivity, vehicleStats, pendingRefunds } = data;
+  const { totalProperties, totalUnits, occupancy, projectedRevenue, actualRevenue, outstandingRent, outstandingDeposits, insuranceAlerts, leaseAlerts, leaseAlertList, recentActivity, vehicleStats, pendingRefunds, reservedUnits } = data;
 
   const sortedLeaseAlertList = leaseAlertList ? [...leaseAlertList].sort((a, b) => a.daysLeft - b.daysLeft) : [];
   const totalLeaseAlertPages = Math.ceil(sortedLeaseAlertList.length / leaseAlertsPerPage);
@@ -133,6 +137,12 @@ export const Dashboard = () => {
     (leaseAlertPage - 1) * leaseAlertsPerPage,
     leaseAlertPage * leaseAlertsPerPage
   );
+
+  const paginatedReservedUnits = reservedUnits ? reservedUnits.slice(
+    (reservedUnitPage - 1) * reservedUnitsPerPage,
+    reservedUnitPage * reservedUnitsPerPage
+  ) : [];
+  const totalReservedUnitPages = Math.ceil((reservedUnits?.length || 0) / reservedUnitsPerPage);
 
   // Build revenue chart from real monthly data (sorted chronologically)
   const revenueData = [...(revenueStats?.monthlyRevenue || [])]
@@ -372,19 +382,19 @@ export const Dashboard = () => {
               </Card>
             </section>
 
-            {/* DEPOSITS PENDING REFUND TABLE */}
-            <section className="mt-8 mb-6">
-              <Card className="p-8 rounded-[24px] bg-white shadow-[0_22px_50px_rgba(0,0,0,0.08)] border-t-[4px] border-amber-500 overflow-hidden">
+            {/* RESERVED UNITS TABLE */}
+            <section className="mt-8 mb-12">
+              <Card className="p-8 rounded-[24px] bg-white shadow-[0_22px_50px_rgba(0,0,0,0.08)] border-t-[4px] border-indigo-500 overflow-hidden">
                 <div className="flex items-center justify-between mb-8">
                   <div>
                     <h3 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                       <Clock size={20} className="text-amber-500 animate-pulse" /> Deposits Pending Refund
+                       <UserPlus size={20} className="text-indigo-500" /> Reserved Units
                     </h3>
-                    <p className="text-sm text-gray-400 font-medium mt-1">Tenant left, leases expired with previously paid security balances.</p>
+                    <p className="text-sm text-gray-400 font-medium mt-1">Confirmed reservations waiting for lease creation and move-in.</p>
                   </div>
-                  <div className="px-4 py-2 bg-amber-50 rounded-full border border-amber-100">
-                    <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">
-                      {pendingRefunds?.length || 0} Awaiting Action
+                  <div className="px-4 py-2 bg-indigo-50 rounded-full border border-indigo-100">
+                    <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">
+                      {reservedUnits?.length || 0} Future Residents
                     </span>
                   </div>
                 </div>
@@ -393,16 +403,14 @@ export const Dashboard = () => {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-gray-100">
-                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest pl-2">Tenant</th>
+                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest pl-2">Prospect</th>
                         <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Property / Unit</th>
-                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Paid Deposit</th>
-                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Move Out Date</th>
-                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Refund Status</th>
+                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Tentative Move-In</th>
                         <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right pr-2">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {pendingRefunds?.map((item) => (
+                      {paginatedReservedUnits?.map((item) => (
                         <tr key={item.id} className="group transition-colors hover:bg-gray-50/50">
                           <td className="py-5 pl-2">
                             <span className="text-sm font-bold text-gray-800">{item.tenantName}</span>
@@ -411,47 +419,82 @@ export const Dashboard = () => {
                             <span className="text-sm font-semibold text-gray-600">{item.building} / {item.unitNumber}</span>
                           </td>
                           <td className="py-5 text-center">
-                            <span className="text-sm font-black text-emerald-600 font-mono">
-                              $ {parseFloat(item.depositAmount).toLocaleString('en-CA')}
-                            </span>
+                            <div className="flex flex-col items-center">
+                                <span className="text-sm font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 italic">
+                                {formatTableDate(item.moveInDate)}
+                                </span>
+                            </div>
                           </td>
-                          <td className="py-5 text-center">
-                            <span className="text-sm font-medium text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full text-xs font-bold">
-                              {formatTableDate(item.leaseExpiryDate)}
-                            </span>
-                          </td>
-                          <td className="py-5 text-center">
-                            <span className="px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 text-[10px] font-black uppercase tracking-tight border border-orange-100">
-                              Pending
-                            </span>
-                          </td>
-                          <td className="py-5 text-right pr-2 flex items-center justify-end gap-2">
+                          <td className="py-5 text-right pr-2">
                             <button
-                              onClick={() => window.location.href = `/payments/refunds?tenantId=${item.tenantId}&unitId=${item.unitId}`}
-                              className="px-3 py-1.5 rounded-lg bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 shadow-sm shadow-amber-200 uppercase tracking-widest transition-all"
+                              onClick={() => window.location.href = `/unit-readiness`}
+                              className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200"
                             >
-                              Refund
-                            </button>
-                            <button
-                              onClick={() => handleCancelRefund(item.tenantId, item.unitId)}
-                              className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold uppercase tracking-widest transition-all"
-                            >
-                              Cancel
+                              View Readiness
                             </button>
                           </td>
                         </tr>
                       ))}
-                      {(!pendingRefunds || pendingRefunds.length === 0) && (
+                      {(!reservedUnits || reservedUnits.length === 0) && (
                         <tr>
                           <td colSpan="5" className="py-12 text-center text-gray-400 italic text-sm font-medium">
-                            <FileText size={24} className="mx-auto mb-2 text-slate-300" />
-                            No outstanding deposits waiting to be refunded!
+                            <Calendar size={24} className="mx-auto mb-2 text-slate-300" />
+                            No active reservations at the moment.
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </div>
+
+                {totalReservedUnitPages > 1 && (
+                  <div className="flex items-center justify-between mt-6 pt-6 border-t border-slate-50 px-2">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                       Showing page {reservedUnitPage} of {totalReservedUnitPages}
+                    </div>
+                    <div className="flex items-center gap-1.5 font-sans">
+                        <button
+                          onClick={() => setReservedUnitPage(p => Math.max(1, p - 1))}
+                          disabled={reservedUnitPage === 1}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-100 text-slate-400 hover:bg-slate-50 disabled:opacity-30 transition-all cursor-pointer"
+                        >
+                          <ChevronLeft size={14} />
+                        </button>
+
+                        {[...Array(totalReservedUnitPages)].map((_, i) => {
+                          const p = i + 1;
+                           // Only show first, last, and pages around current
+                           if (p === 1 || p === totalReservedUnitPages || (p >= reservedUnitPage - 1 && p <= reservedUnitPage + 1)) {
+                             return (
+                              <button
+                                key={p}
+                                onClick={() => setReservedUnitPage(p)}
+                                className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-black transition-all cursor-pointer ${
+                                  reservedUnitPage === p
+                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
+                                    : 'text-slate-500 hover:bg-slate-50 border border-transparent'
+                                }`}
+                              >
+                                {p}
+                              </button>
+                             );
+                           }
+                           if (p === reservedUnitPage - 2 || p === reservedUnitPage + 2) {
+                            return <span key={p} className="text-slate-300 text-[10px] px-0.5">...</span>;
+                           }
+                           return null;
+                        })}
+
+                        <button
+                          onClick={() => setReservedUnitPage(p => Math.min(totalReservedUnitPages, p + 1))}
+                          disabled={reservedUnitPage === totalReservedUnitPages}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-100 text-slate-400 hover:bg-slate-50 disabled:opacity-30 transition-all cursor-pointer"
+                        >
+                          <ChevronRight size={14} />
+                        </button>
+                    </div>
+                  </div>
+                )}
               </Card>
             </section>
 

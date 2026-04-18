@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
-import axios from '../api/client';
+import api from '../api/client';
 import { 
   CheckCircle, 
   AlertTriangle, 
@@ -38,6 +38,8 @@ const UnitReadiness = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showHolidays, setShowHolidays] = useState(false);
   const [holidays, setHolidays] = useState([]);
+  const [showReserveModal, setShowReserveModal] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState(null);
   const [newHoliday, setNewHoliday] = useState({ name: '', date: '' });
   const [timelineSettings, setTimelineSettings] = useState([]);
   const [recalculateAll, setRecalculateAll] = useState(false);
@@ -54,7 +56,7 @@ const UnitReadiness = () => {
 
   const fetchBuildings = async () => {
     try {
-      const res = await axios.get('/api/admin/readiness/buildings');
+      const res = await api.get('/api/admin/readiness/buildings');
       setBuildings(res.data);
     } catch (err) { console.error('Error fetching buildings', err); }
   };
@@ -63,7 +65,7 @@ const UnitReadiness = () => {
     try {
       setLoading(true);
       // 1. Fetch Summary Stats - Dedicated Readiness Stats
-      const statsRes = await axios.get('/api/admin/readiness/stats', {
+      const statsRes = await api.get('/api/admin/readiness/stats', {
         params: { propertyId: propertyFilter }
       });
       setStats({
@@ -74,7 +76,7 @@ const UnitReadiness = () => {
       });
 
       // 2. Fetch Dashboard Units
-      const response = await axios.get(`/api/admin/readiness/dashboard`, {
+      const response = await api.get(`/api/admin/readiness/dashboard`, {
         params: { 
           search: searchTerm, 
           status: statusFilter, 
@@ -95,9 +97,9 @@ const UnitReadiness = () => {
 
   const fetchSettings = async () => {
     try {
-      const resp = await axios.get('/api/admin/readiness/settings');
+      const resp = await api.get('/api/admin/readiness/settings');
       setTimelineSettings(resp.data);
-      const hResp = await axios.get('/api/admin/readiness/holidays');
+      const hResp = await api.get('/api/admin/readiness/holidays');
       setHolidays(hResp.data);
     } catch (err) { console.error(err); }
   };
@@ -105,7 +107,7 @@ const UnitReadiness = () => {
   const handleAddHoliday = async () => {
     if (!newHoliday.name || !newHoliday.date) return;
     try {
-      await axios.post('/api/admin/readiness/holidays', newHoliday);
+      await api.post('/api/admin/readiness/holidays', newHoliday);
       setNewHoliday({ name: '', date: '' });
       fetchSettings();
     } catch (err) { alert('Error adding holiday'); }
@@ -113,7 +115,7 @@ const UnitReadiness = () => {
 
   const handleDeleteHoliday = async (id) => {
     try {
-      await axios.delete(`/api/admin/readiness/holidays/${id}`);
+      await api.delete(`/api/admin/readiness/holidays/${id}`);
       fetchSettings();
     } catch (err) { alert('Error deleting holiday'); }
   };
@@ -123,7 +125,7 @@ const UnitReadiness = () => {
       if (recalculateAll && !window.confirm("This will recalculate target dates for all units currently in construction. Existing manual dates won't be changed unless you haven't marked them. Proceed?")) {
           return;
       }
-      await axios.put('/api/admin/readiness/settings', { 
+      await api.put('/api/admin/readiness/settings', { 
           settings: timelineSettings,
           triggerRecalculate: recalculateAll
       });
@@ -143,7 +145,7 @@ const UnitReadiness = () => {
       };
       if (force) payload.force = true;
 
-      await axios.put(`/api/admin/readiness/update-step/${unitId}`, payload);
+      await api.put(`/api/admin/readiness/update-step/${unitId}`, payload);
       fetchData(); // Refresh UI
     } catch (err) {
       if (err.response?.status === 409) {
@@ -409,21 +411,21 @@ const UnitReadiness = () => {
                     <th className="bg-[#E2F0D9] px-2 py-3 border border-slate-400 sticky left-[90px] z-30 min-w-[70px]">Unit</th>
                     
                     {/* GC */}
-                    <th className="bg-[#D9D9D9] px-1 py-3 border border-slate-400 w-20">GC Delivered</th>
-                    <th className="bg-[#D9D9D9] px-1 py-3 border border-slate-400 w-20 font-black">GC Deficiencies</th>
-                    <th className="bg-[#D9D9D9] px-1 py-3 border border-slate-400 w-20">GC Complete</th>
+                    <th className="bg-[#D9D9D9] px-1 py-3 border border-slate-400 w-16">GC Delivered</th>
+                    <th className="bg-[#D9D9D9] px-1 py-3 border border-slate-400 w-16 font-black">GC Deficiencies</th>
+                    <th className="bg-[#D9D9D9] px-1 py-3 border border-slate-400 w-16">GC Complete</th>
                     
                     {/* Ops (Rule 2 Sequence) */}
-                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-20">FF&E Installed</th>
-                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-20">Final Cleaning</th>
-                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-20">OS&E Installed</th>
-                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-20">Unit Ready</th>
+                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-16">FF&E Installed</th>
+                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-16">Final Cleaning</th>
+                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-16">OS&E Installed</th>
+                    <th className="bg-[#DDEBF7] px-1 py-3 border border-slate-400 w-16">Unit Ready</th>
                     
                     {/* Summary */}
                     <th className="bg-[#FCE4D6] px-1 py-3 border border-slate-400 tracking-tighter w-16">Days Late</th>
-                    <th className="bg-[#FCE4D6] px-1 py-3 border border-slate-400 tracking-tighter w-16">Reserved</th>
+                    <th className="bg-[#FCE4D6] px-1 py-3 border border-slate-400 tracking-tighter w-40">Reserved</th>
                     <th className="bg-[#FCE4D6] px-1 py-3 border border-slate-400 tracking-tighter w-20">Move-In</th>
-                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400">Status Note</th>
+                    <th className="bg-[#FCE4D6] px-2 py-3 border border-slate-400 w-32">Status Note</th>
                     <th className="bg-[#FCE4D6] px-1 py-3 border border-slate-400 tracking-tighter w-16">Days on Market</th>
                   </tr>
                 </thead>
@@ -516,13 +518,24 @@ const UnitReadiness = () => {
                         </td>
                         <td className="px-1 py-4 text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border ${unit.reserved ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                               {unit.reserved ? 'Yes' : 'No'}
-                            </span>
-                            {unit.reserved && unit.reservedBy && (
-                              <span className="text-[9px] font-black text-blue-600 block max-w-[80px] truncate leading-tight uppercase" title={unit.reservedBy}>
-                                {unit.reservedBy}
-                              </span>
+                            {unit.reserved ? (
+                              <>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-blue-50 text-blue-700 border-blue-200">
+                                  Reserved
+                                </span>
+                                {unit.reservedBy && (
+                                  <span className="text-[11px] font-black text-blue-700 block px-1 leading-tight uppercase whitespace-normal break-words max-w-[120px]" title={unit.reservedBy}>
+                                    {unit.reservedBy}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <button 
+                                onClick={() => { setSelectedUnit(unit); setShowReserveModal(true); }}
+                                className="px-3 py-1 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-[10px] font-black uppercase hover:bg-indigo-50 transition-all shadow-sm"
+                              >
+                                Reserve
+                              </button>
                             )}
                           </div>
                         </td>
@@ -607,7 +620,134 @@ const UnitReadiness = () => {
           </div>
         </div>
       </div>
+
+      {showReserveModal && selectedUnit && (
+        <ReserveModal 
+          unit={selectedUnit}
+          onClose={() => setShowReserveModal(false)}
+          onReserved={fetchData}
+        />
+      )}
     </MainLayout>
+  );
+};
+
+const ReserveModal = ({ unit, onClose, onReserved }) => {
+  const [formData, setFormData] = useState({
+    reserve_firstName: '',
+    reserve_lastName: '',
+    reserve_email: '',
+    reserve_phone: '+1 ',
+    tentative_move_in_date: '',
+    reserved_flag: true
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handlePhoneChange = (val) => {
+    if (!val.startsWith('+1 ')) {
+      setFormData({ ...formData, reserve_phone: '+1 ' });
+    } else {
+      setFormData({ ...formData, reserve_phone: val });
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.put(`/api/admin/units/${unit.id}`, formData);
+      onReserved();
+      onClose();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error creating reservation');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-300">
+        <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-indigo-600 text-white">
+          <div>
+            <h3 className="text-2xl font-black tracking-tight">Reserve Unit {unit.unitNumber}</h3>
+            <p className="text-indigo-100 text-sm font-medium mt-1">Direct Prospect Entry</p>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors text-2xl font-light">×</button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-slate-400 ml-1">First Name</label>
+              <input 
+                required
+                className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700" 
+                value={formData.reserve_firstName}
+                onChange={e => setFormData({...formData, reserve_firstName: e.target.value})}
+                placeholder="John"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Last Name</label>
+              <input 
+                required
+                className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700" 
+                value={formData.reserve_lastName}
+                onChange={e => setFormData({...formData, reserve_lastName: e.target.value})}
+                placeholder="Doe"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email Address</label>
+            <input 
+              required
+              type="email"
+              className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700" 
+              value={formData.reserve_email}
+              onChange={e => setFormData({...formData, reserve_email: e.target.value})}
+              placeholder="prospect@example.com"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Phone Number</label>
+              <div className="relative">
+                <input 
+                  className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700" 
+                  value={formData.reserve_phone}
+                  onChange={e => handlePhoneChange(e.target.value)}
+                  placeholder="+1 514-000-0000"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase text-slate-400 ml-1">Tentative Move-In</label>
+              <input 
+                type="date"
+                className="w-full px-5 py-3.5 rounded-2xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-indigo-500 outline-none transition-all font-medium text-slate-700" 
+                value={formData.tentative_move_in_date}
+                onChange={e => setFormData({...formData, tentative_move_in_date: e.target.value})}
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 flex gap-3">
+            <button type="button" onClick={onClose} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-colors">Cancel</button>
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95 disabled:opacity-50"
+            >
+              {loading ? 'Reserving...' : 'Confirm Reservation'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 };
 

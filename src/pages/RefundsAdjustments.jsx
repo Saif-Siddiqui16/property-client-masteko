@@ -42,6 +42,8 @@ const RefundsAdjustments = () => {
   const [amountValue, setAmountValue] = useState('');
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [pendingRefunds, setPendingRefunds] = useState([]);
+  const [loadingPending, setLoadingPending] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const location = useLocation();
@@ -63,8 +65,52 @@ const RefundsAdjustments = () => {
 
   const fetchInitialData = async () => {
     setLoading(true);
-    await Promise.all([fetchRecords(currentPage), fetchTenants(), fetchUnits()]);
+    await Promise.all([
+      fetchRecords(currentPage), 
+      fetchTenants(), 
+      fetchUnits(),
+      fetchPendingRefunds()
+    ]);
     setLoading(false);
+  };
+
+  const fetchPendingRefunds = async () => {
+    setLoadingPending(true);
+    try {
+      const res = await api.get('/api/admin/dashboard/stats');
+      setPendingRefunds(res.data.pendingRefunds || []);
+    } catch (e) {
+      console.error('Error fetching pending refunds:', e);
+    } finally {
+      setLoadingPending(false);
+    }
+  };
+
+  const handleCancelRefund = async (tenantId, unitId) => {
+    if (!window.confirm('Are you sure you want to cancel the refund process for this tenant?')) return;
+    try {
+      await api.post('/api/admin/refunds', {
+        tenantId: parseInt(tenantId),
+        unitId: parseInt(unitId),
+        type: 'Security Deposit',
+        status: 'Cancelled',
+        outcomeReason: 'Cancelled – lease renewed',
+        amount: 0,
+        reason: 'Refund process cancelled via Refunds Page Action'
+      });
+      alert('Refund process cancelled successfully.');
+      fetchPendingRefunds();
+      fetchRecords(currentPage);
+    } catch (error) {
+      console.error('Failed to cancel refund process', error);
+    }
+  };
+
+  const formatTableDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const [year, month, day] = dateString.split('T')[0].split('-');
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[parseInt(month, 10) - 1]} ${parseInt(day, 10)}, ${year}`;
   };
 
   useEffect(() => {
@@ -205,6 +251,79 @@ const RefundsAdjustments = () => {
             <span className="font-bold">Refund record {success} successfully!</span>
           </div>
         )}
+
+        {/* DEPOSITS PENDING REFUND TASK LIST */}
+        <div className="bg-white rounded-2xl shadow-[0_15px_40px_rgba(0,0,0,0.06)] border-t-[4px] border-amber-500 overflow-hidden mb-4">
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                <h3 className="text-lg font-black text-slate-800 tracking-tight flex items-center gap-2">
+                    <Clock size={18} className="text-amber-500" /> Deposits Pending Refund
+                </h3>
+                <p className="text-xs text-gray-400 font-medium mt-0.5 italic">Tasks: Leases that have ended and require security deposit processing.</p>
+                </div>
+                <div className="px-3 py-1 bg-amber-50 rounded-full border border-amber-100">
+                <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">
+                    {pendingRefunds.length} Active Tasks
+                </span>
+                </div>
+            </div>
+            
+            <div className="overflow-x-auto overflow-y-auto max-h-[350px]">
+                <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-white z-10 shadow-sm">
+                    <tr className="border-b border-gray-100">
+                    <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tenant Name</th>
+                    <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Building / Unit</th>
+                    <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Paid Deposit</th>
+                    <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Move Out</th>
+                    <th className="p-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                    {pendingRefunds.map((item) => (
+                    <tr key={item.id} className="group hover:bg-slate-50 transition-colors">
+                        <td className="p-4 text-sm font-bold text-slate-700">{item.tenantName}</td>
+                        <td className="p-4 text-xs font-semibold text-slate-500">{item.building} / {item.unitNumber}</td>
+                        <td className="p-4 text-center">
+                        <span className="text-sm font-black text-emerald-600">$ {item.depositAmount.toLocaleString('en-CA')}</span>
+                        </td>
+                        <td className="p-4 text-center">
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{formatTableDate(item.leaseExpiryDate)}</span>
+                        </td>
+                        <td className="p-4 text-right flex items-center justify-end gap-2">
+                        <button
+                            onClick={() => {
+                                setSelectedTenantId(item.tenantId);
+                                setSelectedUnitId(item.unitId);
+                                setShowModal(true);
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100"
+                        >
+                            Process
+                        </button>
+                        <button
+                            onClick={() => handleCancelRefund(item.tenantId, item.unitId)}
+                            className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-500 transition-all"
+                        >
+                            Dismiss
+                        </button>
+                        </td>
+                    </tr>
+                    ))}
+                    {pendingRefunds.length === 0 && !loadingPending && (
+                    <tr>
+                        <td colSpan="5" className="py-12 text-center">
+                        <div className="flex flex-col items-center gap-2">
+                            <CheckCircle2 size={32} className="text-emerald-100" />
+                            <span className="text-sm font-bold text-slate-300 italic tracking-tight">Zero pending deposit tasks! All caught up.</span>
+                        </div>
+                        </td>
+                    </tr>
+                    )}
+                </tbody>
+                </table>
+            </div>
+        </div>
 
         <div className="flex justify-end pt-2">
           {hasPermission('Refunds', 'add') && (

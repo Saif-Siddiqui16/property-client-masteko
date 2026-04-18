@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Card } from '../components/Card';
 import api from '../api/client';
 import { format } from 'date-fns';
+import { Mail, Plus, Trash2, Edit2, Send, CheckCircle, Clock } from 'lucide-react';
 
 export const ShuttleManagement = () => {
   const { t } = useTranslation();
@@ -21,15 +22,23 @@ export const ShuttleManagement = () => {
   const [accessSearch, setAccessSearch] = useState('');
   const [drivers, setDrivers] = useState([]);
   const [showDriverModal, setShowDriverModal] = useState(false);
-  const [newDriver, setNewDriver] = useState({ name: '', phone: '', email: '' });
+  const [newDriver, setNewDriver] = useState({ name: '', phone: '+1 ', email: '' });
   
   // UI States
   const [showTripModal, setShowTripModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showPassengerModal, setShowPassengerModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [showInvitePMSModal, setShowInvitePMSModal] = useState(false);
+  
+  // PMS Invitation States
+  const [pmsTenants, setPMSTenants] = useState([]);
+  const [emailTemplates, setEmailTemplates] = useState([]);
+  const [selectedPMSTenants, setSelectedPMSTenants] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const [targetDate, setTargetDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedTrip, setSelectedTrip] = useState(null);
+  const [selectedDriver, setSelectedDriver] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [newTrip, setNewTrip] = useState({ 
     time: '', 
@@ -196,6 +205,97 @@ export const ShuttleManagement = () => {
       fetchData();
     } catch (error) {
       alert('Failed to create request');
+    }
+  };
+
+  const handleInviteTenants = async () => {
+    if (!window.confirm("Send shuttle app invitations to all visible tenants?")) return;
+    try {
+      setLoading(true);
+      const tenantsToInvite = users.filter(u => u.role === 'tenant').map(u => ({ email: u.email, name: u.name }));
+      await api.post('/api/admin/shuttle/send-invitation', { users: tenantsToInvite });
+      alert("Invitations sent successfully!");
+    } catch (error) {
+      alert("Failed to send invitations.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openInviteModal = async () => {
+    try {
+      setLoading(true);
+      const [tenantsRes, templatesRes] = await Promise.all([
+        api.get('/api/admin/tenants', { params: { limit: 1000 } }),
+        api.get('/api/admin/shuttle/email-templates')
+      ]);
+      
+      // Enrich tenants with their shuttle app status
+      const enrichedTenants = (tenantsRes.data.data || []).map(t => {
+        const shuttleUser = users.find(u => u.email?.toLowerCase() === t.email?.toLowerCase());
+        return {
+          ...t,
+          shuttleStatus: shuttleUser ? (shuttleUser.password_set ? 'ACTIVE' : (shuttleUser.invitation_sent ? 'INVITED' : 'ACCOUNT_ONLY')) : 'NONE'
+        };
+      });
+
+      setPMSTenants(enrichedTenants);
+      setEmailTemplates(templatesRes.data.templates || []);
+      setSelectedPMSTenants([]);
+      setShowInvitePMSModal(true);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to fetch property tenants.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendPMSInvitations = async () => {
+    if (selectedPMSTenants.length === 0) {
+      alert("Please select at least one tenant.");
+      return;
+    }
+    try {
+      setLoading(true);
+      await api.post('/api/admin/shuttle/invite-pms-tenants', {
+        tenantIds: selectedPMSTenants,
+        templateId: selectedTemplate
+      });
+      alert(`Invitations processed successfully for ${selectedPMSTenants.length} tenants.`);
+      setShowInvitePMSModal(false);
+      fetchData();
+    } catch (error) {
+      alert("Failed to send invitations.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateDriver = async (e) => {
+    e.preventDefault();
+    try {
+      if (isEditing && selectedDriver) {
+        await api.put(`/api/admin/shuttle/users/${selectedDriver.id}`, newDriver);
+      } else {
+        await api.post('/api/admin/shuttle/users', { ...newDriver, role: 'driver' });
+      }
+      setShowDriverModal(false);
+      setIsEditing(false);
+      setNewDriver({ name: '', phone: '+1 ', email: '' });
+      fetchData();
+    } catch (error) {
+      alert(isEditing ? 'Failed to update driver' : 'Failed to add driver');
+    }
+  };
+
+  const handleDeleteDriver = async (id) => {
+    if (!window.confirm('Are you sure you want to remove this driver? They will lose access to the app.')) return;
+    try {
+      await api.delete(`/api/admin/shuttle/users/${id}`);
+      fetchData();
+    } catch (error) {
+      alert('Failed to remove driver');
     }
   };
 
@@ -454,8 +554,13 @@ export const ShuttleManagement = () => {
                       />
                       <svg className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
-                    <button className="px-3 py-2 text-indigo-600 bg-indigo-50 rounded-lg text-xs font-bold hover:bg-indigo-100">Bulk Enable</button>
-                    <button className="px-3 py-2 text-red-600 bg-red-50 rounded-lg text-xs font-bold hover:bg-red-100">Bulk Disable</button>
+                    <button onClick={openInviteModal} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[11px] font-bold hover:bg-indigo-700 shadow-md shadow-indigo-100 flex items-center gap-2 transition-all active:scale-95">
+                      <Plus size={14} /> Invite New Tenants
+                    </button>
+                    <button onClick={handleInviteTenants} className="px-3 py-2 text-indigo-600 bg-indigo-50 rounded-lg text-[11px] font-bold hover:bg-indigo-100 flex items-center gap-2">
+                       <Mail size={14} /> Bulk Send (App Users)
+                    </button>
+                    <button className="px-3 py-2 text-red-600 bg-red-50 rounded-lg text-[11px] font-bold hover:bg-red-100">Bulk Disable</button>
                   </div>
                 </div>
 
@@ -477,12 +582,19 @@ export const ShuttleManagement = () => {
                             <td className="px-5 py-4">
                               <span className="text-emerald-600 text-[10px] font-bold bg-emerald-50 px-2 py-1 rounded-md uppercase tracking-wider">Active</span>
                             </td>
-                            <td className="px-5 py-4 text-right">
-                               <label className="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" className="sr-only peer" defaultChecked />
-                                <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
-                              </label>
-                            </td>
+                             <td className="px-5 py-4 text-right flex items-center justify-end gap-3">
+                                <button 
+                                  onClick={() => handleDeleteDriver(user.id)} 
+                                  className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors"
+                                  title="Remove from Shuttle App"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                 <input type="checkbox" className="sr-only peer" defaultChecked />
+                                 <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                               </label>
+                             </td>
                           </tr>
                         ))}
                       </tbody>
@@ -499,7 +611,7 @@ export const ShuttleManagement = () => {
                     <p className="text-xs text-gray-500">Contact information and status for system drivers.</p>
                   </div>
                   <button 
-                    onClick={() => { setIsEditing(false); setShowDriverModal(true); }}
+                    onClick={() => { setIsEditing(false); setNewDriver({ name: '', email: '', phone: '+1 ' }); setShowDriverModal(true); }}
                     className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-md shadow-indigo-100"
                   >
                     Add Driver
@@ -515,16 +627,23 @@ export const ShuttleManagement = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {users.filter(u => u.role === 'driver').map(user => (
+                       {users.filter(u => u.role === 'driver').map(user => (
                         <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-5 py-4 font-semibold text-slate-700">{user.name}</td>
-                          <td className="px-5 py-4 text-slate-500 font-medium">{user.phone || '—'}</td>
+                          <td className="px-5 py-4 text-slate-700 font-bold">{user.phone || user.phone_number || user.phoneNumber || '-'}</td>
                           <td className="px-5 py-4">
                             <span className="text-emerald-600 text-[10px] font-bold bg-emerald-50 px-2 py-1 rounded-md uppercase tracking-wider">Active</span>
                           </td>
                           <td className="px-5 py-4 text-right">
-                            <button onClick={() => { setIsEditing(true); setSelectedTrip(user); setShowDriverModal(true); }} className="text-indigo-600 hover:text-indigo-800 text-xs font-bold mr-4">Edit</button>
-                            <button className="text-red-500 hover:text-red-700 text-xs font-bold">Remove</button>
+                            <button onClick={() => { 
+                              setIsEditing(true); 
+                              setSelectedDriver(user); 
+                              const rawPhone = user.phone || user.phone_number || user.phoneNumber || '';
+                              const phoneValue = rawPhone.startsWith('+1') ? rawPhone : `+1 ${rawPhone}`.trim();
+                              setNewDriver({ name: user.name, email: user.email, phone: phoneValue || '+1 ' }); 
+                              setShowDriverModal(true); 
+                            }} className="text-indigo-600 hover:text-indigo-800 text-xs font-bold mr-4">Edit</button>
+                            <button onClick={() => handleDeleteDriver(user.id)} className="text-red-500 hover:text-red-700 text-xs font-bold">Remove</button>
                           </td>
                         </tr>
                       ))}
@@ -723,7 +842,7 @@ export const ShuttleManagement = () => {
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
               <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
                 <h3 className="font-bold text-slate-800 text-lg">New Ride Request</h3>
-                <button onClick={() => setShowRequestModal(false)} className="text-gray-400 hover:text-gray-600 font-bold">×</button>
+                <button onClick={() => setShowRequestModal(false)} className="text-gray-400 hover:text-gray-600 font-bold text-2xl">×</button>
               </div>
               <form onSubmit={handleCreateRequest} className="p-6 space-y-4">
                 <div>
@@ -764,6 +883,43 @@ export const ShuttleManagement = () => {
           </div>
         )}
 
+        {/* Driver Modal */}
+        {showDriverModal && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+                <h3 className="font-bold text-slate-800 text-lg">{isEditing ? 'Edit Driver' : 'Add New Driver'}</h3>
+                <button onClick={() => setShowDriverModal(false)} className="text-gray-400 hover:text-gray-600 font-bold text-2xl">×</button>
+              </div>
+              <form onSubmit={handleCreateDriver} className="p-6 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label>
+                  <input required className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" value={newDriver.name} onChange={e => setNewDriver({...newDriver, name: e.target.value})} placeholder="John Doe" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email Address</label>
+                  <input required type="email" disabled={isEditing} className={`w-full p-3 border border-gray-200 rounded-xl outline-none text-sm ${isEditing ? 'bg-slate-50 text-slate-400' : 'bg-white focus:ring-2 focus:ring-indigo-500'}`} value={newDriver.email} onChange={e => setNewDriver({...newDriver, email: e.target.value})} placeholder="driver@shuttle.com" />
+                  {isEditing && <p className="text-[10px] text-slate-400 mt-1">Email cannot be changed after creation.</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Phone Number</label>
+                  <input className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm" value={newDriver.phone} onChange={e => setNewDriver({...newDriver, phone: e.target.value})} placeholder="+1 (555) 000-0000" />
+                </div>
+                
+                {!isEditing && (
+                  <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+                    <p className="text-[10px] text-indigo-700 font-medium">An invitation will be sent to this email address automatically once you click "Add Driver".</p>
+                  </div>
+                )}
+
+                <button type="submit" className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98] mt-2">
+                  {isEditing ? 'Save Changes' : 'Add Driver'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* Duplicate Modal */}
         {showDuplicateModal && (
           <DuplicateModal 
@@ -773,7 +929,97 @@ export const ShuttleManagement = () => {
           />
         )}
       </div>
+      {showInvitePMSModal && (
+        <InvitePMSModal 
+          onClose={() => setShowInvitePMSModal(false)}
+          tenants={pmsTenants}
+          templates={emailTemplates}
+          selectedTenants={selectedPMSTenants}
+          setSelectedTenants={setSelectedPMSTenants}
+          selectedTemplate={selectedTemplate}
+          setSelectedTemplate={setSelectedTemplate}
+          onSend={handleSendPMSInvitations}
+          loading={loading}
+        />
+      )}
     </MainLayout>
+  );
+};
+
+const InvitePMSModal = ({ onClose, tenants, templates, selectedTenants, setSelectedTenants, selectedTemplate, setSelectedTemplate, onSend, loading }) => {
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+          <div>
+            <h3 className="font-bold text-slate-800 text-lg">Invite Property Tenants</h3>
+            <p className="text-xs text-slate-500">Select tenants from your property list to join the Shuttle App.</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-200 transition-colors">×</button>
+        </div>
+        
+        <div className="p-8 space-y-6">
+          {/* Tenant Selection */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">1. Select Tenants ({selectedTenants.length} selected)</label>
+            <div className="border border-gray-200 rounded-xl max-h-48 overflow-y-auto bg-gray-50/50 p-2">
+              {tenants.length === 0 ? (
+                <p className="p-4 text-center text-sm text-slate-400">All property tenants are already in the shuttle app.</p>
+              ) : (
+                tenants.map(t => (
+                  <label key={t.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors border border-transparent hover:border-gray-100">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      checked={selectedTenants.includes(t.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedTenants([...selectedTenants, t.id]);
+                        else setSelectedTenants(selectedTenants.filter(id => id !== t.id));
+                      }}
+                    />
+                    <div className="flex flex-col flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-slate-700">{t.name}</span>
+                        {t.shuttleStatus === 'ACTIVE' && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-black uppercase">In App</span>}
+                        {(t.shuttleStatus === 'INVITED' || t.shuttleStatus === 'ACCOUNT_ONLY') && <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black uppercase">Invitation Sent</span>}
+                      </div>
+                      <span className="text-[10px] text-slate-500">{t.email} • {t.building || t.property}</span>
+                    </div>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Template Selection */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">2. Invitation Template</label>
+            <select 
+              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium"
+              value={selectedTemplate}
+              onChange={(e) => setSelectedTemplate(e.target.value)}
+            >
+              <option value="">Default App Invitation (Simple)</option>
+              {templates.map(tmp => (
+                <option key={tmp.id} value={tmp.id}>{tmp.name} ({tmp.subject})</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-gray-50">
+             <button onClick={onClose} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-colors">Cancel</button>
+             <button 
+              disabled={loading || selectedTenants.length === 0}
+              onClick={onSend}
+              className={`flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
+             >
+               {loading ? 'Sending...' : `Send ${selectedTenants.length} Invitation(s)`}
+               {!loading && <Send size={16} />}
+             </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

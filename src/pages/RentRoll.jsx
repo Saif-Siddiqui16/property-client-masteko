@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import { OwnerLayout } from '../layouts/owner/OwnerLayout';
 import { Button } from '../components/Button';
-import { Search, Filter, Building2, Download, Building, Users, Wallet, KeySquare, DoorOpen, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Edit2, X, Trash2, ShieldAlert } from 'lucide-react';
+import { Search, Filter, Building2, Download, Building, Users, Wallet, KeySquare, DoorOpen, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Edit2, X, Trash2, ShieldAlert, Calendar } from 'lucide-react';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
 import clsx from 'clsx';
@@ -44,32 +44,41 @@ export const RentRoll = () => {
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
 
+    // Reservation State
+    const [showReserveModal, setShowReserveModal] = useState(false);
+    const [selectedUnit, setSelectedUnit] = useState(null);
+
     // Unit Type presets states
     const [showTypeModal, setShowTypeModal] = useState(false);
     const [unitTypes, setUnitTypes] = useState([]);
     const [newType, setNewType] = useState({ typeName: '', fullUnitRate: '', singleBedroomRate: '' });
 
+    const fetchRentRoll = async () => {
+        try {
+            const userStr = localStorage.getItem('user');
+            const user = userStr ? JSON.parse(userStr) : {};
+            const role = user.role;
+            const endpoint = role === 'OWNER' ? '/api/owner/reports/rent-roll' : '/api/admin/reports/rent-roll';
+            const [rentRollRes, propertiesRes] = await Promise.all([
+                api.get(endpoint),
+                api.get(role === 'OWNER' ? '/api/owner/properties' : '/api/admin/properties')
+            ]);
+
+            setData(rentRollRes.data);
+            setBuildings(propertiesRes.data?.data || propertiesRes.data || []);
+        } catch (error) {
+            console.error("Error fetching rent roll data", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleReserveClick = (unit) => {
+        setSelectedUnit(unit);
+        setShowReserveModal(true);
+    };
+
     useEffect(() => {
-        const fetchRentRoll = async () => {
-            try {
-                const userStr = localStorage.getItem('user');
-                const user = userStr ? JSON.parse(userStr) : {};
-                const role = user.role;
-                const endpoint = role === 'OWNER' ? '/api/owner/reports/rent-roll' : '/api/admin/reports/rent-roll';
-                const [rentRollRes, propertiesRes] = await Promise.all([
-                    api.get(endpoint),
-                    api.get(role === 'OWNER' ? '/api/owner/properties' : '/api/admin/properties')
-                ]);
-
-                setData(rentRollRes.data);
-                setBuildings(propertiesRes.data?.data || propertiesRes.data || []);
-            } catch (error) {
-                console.error("Error fetching rent roll data", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         const fetchUnitTypes = async () => {
             try {
                 const res = await api.get('/api/admin/unit-types');
@@ -412,6 +421,19 @@ export const RentRoll = () => {
                                                 )}>
                                                     {row.status}
                                                 </span>
+                                                {row.status === 'Vacant' && row.leaseType === 'Full Unit' && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            const unitId = row.id.split('-')[1];
+                                                            setSelectedUnit({ id: unitId, unitNumber: row.unitNumber });
+                                                            setShowReserveModal(true);
+                                                        }}
+                                                        className="ml-2 p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-indigo-100 group/btn"
+                                                        title="Reserve Unit"
+                                                    >
+                                                        <Calendar size={14} className="group-hover/btn:scale-110 transition-transform" />
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -481,6 +503,155 @@ export const RentRoll = () => {
                     )}
                 </div>
             </div>
+
+            {showReserveModal && selectedUnit && (
+                <ReserveModal 
+                    unit={selectedUnit} 
+                    onClose={() => setShowReserveModal(false)}
+                    onReserved={() => {
+                        fetchRentRoll();
+                        setShowReserveModal(false);
+                    }}
+                />
+            )}
         </Layout>
     );
 };
+
+// --- RESERVATION MODAL COMPONENT ---
+const ReserveModal = ({ unit, onClose, onReserved }) => {
+    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({
+      reserve_firstName: '',
+      reserve_lastName: '',
+      reserve_email: '',
+      reserve_phone: '+1 ',
+      tentative_move_in_date: '',
+      reserved_flag: true
+    });
+
+    const handlePhoneChange = (val) => {
+        // Enforce +1 prefix
+        if (!val.startsWith('+1 ')) {
+            setFormData({ ...formData, reserve_phone: '+1 ' });
+        } else {
+            setFormData({ ...formData, reserve_phone: val });
+        }
+    };
+  
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setLoading(true);
+      try {
+        await api.put(`/api/admin/units/${unit.id}`, formData);
+        onReserved();
+        onClose();
+      } catch (err) {
+        console.error(err);
+        alert('Error creating reservation');
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    return (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[999] p-4 animate-in fade-in duration-300">
+        <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl shadow-indigo-200/50 overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-300">
+          
+          {/* Header */}
+          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-8 text-white relative">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-3xl font-black tracking-tight leading-none mb-2">Reserve Unit {unit.unitNumber}</h3>
+                <p className="text-indigo-100 text-sm font-bold uppercase tracking-widest opacity-80">Direct Prospect Entry</p>
+              </div>
+              <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-all">
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+  
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">First Name</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="John"
+                  className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300"
+                  value={formData.reserve_firstName}
+                  onChange={(e) => setFormData({...formData, reserve_firstName: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Name</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="Doe"
+                  className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300"
+                  value={formData.reserve_lastName}
+                  onChange={(e) => setFormData({...formData, reserve_lastName: e.target.value})}
+                />
+              </div>
+            </div>
+  
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+              <input
+                required
+                type="email"
+                placeholder="prospect@example.com"
+                className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300"
+                value={formData.reserve_email}
+                onChange={(e) => setFormData({...formData, reserve_email: e.target.value})}
+              />
+            </div>
+  
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                <input
+                  required
+                  type="tel"
+                  placeholder="+1 514-000-0000"
+                  className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700 placeholder:text-slate-300"
+                  value={formData.reserve_phone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tentative Move-In</label>
+                <input
+                  required
+                  type="date"
+                  className="w-full px-5 py-3.5 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700"
+                  value={formData.tentative_move_in_date}
+                  onChange={(e) => setFormData({...formData, tentative_move_in_date: e.target.value})}
+                />
+              </div>
+            </div>
+  
+            <div className="flex gap-4 pt-4">
+              <button 
+                type="button" 
+                onClick={onClose}
+                className="flex-1 px-8 py-4 bg-slate-50 text-slate-500 font-black uppercase tracking-widest rounded-2xl hover:bg-slate-100 transition-all border-b-4 border-slate-200 active:border-b-0 active:translate-y-1 shadow-inner"
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="flex-[1.5] px-8 py-4 bg-gradient-to-br from-indigo-600 to-violet-700 text-white font-black uppercase tracking-widest rounded-2xl hover:brightness-110 transition-all shadow-xl shadow-indigo-200 border-b-4 border-indigo-900 active:border-b-0 active:translate-y-1 disabled:opacity-50"
+              >
+                {loading ? 'Processing...' : 'Confirm Reservation'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };

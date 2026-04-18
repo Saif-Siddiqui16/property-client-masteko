@@ -204,7 +204,7 @@ export const Invoices = () => {
             const payload = {
                 month: form.month,
                 rent: form.category === 'RENT' ? form.rent : 0,
-                serviceFees: form.category === 'SERVICE' ? form.serviceFees : 0,
+                serviceFees: (form.category === 'SERVICE' || form.category === 'SECURITY_DEPOSIT') ? form.serviceFees : 0,
                 category: form.category,
                 description: form.description,
                 items: form.category === 'SERVICE' ? lineItems.filter(item => item.description && item.amount) : []
@@ -295,7 +295,7 @@ export const Invoices = () => {
     // Summary calculations for the filtered view
     const filteredTotal = filteredInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
     const rentTotal = filteredInvoices.filter(inv => (inv.category || 'RENT') === 'RENT').reduce((sum, inv) => sum + (inv.amount || 0), 0);
-    const depositTotal = filteredInvoices.filter(inv => inv.category === 'DEPOSIT').reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const depositTotal = filteredInvoices.filter(inv => inv.category === 'DEPOSIT' || inv.category === 'SECURITY_DEPOSIT').reduce((sum, inv) => sum + (inv.amount || 0), 0);
     const serviceTotal = filteredInvoices.filter(inv => inv.category === 'SERVICE').reduce((sum, inv) => sum + (inv.amount || 0), 0);
     const hasActiveFilters = filterBuilding || filterUnit || filterYear || filterMonth || filterType;
 
@@ -488,6 +488,16 @@ export const Invoices = () => {
                     {hasPermission('Invoices', 'add') && (
                         <Button variant="secondary" onClick={() => {
                             setEditInvoice(null);
+                            setForm({ tenantId: '', unitId: '', tenant: '', unit: '', unitName: '', month: '', rent: '0', serviceFees: '', category: 'SECURITY_DEPOSIT', description: 'Security Deposit' });
+                            setShowForm(true);
+                        }} className="bg-purple-50 border-purple-100 text-purple-700 hover:bg-purple-100">
+                            <Plus size={18} className="mr-1" />
+                            Create Deposit Invoice
+                        </Button>
+                    )}
+                    {hasPermission('Invoices', 'add') && (
+                        <Button variant="secondary" onClick={() => {
+                            setEditInvoice(null);
                             setForm({ tenantId: '', unitId: '', tenant: '', unit: '', unitName: '', month: '', rent: '0', serviceFees: '', category: 'SERVICE', description: '' });
                             setShowForm(true);
                         }}>
@@ -532,7 +542,7 @@ export const Invoices = () => {
                                             <span className={clsx(
                                                 "px-2.5 py-1 rounded-lg text-[10px] font-black uppercase whitespace-nowrap shadow-sm border",
                                                 inv.category === 'SERVICE' ? "bg-amber-50 text-amber-700 border-amber-100" : 
-                                                inv.category === 'DEPOSIT' ? "bg-purple-50 text-purple-700 border-purple-100" :
+                                                inv.category === 'SECURITY_DEPOSIT' || inv.category === 'DEPOSIT' ? "bg-purple-50 text-purple-700 border-purple-100" :
                                                 "bg-indigo-50 text-indigo-700 border-indigo-100"
                                             )}>
                                                 {inv.category || 'RENT'}
@@ -909,26 +919,36 @@ export const Invoices = () => {
 
                                 <div className="space-y-1.5">
                                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-1">Invoice Type</label>
-                                    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+                                    <div className="flex gap-2 p-1 bg-slate-100 rounded-xl overflow-x-auto no-scrollbar">
                                         <button
                                             type="button"
-                                            onClick={() => setForm({ ...form, category: 'RENT', serviceFees: '0', description: '' })}
+                                            onClick={() => setForm({ ...form, category: 'RENT', serviceFees: '0', description: '', rent: (editInvoice?.rent || '0').toString() })}
                                             className={clsx(
-                                                "flex-1 py-2 text-xs font-bold rounded-lg transition-all",
+                                                "flex-1 py-2 px-3 text-[10px] font-black uppercase rounded-lg transition-all whitespace-nowrap",
                                                 form.category === 'RENT' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
                                             )}
                                         >
-                                            Rent Payment
+                                            Rent
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setForm({ ...form, category: 'SERVICE', rent: '0' })}
+                                            onClick={() => setForm({ ...form, category: 'SERVICE', rent: '0', description: '' })}
                                             className={clsx(
-                                                "flex-1 py-2 text-xs font-bold rounded-lg transition-all",
+                                                "flex-1 py-2 px-3 text-[10px] font-black uppercase rounded-lg transition-all whitespace-nowrap",
                                                 form.category === 'SERVICE' ? "bg-white text-amber-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
                                             )}
                                         >
                                             Service Fee
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm({ ...form, category: 'SECURITY_DEPOSIT', rent: '0', description: 'Security Deposit' })}
+                                            className={clsx(
+                                                "flex-1 py-2 px-3 text-[10px] font-black uppercase rounded-lg transition-all whitespace-nowrap",
+                                                form.category === 'SECURITY_DEPOSIT' ? "bg-white text-purple-600 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                            )}
+                                        >
+                                            Deposit
                                         </button>
                                     </div>
                                 </div>
@@ -1022,11 +1042,11 @@ export const Invoices = () => {
                                             onChange={(e) => {
                                                 const val = e.target.value;
                                                 if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                                    setForm({ ...form, rent: val, serviceFees: '0', category: 'RENT' });
+                                                    setForm({ ...form, rent: val, serviceFees: '0', category: form.category === 'SECURITY_DEPOSIT' ? 'SECURITY_DEPOSIT' : 'RENT' });
                                                 }
                                             }}
-                                            required={parseFloat(form.serviceFees) === 0}
-                                            disabled={parseFloat(form.serviceFees) > 0}
+                                            required={parseFloat(form.serviceFees) === 0 && form.category !== 'SECURITY_DEPOSIT'}
+                                            disabled={parseFloat(form.serviceFees) > 0 || form.category === 'SECURITY_DEPOSIT'}
                                             readOnly={!!form.tenantId && !editInvoice} 
                                             className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 transition-all font-medium text-slate-900 font-mono disabled:bg-slate-50 disabled:text-slate-400 read-only:bg-slate-50 read-only:text-indigo-600"
                                         />
@@ -1044,11 +1064,11 @@ export const Invoices = () => {
                                             onChange={(e) => {
                                                 const val = e.target.value;
                                                 if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                                                    setForm({ ...form, serviceFees: val, rent: '0', category: 'SERVICE' });
+                                                    setForm({ ...form, serviceFees: val, rent: '0', category: form.category === 'SECURITY_DEPOSIT' ? 'SECURITY_DEPOSIT' : 'SERVICE' });
                                                 }
                                             }}
-                                            required={parseFloat(form.rent) === 0}
-                                            disabled={parseFloat(form.rent) > 0}
+                                            required={parseFloat(form.rent) === 0 && form.category !== 'RENT'}
+                                            disabled={parseFloat(form.rent) > 0 && form.category !== 'SECURITY_DEPOSIT'}
                                             className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50/50 transition-all font-medium text-slate-900 font-mono disabled:bg-slate-50 disabled:text-slate-400"
                                         />
                                     </div>
