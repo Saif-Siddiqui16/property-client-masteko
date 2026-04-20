@@ -403,7 +403,7 @@ export const Dashboard = () => {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-gray-100">
-                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest pl-2">Prospect</th>
+                        <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest pl-2">Tenant Name</th>
                         <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest">Property / Unit</th>
                         <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Tentative Move-In</th>
                         <th className="pb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right pr-2">Action</th>
@@ -426,12 +426,16 @@ export const Dashboard = () => {
                             </div>
                           </td>
                           <td className="py-5 text-right pr-2">
-                            <button
-                              onClick={() => window.location.href = `/unit-readiness`}
-                              className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200"
-                            >
-                              View Readiness
-                            </button>
+                            {item.isNewConstruction ? (
+                              <button
+                                onClick={() => window.location.href = `/unit-readiness`}
+                                className="px-4 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-slate-200"
+                              >
+                                View Readiness
+                              </button>
+                            ) : (
+                              <span className="text-[10px] text-gray-300 font-bold uppercase italic mr-4">Existing Unit</span>
+                            )}
                           </td>
                         </tr>
                       ))}

@@ -417,19 +417,29 @@ export const RentRoll = () => {
                                                     "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all",
                                                     row.status === 'Occupied'
                                                         ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
-                                                        : 'bg-white text-slate-400 border-slate-200'
+                                                        : row.status === 'Reserved'
+                                                            ? 'bg-amber-100 text-amber-700 border-amber-200 shadow-sm'
+                                                            : 'bg-white text-slate-400 border-slate-200'
                                                 )}>
                                                     {row.status}
                                                 </span>
-                                                {row.status === 'Vacant' && row.leaseType === 'Full Unit' && (
+                                                {row.status === 'Vacant' && (
                                                     <button 
                                                         onClick={() => {
-                                                            const unitId = row.id.split('-')[1];
-                                                            setSelectedUnit({ id: unitId, unitNumber: row.unitNumber });
+                                                            const parts = row.id.split('-');
+                                                            const type = parts[0]; 
+                                                            const id = parts[1];
+                                                            
+                                                            setSelectedUnit({ 
+                                                                id: type === 'bed' ? row.parentUnitId : id,
+                                                                bedroomId: type === 'bed' ? id : null,
+                                                                unitNumber: row.unitNumber,
+                                                                bedroomNumber: row.bedroomNumber !== '-' ? row.bedroomNumber : null
+                                                            });
                                                             setShowReserveModal(true);
                                                         }}
                                                         className="ml-2 p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-indigo-100 group/btn"
-                                                        title="Reserve Unit"
+                                                        title="Reserve"
                                                     >
                                                         <Calendar size={14} className="group-hover/btn:scale-110 transition-transform" />
                                                     </button>
@@ -543,12 +553,17 @@ const ReserveModal = ({ unit, onClose, onReserved }) => {
       e.preventDefault();
       setLoading(true);
       try {
-        await api.put(`/api/admin/units/${unit.id}`, formData);
+        const payload = {
+            ...formData,
+            bedroomId: unit.bedroomId || undefined
+        };
+        await api.put(`/api/admin/units/${unit.id}`, payload);
         onReserved();
         onClose();
       } catch (err) {
         console.error(err);
-        alert('Error creating reservation');
+        const errorMsg = err.response?.data?.message || 'Error creating reservation';
+        alert(errorMsg);
       } finally {
         setLoading(false);
       }
@@ -562,7 +577,9 @@ const ReserveModal = ({ unit, onClose, onReserved }) => {
           <div className="bg-gradient-to-r from-indigo-600 to-violet-600 p-8 text-white relative">
             <div className="flex justify-between items-start">
               <div>
-                <h3 className="text-3xl font-black tracking-tight leading-none mb-2">Reserve Unit {unit.unitNumber}</h3>
+                <h3 className="text-3xl font-black tracking-tight leading-none mb-2">
+                  Reserve {unit.bedroomNumber ? `Room ${unit.bedroomNumber}` : `Unit ${unit.unitNumber}`}
+                </h3>
                 <p className="text-indigo-100 text-sm font-bold uppercase tracking-widest opacity-80">Direct Prospect Entry</p>
               </div>
               <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-all">
