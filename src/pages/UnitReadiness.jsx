@@ -66,7 +66,7 @@ const UnitReadiness = () => {
       setLoading(true);
       // 1. Fetch Summary Stats - Dedicated Readiness Stats
       const statsRes = await api.get('/api/admin/readiness/stats', {
-        params: { propertyId: propertyFilter }
+        params: { propertyId: propertyFilter, showLeased: showLeasedUnits }
       });
       setStats({
         totalUnits: statsRes.data.totalUnits,

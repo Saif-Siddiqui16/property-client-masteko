@@ -30,6 +30,8 @@ export const ShuttleManagement = () => {
   const [showPassengerModal, setShowPassengerModal] = useState(false);
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [showInvitePMSModal, setShowInvitePMSModal] = useState(false);
+  const [showBulkDisableModal, setShowBulkDisableModal] = useState(false);
+  const [selectedBulkIds, setSelectedBulkIds] = useState([]);
   
   // PMS Invitation States
   const [pmsTenants, setPMSTenants] = useState([]);
@@ -299,6 +301,37 @@ export const ShuttleManagement = () => {
     }
   };
 
+  const handleToggleAccess = async (user) => {
+    try {
+      setLoading(true);
+      const newStatus = user.status === 'INACTIVE' ? 'ACTIVE' : 'INACTIVE';
+      await api.patch(`/api/admin/shuttle/users/${user.id}/status`, { status: newStatus });
+      fetchData(true);
+    } catch (error) {
+      alert('Failed to update app access status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkDisable = async () => {
+    if (selectedBulkIds.length === 0) return alert('Select users first');
+    try {
+      setLoading(true);
+      await api.post('/api/admin/shuttle/bulk-status', { 
+        userIds: selectedBulkIds, 
+        status: 'INACTIVE' 
+      });
+      setShowBulkDisableModal(false);
+      setSelectedBulkIds([]);
+      fetchData(true);
+    } catch (error) {
+      alert('Bulk disable failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const openPassengerModal = (trip) => {
     setSelectedTrip(trip);
     setShowPassengerModal(true);
@@ -557,10 +590,16 @@ export const ShuttleManagement = () => {
                     <button onClick={openInviteModal} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[11px] font-bold hover:bg-indigo-700 shadow-md shadow-indigo-100 flex items-center gap-2 transition-all active:scale-95">
                       <Plus size={14} /> Invite New Tenants
                     </button>
-                    <button onClick={handleInviteTenants} className="px-3 py-2 text-indigo-600 bg-indigo-50 rounded-lg text-[11px] font-bold hover:bg-indigo-100 flex items-center gap-2">
-                       <Mail size={14} /> Bulk Send (App Users)
+                    <button 
+                      onClick={() => {
+                        const currentActive = users.filter(u => u.role === 'tenant' && u.status !== 'INACTIVE').map(u => u.id);
+                        setSelectedBulkIds(currentActive);
+                        setShowBulkDisableModal(true);
+                      }}
+                      className="px-3 py-2 text-red-600 bg-red-50 rounded-lg text-[11px] font-bold hover:bg-red-100 transition-all active:scale-95"
+                    >
+                      Bulk Disable
                     </button>
-                    <button className="px-3 py-2 text-red-600 bg-red-50 rounded-lg text-[11px] font-bold hover:bg-red-100">Bulk Disable</button>
                   </div>
                 </div>
 
@@ -580,7 +619,11 @@ export const ShuttleManagement = () => {
                             <td className="px-5 py-4 font-semibold text-slate-700">{user.name}</td>
                             <td className="px-5 py-4 text-slate-500">{user.email}</td>
                             <td className="px-5 py-4">
-                              <span className="text-emerald-600 text-[10px] font-bold bg-emerald-50 px-2 py-1 rounded-md uppercase tracking-wider">Active</span>
+                              <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${
+                                user.status === 'INACTIVE' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-50 text-emerald-600'
+                              }`}>
+                                {user.status || 'ACTIVE'}
+                              </span>
                             </td>
                              <td className="px-5 py-4 text-right flex items-center justify-end gap-3">
                                 <button 
@@ -591,7 +634,12 @@ export const ShuttleManagement = () => {
                                   <Trash2 size={16} />
                                 </button>
                                 <label className="relative inline-flex items-center cursor-pointer">
-                                 <input type="checkbox" className="sr-only peer" defaultChecked />
+                                 <input 
+                                   type="checkbox" 
+                                   className="sr-only peer" 
+                                   checked={user.status !== 'INACTIVE'} 
+                                   onChange={() => handleToggleAccess(user)} 
+                                 />
                                  <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
                                </label>
                              </td>
@@ -942,6 +990,16 @@ export const ShuttleManagement = () => {
           loading={loading}
         />
       )}
+      {showBulkDisableModal && (
+        <BulkDisableModal 
+          onClose={() => setShowBulkDisableModal(false)}
+          users={users.filter(u => u.role === 'tenant')}
+          selectedIds={selectedBulkIds}
+          setSelectedIds={setSelectedBulkIds}
+          onConfirm={handleBulkDisable}
+          loading={loading}
+        />
+      )}
     </MainLayout>
   );
 };
@@ -1053,6 +1111,88 @@ const DuplicateModal = ({ onClose, onDuplicate, targetDate }) => {
                Copy Trips
              </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BulkDisableModal = ({ onClose, users, selectedIds, setSelectedIds, onConfirm, loading }) => {
+  const toggleSelect = (id) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(i => i !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.length === users.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(users.map(u => u.id));
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+          <div>
+            <h3 className="font-bold text-slate-800">Bulk Disable App Access</h3>
+            <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider mt-0.5">Select Tenants to Deactivate</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+        </div>
+        <div className="max-h-[400px] overflow-y-auto p-4">
+           <div className="flex items-center gap-3 p-3 mb-2 bg-indigo-50/50 rounded-xl border border-indigo-100">
+              <input 
+                type="checkbox" 
+                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                checked={selectedIds.length === users.length && users.length > 0}
+                onChange={toggleAll}
+              />
+              <span className="text-sm font-bold text-indigo-700">Select All Available Tenants</span>
+           </div>
+           
+           <div className="space-y-1">
+             {users.map(user => (
+               <div 
+                 key={user.id} 
+                 onClick={() => toggleSelect(user.id)}
+                 className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${
+                   selectedIds.includes(user.id) ? 'bg-slate-50 border-slate-200 shadow-sm' : 'hover:bg-gray-50 border-transparent'
+                 } border`}
+               >
+                 <div className="flex items-center gap-3">
+                   <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                     selectedIds.includes(user.id) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-300'
+                   }`}>
+                     {selectedIds.includes(user.id) && <CheckCircle size={14} className="text-white" />}
+                   </div>
+                   <div>
+                     <p className="text-sm font-semibold text-slate-700">{user.name}</p>
+                     <p className="text-[11px] text-slate-400">{user.email}</p>
+                   </div>
+                 </div>
+                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                   user.status === 'INACTIVE' ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'
+                 }`}>
+                   {user.status || 'ACTIVE'}
+                 </span>
+               </div>
+             ))}
+           </div>
+        </div>
+        <div className="p-6 bg-slate-50 border-t border-gray-100 flex gap-3">
+           <button onClick={onClose} className="flex-1 py-3 bg-white text-slate-600 rounded-xl font-bold border border-slate-200 hover:bg-slate-100 transition-colors">Cancel</button>
+           <button 
+             disabled={loading || selectedIds.length === 0}
+             onClick={onConfirm}
+             className={`flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-100 hover:bg-red-700 transition-all flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
+           >
+             {loading ? 'Processing...' : `Disable ${selectedIds.length} User(s)`}
+           </button>
         </div>
       </div>
     </div>

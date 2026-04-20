@@ -413,37 +413,39 @@ export const RentRoll = () => {
                                                 ${parseFloat(row.outstandingDeposit || 0).toLocaleString()}
                                              </td>
                                             <td className="px-3 py-4">
-                                                <span className={clsx(
-                                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all",
-                                                    row.status === 'Occupied'
-                                                        ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
-                                                        : row.status === 'Reserved'
-                                                            ? 'bg-amber-100 text-amber-700 border-amber-200 shadow-sm'
-                                                            : 'bg-white text-slate-400 border-slate-200'
-                                                )}>
-                                                    {row.status}
-                                                </span>
-                                                {row.status === 'Vacant' && (
-                                                    <button 
-                                                        onClick={() => {
-                                                            const parts = row.id.split('-');
-                                                            const type = parts[0]; 
-                                                            const id = parts[1];
-                                                            
-                                                            setSelectedUnit({ 
-                                                                id: type === 'bed' ? row.parentUnitId : id,
-                                                                bedroomId: type === 'bed' ? id : null,
-                                                                unitNumber: row.unitNumber,
-                                                                bedroomNumber: row.bedroomNumber !== '-' ? row.bedroomNumber : null
-                                                            });
-                                                            setShowReserveModal(true);
-                                                        }}
-                                                        className="ml-2 p-1.5 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-indigo-100 group/btn"
-                                                        title="Reserve"
-                                                    >
-                                                        <Calendar size={14} className="group-hover/btn:scale-110 transition-transform" />
-                                                    </button>
-                                                )}
+                                                <div className="flex flex-col items-center gap-1">
+                                                    {row.status === 'Occupied' ? (
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white border border-indigo-700 shadow-sm transition-all">
+                                                            {row.status}
+                                                        </span>
+                                                    ) : row.status === 'Reserved' ? (
+                                                        <>
+                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-blue-50 text-blue-700 border-blue-200 uppercase tracking-widest">
+                                                                Reserved
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const parts = row.id.split('-');
+                                                                const type = parts[0]; 
+                                                                const id = parts[1];
+                                                                
+                                                                setSelectedUnit({ 
+                                                                    id: type === 'bed' ? row.parentUnitId : id,
+                                                                    bedroomId: type === 'bed' ? id : null,
+                                                                    unitNumber: row.unitNumber,
+                                                                    bedroomNumber: row.bedroomNumber !== '-' ? row.bedroomNumber : null
+                                                                });
+                                                                setShowReserveModal(true);
+                                                            }}
+                                                            className="px-3 py-1 bg-white border border-indigo-200 text-indigo-600 rounded-lg text-[10px] font-black uppercase hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                        >
+                                                            Reserve
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     );
