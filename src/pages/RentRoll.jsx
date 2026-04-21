@@ -208,6 +208,35 @@ export const RentRoll = () => {
         }
     };
 
+    const handleCancelReservation = async (id) => {
+        if (!window.confirm('Are you sure you want to cancel this reservation?')) return;
+        
+        try {
+            const parts = id.split('-');
+            const type = parts[0]; 
+            const realId = parts[1];
+            
+            const payload = {
+                reserved_flag: false,
+                reserved_by_id: null,
+                reservation_date: null,
+                tentative_move_in_date: null
+            };
+
+            if (type === 'unit') {
+                await api.put(`/api/admin/units/${realId}`, payload);
+            } else {
+                // If it's a bedroom, we need to send the bedroomId as well
+                await api.put(`/api/admin/units/0`, { ...payload, bedroomId: realId });
+            }
+
+            fetchRentRoll();
+        } catch (error) {
+            console.error("Error cancelling reservation", error);
+            alert("Failed to cancel reservation");
+        }
+    };
+
     const toggleSort = () => {
         setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
     };
@@ -420,9 +449,17 @@ export const RentRoll = () => {
                                                         </span>
                                                     ) : row.status === 'Reserved' ? (
                                                         <>
-                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black border bg-blue-50 text-blue-700 border-blue-200 uppercase tracking-widest">
-                                                                Reserved
-                                                            </span>
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <span className="px-2.5 py-1 rounded-full text-[10px] font-black border bg-blue-50 text-blue-700 border-blue-200 uppercase tracking-widest leading-none">
+                                                                    Reserved
+                                                                </span>
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); handleCancelReservation(row.id); }}
+                                                                    className="text-[10px] font-black uppercase text-red-600 hover:text-red-800 hover:underline transition-all tracking-widest mt-1.5"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
                                                         </>
                                                     ) : (
                                                         <button 
