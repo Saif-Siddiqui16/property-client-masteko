@@ -316,6 +316,7 @@ export const RentRoll = () => {
                             >
                                 <option value="">All Statuses</option>
                                 <option value="Occupied">Occupied</option>
+                                <option value="Reserved">Reserved</option>
                                 <option value="Vacant">Vacant</option>
                             </select>
                         </div>

@@ -21,8 +21,12 @@ export const ShuttleManagement = () => {
   const [statusFilter, setStatusFilter] = useState('all'); // all, pending, approved, rejected
   const [accessSearch, setAccessSearch] = useState('');
   const [drivers, setDrivers] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [showDriverModal, setShowDriverModal] = useState(false);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const [newDriver, setNewDriver] = useState({ name: '', phone: '+1 ', email: '' });
+  const [newLocation, setNewLocation] = useState({ name: '' });
+  const [selectedLocation, setSelectedLocation] = useState(null);
   
   // UI States
   const [showTripModal, setShowTripModal] = useState(false);
@@ -47,7 +51,8 @@ export const ShuttleManagement = () => {
     date: format(new Date(), 'yyyy-MM-dd'), 
     origin: '', 
     destination: '', 
-    seats_total: 7 
+    status: 'scheduled',
+    is_recurring: false
   });
 
   const [newRequest, setNewRequest] = useState({
@@ -84,6 +89,10 @@ export const ShuttleManagement = () => {
         const res = await api.get('/api/admin/shuttle/users');
         setUsers(res.data.users || []);
       }
+      
+      // Always fetch locations for dropdowns and manager modals
+      const locRes = await api.get('/api/admin/shuttle/trips/locations');
+      setLocations(locRes.data.locations || []);
     } catch (error) {
       console.error('Error fetching shuttle data:', error);
     } finally {
@@ -130,6 +139,26 @@ export const ShuttleManagement = () => {
     }
   };
 
+  const handleStopRecurring = async (id) => {
+    if (!window.confirm('Stop this trip from repeating daily after this date? It will still be shown for today and any past dates.')) return;
+    try {
+      await api.put(`/api/admin/shuttle/trips/${id}`, { recurring_end_date: targetDate });
+      fetchData();
+    } catch (error) {
+      alert('Failed to stop recurring trip');
+    }
+  };
+
+  const handleResumeRecurring = async (id) => {
+    if (!window.confirm('Resume this daily recurrence? It will start repeating indefinitely again.')) return;
+    try {
+      await api.put(`/api/admin/shuttle/trips/${id}`, { recurring_end_date: null });
+      fetchData();
+    } catch (error) {
+      alert('Failed to resume recurring trip');
+    }
+  };
+
   const handleDuplicateDay = async (sourceDate) => {
     try {
       await api.post('/api/admin/shuttle/trips/duplicate', { 
@@ -158,7 +187,8 @@ export const ShuttleManagement = () => {
         date: format(new Date(), 'yyyy-MM-dd'), 
         origin: '', 
         destination: '', 
-        seats_total: 7 
+        seats_total: 7,
+        is_recurring: false
       });
       fetchData();
     } catch (error) {
@@ -172,7 +202,8 @@ export const ShuttleManagement = () => {
       ...trip,
       actual_passengers: trip.actual_passengers || 0,
       notes: trip.notes || '',
-      status: trip.status || 'scheduled'
+      status: trip.status || 'scheduled',
+      is_recurring: trip.is_recurring || false
     });
     setIsEditing(true);
     setShowTripModal(true);
@@ -185,7 +216,8 @@ export const ShuttleManagement = () => {
       date: targetDate || format(new Date(), 'yyyy-MM-dd'), 
       origin: '', 
       destination: '', 
-      seats_total: 7 
+      seats_total: 7,
+      is_recurring: false
     });
     setShowTripModal(true);
   };
@@ -301,6 +333,32 @@ export const ShuttleManagement = () => {
     }
   };
 
+  const handleCreateLocation = async (e) => {
+    e.preventDefault();
+    try {
+      if (selectedLocation) {
+        await api.put(`/api/admin/shuttle/trips/locations/${selectedLocation.id}`, newLocation);
+      } else {
+        await api.post('/api/admin/shuttle/trips/locations', newLocation);
+      }
+      setNewLocation({ name: '' });
+      setSelectedLocation(null);
+      fetchData();
+    } catch (error) {
+      alert('Failed to save location');
+    }
+  };
+
+  const handleDeleteLocation = async (id) => {
+    if (!window.confirm('Are you sure? This will remove it from the dropdown choices.')) return;
+    try {
+      await api.delete(`/api/admin/shuttle/trips/locations/${id}`);
+      fetchData();
+    } catch (error) {
+      alert('Failed to delete location');
+    }
+  };
+
   const handleToggleAccess = async (user) => {
     try {
       setLoading(true);
@@ -356,7 +414,7 @@ export const ShuttleManagement = () => {
       <div className="flex flex-col gap-6 relative">
         
         {/* Navigation Tabs */}
-        <div className="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100 max-w-2xl">
+        <div className="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100 max-w-2xl overflow-x-auto whitespace-nowrap">
           {['requests', 'schedule', 'access', 'drivers', 'history'].map((tab) => (
             <button
               key={tab}
@@ -502,6 +560,16 @@ export const ShuttleManagement = () => {
                   </div>
                   <div className="flex gap-3 w-full md:w-auto">
                     <button 
+                      onClick={() => {
+                        setShowLocationModal(true);
+                        setNewLocation({ name: '' });
+                        setSelectedLocation(null);
+                      }}
+                      className="flex-1 md:flex-none px-4 py-2 bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-sm font-semibold hover:bg-slate-200 transition-colors flex items-center gap-2"
+                    >
+                      <Plus size={16} /> Manage Stops
+                    </button>
+                    <button 
                       onClick={() => setShowDuplicateModal(true)}
                       className="flex-1 md:flex-none px-4 py-2 border border-slate-200 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50"
                     >
@@ -527,7 +595,26 @@ export const ShuttleManagement = () => {
                         <div className="flex justify-between items-start mb-3">
                           <span className="text-lg font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-lg">{trip.time}</span>
                           <div className="flex gap-1">
+                            {trip.is_recurring && <span className="bg-indigo-100 text-indigo-800 text-[10px] uppercase font-bold px-2 py-1 rounded-md flex items-center gap-1"><Clock size={10} /> Daily</span>}
                             {trip.is_special && <span className="bg-amber-100 text-amber-800 text-[10px] uppercase font-bold px-2 py-1 rounded-md">Special</span>}
+                            {trip.is_recurring && !trip.recurring_end_date && (
+                              <button 
+                                onClick={() => handleStopRecurring(trip.id)}
+                                className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                title="Stop Daily Recurrence"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" /></svg>
+                              </button>
+                            )}
+                            {trip.is_recurring && trip.recurring_end_date && (
+                              <button 
+                                onClick={() => handleResumeRecurring(trip.id)}
+                                className="p-1.5 text-slate-300 hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                title="Resume Daily Recurrence"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                              </button>
+                            )}
                             <button 
                               onClick={() => handleOpenEditModal(trip)}
                               className="p-1.5 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
@@ -762,6 +849,51 @@ export const ShuttleManagement = () => {
               </div>
             )}
 
+            {activeTab === 'locations' && (
+              <div className="p-6">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">Standard Locations</h3>
+                    <p className="text-xs text-gray-500">Manage the standardized "From" and "To" options for shuttle trips.</p>
+                  </div>
+                  <button 
+                    onClick={() => { setSelectedLocation(null); setNewLocation({ name: '' }); setShowLocationModal(true); }}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 shadow-md shadow-indigo-100 flex items-center gap-2"
+                  >
+                    <Plus size={16} /> Add Location
+                  </button>
+                </div>
+                
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {locations.length === 0 ? (
+                    <div className="col-span-full py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center text-slate-400 text-sm font-medium">
+                      No locations added yet. Add some to enable the dropdowns.
+                    </div>
+                  ) : (
+                    locations.map(loc => (
+                      <div key={loc.id} className="flex justify-between items-center p-4 bg-white border border-slate-100 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                        <span className="font-bold text-slate-700">{loc.name}</span>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => { setSelectedLocation(loc); setNewLocation({ name: loc.name }); setShowLocationModal(true); }}
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteLocation(loc.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
           </Card>
         )}
 
@@ -789,15 +921,32 @@ export const ShuttleManagement = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">From</label>
-                    <input disabled={isEditing} required className={`w-full p-2.5 border border-gray-200 rounded-lg outline-none ${isEditing ? 'bg-slate-100 text-slate-400' : 'bg-white focus:ring-2 focus:ring-indigo-500'}`} value={newTrip.origin} onChange={e => setNewTrip({...newTrip, origin: e.target.value})} />
+                    <select 
+                      disabled={isEditing} 
+                      required 
+                      className={`w-full p-2.5 border border-gray-200 rounded-lg outline-none ${isEditing ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-indigo-500'}`} 
+                      value={newTrip.origin} 
+                      onChange={e => setNewTrip({...newTrip, origin: e.target.value})}
+                    >
+                      <option value="">Select Origin...</option>
+                      {locations.map(loc => <option key={loc.id} value={loc.name}>{loc.name}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">To</label>
-                    <input disabled={isEditing} required className={`w-full p-2.5 border border-gray-200 rounded-lg outline-none ${isEditing ? 'bg-slate-100 text-slate-400' : 'bg-white focus:ring-2 focus:ring-indigo-500'}`} value={newTrip.destination} onChange={e => setNewTrip({...newTrip, destination: e.target.value})} />
+                    <select 
+                      disabled={isEditing} 
+                      required 
+                      className={`w-full p-2.5 border border-gray-200 rounded-lg outline-none ${isEditing ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-white focus:ring-2 focus:ring-indigo-500'}`} 
+                      value={newTrip.destination} 
+                      onChange={e => setNewTrip({...newTrip, destination: e.target.value})}
+                    >
+                      <option value="">Select Destination...</option>
+                      {locations.map(loc => <option key={loc.id} value={loc.name}>{loc.name}</option>)}
+                    </select>
                   </div>
                 </div>
-                
-                {isEditing ? (
+                              {isEditing && (
                   <div className="space-y-4 pt-2">
                     <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg">
                       <p className="text-[10px] text-amber-700 font-bold uppercase mb-1 flex items-center gap-1">
@@ -824,11 +973,38 @@ export const ShuttleManagement = () => {
                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Notes</label>
                       <textarea className="w-full p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm" rows="2" value={newTrip.notes} onChange={e => setNewTrip({...newTrip, notes: e.target.value})} placeholder="Driver notes or delays..." />
                     </div>
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <input 
+                        type="checkbox" 
+                        id="repeat_daily_edit"
+                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                        checked={newTrip.is_recurring}
+                        onChange={e => setNewTrip({...newTrip, is_recurring: e.target.checked})}
+                      />
+                      <label htmlFor="repeat_daily_edit" className="text-xs font-bold text-slate-700 cursor-pointer">Repeat Daily Status</label>
+                    </div>
                   </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Max Capacity</label>
-                    <input type="number" className="w-full p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value={newTrip.seats_total} onChange={e => setNewTrip({...newTrip, seats_total: e.target.value})} />
+                )}
+
+                {!isEditing && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 bg-indigo-50 border border-indigo-100 rounded-xl mb-2">
+                      <input 
+                        type="checkbox" 
+                        id="repeat_daily"
+                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                        checked={newTrip.is_recurring}
+                        onChange={e => setNewTrip({...newTrip, is_recurring: e.target.checked})}
+                      />
+                      <div>
+                        <label htmlFor="repeat_daily" className="text-xs font-bold text-indigo-700 cursor-pointer">Repeat Daily</label>
+                        <p className="text-[10px] text-indigo-500">This trip will show up on the schedule every day automatically.</p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Max Capacity</label>
+                      <input type="number" className="w-full p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value={newTrip.seats_total} onChange={e => setNewTrip({...newTrip, seats_total: e.target.value})} />
+                    </div>
                   </div>
                 )}
                 <button type="submit" className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-[0.98]">
@@ -910,11 +1086,17 @@ export const ShuttleManagement = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">From</label>
-                    <input required className="w-full p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value={newRequest.origin} onChange={e => setNewRequest({...newRequest, origin: e.target.value})} placeholder="e.g. Campus" />
+                    <select required className="w-full p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value={newRequest.origin} onChange={e => setNewRequest({...newRequest, origin: e.target.value})}>
+                       <option value="">Select...</option>
+                       {locations.map(loc => <option key={loc.id} value={loc.name}>{loc.name}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">To</label>
-                    <input required className="w-full p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value={newRequest.destination} onChange={e => setNewRequest({...newRequest, destination: e.target.value})} placeholder="e.g. Station" />
+                    <select required className="w-full p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" value={newRequest.destination} onChange={e => setNewRequest({...newRequest, destination: e.target.value})}>
+                       <option value="">Select...</option>
+                       {locations.map(loc => <option key={loc.id} value={loc.name}>{loc.name}</option>)}
+                    </select>
                   </div>
                 </div>
                 <div>
@@ -975,6 +1157,87 @@ export const ShuttleManagement = () => {
             onDuplicate={handleDuplicateDay}
             targetDate={targetDate}
           />
+        )}
+
+        {/* Location Manager Modal */}
+        {showLocationModal && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+                <div className="flex flex-col">
+                  <h3 className="font-bold text-slate-800 text-lg">Manage Shuttle Stops</h3>
+                  <p className="text-xs text-slate-500">Add or remove locations from the dropdown list.</p>
+                </div>
+                <button onClick={() => setShowLocationModal(false)} className="text-gray-400 hover:text-gray-600 font-bold text-2xl">×</button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Add New Section */}
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">
+                    {selectedLocation ? 'Update Location' : 'Add New Stop'}
+                  </label>
+                  <form onSubmit={handleCreateLocation} className="flex gap-2">
+                    <input 
+                      required 
+                      className="flex-1 p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-semibold" 
+                      value={newLocation.name} 
+                      onChange={e => setNewLocation({ name: e.target.value })} 
+                      placeholder="e.g. Main Gate" 
+                      autoFocus
+                    />
+                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all flex items-center gap-1">
+                      {selectedLocation ? 'Update' : <><Plus size={14} /> Add</>}
+                    </button>
+                    {selectedLocation && (
+                      <button 
+                        type="button" 
+                        onClick={() => { setSelectedLocation(null); setNewLocation({ name: '' }); }}
+                        className="px-2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </form>
+                </div>
+
+                {/* List Section */}
+                <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                   <div className="space-y-2">
+                     {locations.length === 0 ? (
+                       <p className="text-center py-8 text-slate-400 text-xs italic">No stops added yet.</p>
+                     ) : (
+                       locations.map(loc => (
+                        <div key={loc.id} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors group">
+                           <span className="text-sm font-bold text-slate-700">{loc.name}</span>
+                           <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button 
+                                onClick={() => { setSelectedLocation(loc); setNewLocation({ name: loc.name }); }}
+                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-md border border-transparent hover:border-indigo-100"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteLocation(loc.id)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-md border border-transparent hover:border-red-100"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                           </div>
+                        </div>
+                       ))
+                     )}
+                   </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 border-t border-gray-100 text-right">
+                <button onClick={() => setShowLocationModal(false)} className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-100">
+                  Close Manager
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
       {showInvitePMSModal && (
