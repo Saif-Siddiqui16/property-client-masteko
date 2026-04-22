@@ -400,15 +400,16 @@ const UnitReadiness = () => {
                 <thead>
                   {/* Category Header */}
                   <tr className="text-[11px] font-bold text-slate-800 text-center uppercase tracking-wider">
-                    <th colSpan="2" className="bg-[#E2F0D9] border-b border-r border-slate-400 sticky left-0 z-30"></th>
+                    <th colSpan="3" className="bg-[#E2F0D9] border-b border-r border-slate-400 sticky left-0 z-30"></th>
                     <th colSpan="3" className="bg-[#D9D9D9] px-2 py-2 border-b border-r border-slate-400 tracking-widest font-black">GC</th>
                     <th colSpan="4" className="bg-[#DDEBF7] px-2 py-2 border-b border-r border-slate-400 tracking-widest font-black">Operations</th>
                     <th colSpan="5" className="bg-[#FCE4D6] px-2 py-2 border-b border-slate-400 tracking-widest font-black">Leasing / Summary</th>
                   </tr>
                   {/* Column Header */}
                   <tr className="text-[10px] font-black uppercase text-slate-700 text-center leading-tight">
-                    <th className="bg-[#E2F0D9] px-2 py-3 border border-slate-400 sticky left-0 z-30 min-w-[90px]">Building</th>
-                    <th className="bg-[#E2F0D9] px-2 py-3 border border-slate-400 sticky left-[90px] z-30 min-w-[70px]">Unit</th>
+                    <th className="bg-[#E2F0D9] px-1 py-3 border border-slate-400 sticky left-0 z-30 min-w-[60px]">Bldg</th>
+                    <th className="bg-[#E2F0D9] px-1 py-3 border border-slate-400 sticky left-[60px] z-30 min-w-[60px]">Unit</th>
+                    <th className="bg-[#E2F0D9] px-1 py-3 border border-slate-400 sticky left-[120px] z-30 min-w-[60px]">Type</th>
                     
                     {/* GC */}
                     <th className="bg-[#D9D9D9] px-1 py-3 border border-slate-400 w-16">GC Delivered</th>
@@ -433,7 +434,7 @@ const UnitReadiness = () => {
                   {units.map(unit => {
                     const allDone = Object.values(unit.completion || {}).filter(v => v).length === 7;
                     let statusNote = "";
-
+ 
                     if (unit.reserved) {
                       statusNote = allDone ? "Reserved – Ready" : "Reserved – Not Ready";
                     } else if (allDone) {
@@ -441,26 +442,29 @@ const UnitReadiness = () => {
                     } else {
                       statusNote = unit.daysLate > 0 ? "Action Required" : "On Schedule";
                     }
-
+ 
                     // Rule 3.3: GC Deficiencies Warning
                     const showDeficiencyWarning = !unit.completion?.gc_deficiencies;
                     const isPhysicallyReady = unit.completion?.unit_ready;
                     
                     return (
                       <tr key={unit.id} className="hover:bg-indigo-50/30 transition-colors group">
-                        <td className="px-2 py-4 font-bold text-slate-800 border-r border-slate-100 sticky left-0 bg-white group-hover:bg-indigo-50/30 z-20 min-w-[90px]">
+                        <td className="px-2 py-4 font-bold text-slate-800 border-r border-slate-100 sticky left-0 bg-white group-hover:bg-indigo-50/30 z-20 min-w-[60px] text-xs truncate" title={unit.building}>
                            {unit.building}
                         </td>
-                        <td className="px-2 py-4 border-r border-slate-100 sticky left-[90px] bg-white group-hover:bg-indigo-50/30 z-20 min-w-[70px]">
+                        <td className="px-2 py-4 border-r border-slate-100 sticky left-[60px] bg-white group-hover:bg-indigo-50/30 z-20 min-w-[60px]">
                           <button 
                             onClick={() => navigate(`/units/${unit.id}`)}
-                            className="flex items-center gap-2 group/link"
+                            className="flex items-center gap-1 group/link"
                           >
                              <span className="font-black text-indigo-600 group-hover/link:underline cursor-pointer tracking-tighter text-sm">
                                {unit.unitNumber}
                              </span>
-                             <ChevronRight size={12} className="text-slate-300 group-hover/link:text-indigo-600 group-hover/link:translate-x-1 transition-all" />
+                             <ChevronRight size={10} className="text-slate-300 group-hover/link:text-indigo-600 group-hover/link:translate-x-1 transition-all" />
                           </button>
+                        </td>
+                        <td className="px-2 py-4 border-r border-slate-100 sticky left-[120px] bg-white group-hover:bg-indigo-50/30 z-20 min-w-[60px] text-[10px] font-black text-slate-500 uppercase tracking-tighter">
+                           {unit.unitType}
                         </td>
                         
                         {/* Milestone Icons (GC) */}

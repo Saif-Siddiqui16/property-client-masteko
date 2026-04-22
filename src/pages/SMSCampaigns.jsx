@@ -94,7 +94,7 @@ const SMSCampaigns = () => {
 
     const fetchTenants = async () => {
         try {
-            const res = await api.get('/api/admin/tenants?limit=1000');
+            const res = await api.get('/api/admin/tenants?limit=1000&status=Active');
             setTenants(Array.isArray(res.data) ? res.data : (res.data?.data || []));
         } catch (e) {
             console.error('Error fetching tenants:', e);

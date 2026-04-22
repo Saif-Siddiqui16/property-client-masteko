@@ -154,6 +154,7 @@ const PaymentsReceived = () => {
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Invoice</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Tenant</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Unit</th>
+                  <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Category</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Amount</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Method</th>
                   <th className="p-4 bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-gray-100 whitespace-nowrap">Date</th>
@@ -168,6 +169,17 @@ const PaymentsReceived = () => {
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 font-mono whitespace-nowrap">{p.id}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{p.tenant}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{p.unit}</td>
+                    <td className="p-4 border-b border-gray-100 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${
+                        p.category === 'DEPOSIT' || p.category === 'SECURITY_DEPOSIT'
+                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                          : p.category === 'SERVICE'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                      }`}>
+                        { (p.category === 'DEPOSIT' || p.category === 'SECURITY_DEPOSIT') ? 'Deposit' : p.category === 'SERVICE' ? 'Service' : 'Rent'}
+                      </span>
+                    </td>
                     <td className="p-4 border-b border-gray-100 text-sm font-medium font-mono whitespace-nowrap">${p.amount.toLocaleString('en-CA')}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{p.method}</td>
                     <td className="p-4 border-b border-gray-100 text-sm text-slate-700 whitespace-nowrap">{p.date}</td>
@@ -232,6 +244,7 @@ const PaymentsReceived = () => {
                 <div className="flex flex-col"><label className="text-xs text-slate-500 mb-1">Tenant</label><span className="text-sm font-medium text-slate-900">{selectedPayment.tenant}</span></div>
                 <div className="flex flex-col"><label className="text-xs text-slate-500 mb-1">Unit</label><span className="text-sm font-medium text-slate-900">{selectedPayment.unit}</span></div>
                 <div className="flex flex-col"><label className="text-xs text-slate-500 mb-1">Lease Type</label><span className="text-sm font-medium text-slate-900">{selectedPayment.type}</span></div>
+                <div className="flex flex-col"><label className="text-xs text-slate-500 mb-1">Category</label><span className="text-sm font-medium text-slate-900">{ (selectedPayment.category === 'DEPOSIT' || selectedPayment.category === 'SECURITY_DEPOSIT') ? 'Deposit' : selectedPayment.category === 'SERVICE' ? 'Service' : 'Rent'}</span></div>
                 <div className="flex flex-col"><label className="text-xs text-slate-500 mb-1">Payment Method</label><span className="text-sm font-medium text-slate-900">{selectedPayment.method}</span></div>
                 <div className="flex flex-col"><label className="text-xs text-slate-500 mb-1">Paid On</label><span className="text-sm font-medium text-slate-900">{selectedPayment.date}</span></div>
 

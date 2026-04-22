@@ -127,7 +127,7 @@ export const Emails = () => {
         setPickerLoading(true);
         try {
             const [tenantsRes, ownersRes] = await Promise.all([
-                api.get('/api/admin/tenants?limit=1000').catch(() => ({ data: [] })),
+                api.get('/api/admin/tenants?limit=1000&status=Active').catch(() => ({ data: [] })),
                 api.get('/api/admin/owners?limit=1000').catch(() => ({ data: [] }))
             ]);
             const tenants = Array.isArray(tenantsRes.data) ? tenantsRes.data : (tenantsRes.data?.data || []);
