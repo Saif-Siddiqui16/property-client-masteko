@@ -1,0 +1,341 @@
+import React, { useState, useEffect } from 'react';
+import {
+    Calendar,
+    ChevronRight,
+    ArrowLeft,
+    CheckCircle2,
+    Search,
+    Building2,
+    Home,
+    User,
+    FileText,
+    Layout,
+    ArrowRight
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MainLayout } from '../../layouts/MainLayout';
+import api from '../../api/client';
+
+const NewInspectionWizard = () => {
+    const navigate = useNavigate();
+    const [step, setStep] = useState(1);
+    const [formData, setFormData] = useState({
+        templateId: '',
+        unitId: '',
+        leaseId: '',
+        propertyId: '',
+        date: new Date().toISOString().split('T')[0]
+    });
+    const [loading, setLoading] = useState(false);
+    const [units, setUnits] = useState([]);
+    const [templates, setTemplates] = useState([]);
+    const [properties, setProperties] = useState([]);
+    const [inspectors, setInspectors] = useState([]);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [unitsRes, templatesRes, propertiesRes, coworkersRes] = await Promise.all([
+                    api.get('/api/admin/workflow/move-in'),
+                    api.get('/api/admin/workflow/templates'),
+                    api.get('/api/admin/properties'),
+                    api.get('/api/admin/coworkers')
+                ]);
+                if (unitsRes.data.success) {
+                    console.log('Fetched units:', unitsRes.data.data);
+                    setUnits(unitsRes.data.data || unitsRes.data);
+                }
+                if (templatesRes.data.success) setTemplates(templatesRes.data.data || templatesRes.data);
+                
+                const propData = propertiesRes.data.data || propertiesRes.data;
+                setProperties(Array.isArray(propData) ? propData : []);
+
+                const staffData = coworkersRes.data.data || coworkersRes.data;
+                setInspectors(Array.isArray(staffData) ? staffData : []);
+            } catch (err) { console.error('Fetch error:', err); }
+        };
+        fetchData();
+    }, []);
+
+    const steps = [
+        { id: 1, label: 'Basic Info', icon: FileText },
+        { id: 2, label: 'Select Template', icon: Layout },
+        { id: 3, label: 'Review & Create', icon: CheckCircle2 }
+    ];
+
+    const handleNext = () => {
+        if (step === 3) {
+            handleCreateInspection();
+        } else {
+            setStep(s => s + 1);
+        }
+    };
+
+    const handleCreateInspection = async () => {
+        try {
+            setLoading(true);
+            const res = await api.post('/api/admin/workflow/inspections', {
+                templateId: parseInt(formData.templateId),
+                unitId: parseInt(formData.unitId),
+                leaseId: formData.leaseId ? parseInt(formData.leaseId) : null,
+                date: formData.date
+            });
+
+            if (res.data.success) {
+                navigate(`/admin/workflow/inspections/${res.data.data.id}/form`);
+            }
+        } catch (error) {
+            alert('Failed to create inspection: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+    const handleBack = () => setStep(s => s - 1);
+
+    return (
+        <MainLayout title="Create New Inspection">
+            <div className="p-0 bg-transparent min-h-screen">
+                {/* Header */}
+                <div className="max-w-4xl mx-auto flex items-center justify-between mb-10">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => navigate(-1)} className="p-2.5 bg-white rounded-2xl border border-gray-100 text-gray-400 hover:text-gray-900 transition-colors shadow-sm">
+                            <ArrowLeft size={20} />
+                        </button>
+                        <h1 className="text-3xl font-black text-gray-900 tracking-tighter">New Inspection</h1>
+                    </div>
+                    <button onClick={() => navigate(-1)} className="px-6 py-2.5 bg-white text-gray-600 rounded-2xl text-sm font-black border border-gray-100 hover:bg-gray-50 transition-colors shadow-sm">
+                        Cancel
+                    </button>
+                </div>
+
+                {/* Stepper */}
+                <div className="max-w-4xl mx-auto mb-12">
+                    <div className="flex items-center justify-between px-10">
+                        {steps.map((s, idx) => (
+                            <React.Fragment key={s.id}>
+                                <div className="flex flex-col items-center gap-2 group cursor-pointer" onClick={() => step > s.id && setStep(s.id)}>
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm
+                                    ${step === s.id ? 'bg-indigo-600 text-white scale-110 shadow-indigo-100' :
+                                            step > s.id ? 'bg-green-100 text-green-600' : 'bg-white text-gray-400 border border-gray-100'}`}>
+                                        <s.icon size={22} />
+                                    </div>
+                                    <span className={`text-[11px] font-black uppercase tracking-widest ${step === s.id ? 'text-indigo-600' : 'text-gray-400'}`}>
+                                        {s.id}. {s.label}
+                                    </span>
+                                </div>
+                                {idx < steps.length - 1 && (
+                                    <div className="flex-1 h-0.5 mx-6 bg-gray-200 mt-[-20px]">
+                                        <div className={`h-full transition-all duration-500 ${step > s.id ? 'bg-green-500 w-full' : 'bg-gray-200 w-0'}`} />
+                                    </div>
+                                )}
+                            </React.Fragment>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Content Area */}
+                <div className="max-w-4xl mx-auto bg-white rounded-[40px] shadow-2xl shadow-indigo-500/5 border border-gray-100 p-10">
+                    {step === 1 && (
+                        <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div>
+                                <h2 className="text-xl font-black text-gray-900 mb-1">Basic Information</h2>
+                                <p className="text-gray-500 text-sm">Provide the basic details for this inspection.</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-8">
+                                <InputGroup label="Inspection Type" required>
+                                    <select className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all">
+                                        <option>Move-Out</option>
+                                        <option>Move-In</option>
+                                    </select>
+                                </InputGroup>
+
+                                <InputGroup label="Scheduled Date" required>
+                                    <div className="relative">
+                                        <input type="date" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all" />
+                                        <Calendar size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </InputGroup>
+
+                                <InputGroup label="Building" required>
+                                    <select
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                        value={formData.propertyId}
+                                        onChange={(e) => setFormData({ ...formData, propertyId: e.target.value, unitId: '' })}
+                                    >
+                                        <option value="">Select Building</option>
+                                        {properties.map(p => (
+                                            <option key={p.id} value={p.id.toString()}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </InputGroup>
+
+                                <InputGroup label="Unit / Bedroom" required>
+                                    <select
+                                        value={formData.unitId}
+                                        onChange={(e) => {
+                                            const unit = units.find(u => u.unitId === parseInt(e.target.value));
+                                            setFormData({ ...formData, unitId: e.target.value, leaseId: unit?.leaseId || '' });
+                                        }}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                    >
+                                        <option value="">{formData.propertyId ? 'Select Unit' : 'Please select building first'}</option>
+                                        {formData.propertyId && units
+                                            .filter(u => u.unit?.propertyId?.toString() === formData.propertyId)
+                                            .map(u => {
+                                                const displayName = u.lease?.tenant?.name || u.unit?.reserved_by_user?.name || 'Prospect';
+                                                return (
+                                                    <option key={u.id} value={u.unitId}>
+                                                        {u.unit?.unitNumber} - {displayName}
+                                                    </option>
+                                                );
+                                            })
+                                        }
+                                    </select>
+                                </InputGroup>
+
+                                <InputGroup label="Inspector" required>
+                                    <select 
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                        value={formData.inspectorId}
+                                        onChange={(e) => setFormData({...formData, inspectorId: e.target.value})}
+                                    >
+                                        <option value="">Select Inspector</option>
+                                        {inspectors.map(i => (
+                                            <option key={i.id} value={i.id}>{i.firstName} {i.lastName}</option>
+                                        ))}
+                                        {inspectors.length === 0 && <option value="1">Admin User</option>}
+                                    </select>
+                                </InputGroup>
+
+                                <InputGroup label="Tenant" required>
+                                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-100 rounded-2xl text-sm font-bold text-gray-500">
+                                        {(() => {
+                                            const selectedUnit = units.find(u => u.unitId === parseInt(formData.unitId));
+                                            if (!selectedUnit) return 'Select a unit first';
+                                            return selectedUnit.lease?.tenant?.name || 
+                                                   selectedUnit.unit?.reserved_by_user?.name || 
+                                                   'No tenant/prospect linked';
+                                        })()}
+                                    </div>
+                                </InputGroup>
+                            </div>
+
+                            <InputGroup label="Notes (Optional)">
+                                <textarea
+                                    placeholder="Add any notes or special instructions for this inspection..."
+                                    className="w-full px-4 py-4 bg-gray-50 border border-gray-100 rounded-[24px] text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all min-h-[120px] resize-none"
+                                />
+                            </InputGroup>
+                        </div>
+                    )}
+
+                    {step === 2 && (
+                        <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div>
+                                <h2 className="text-xl font-black text-gray-900 mb-1">Select Template</h2>
+                                <p className="text-gray-500 text-sm">Please select the template you want to use for this inspection.</p>
+                            </div>
+
+                            <div className="relative">
+                                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search templates..."
+                                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                />
+                            </div>
+
+                            <div className="flex flex-col gap-4">
+                                {templates.map(t => {
+                                    const roomCount = t.structure?.rooms?.length || 0;
+                                    const itemCount = t.structure?.rooms?.reduce((acc, r) => acc + (r.questions?.length || 0), 0) || 0;
+                                    
+                                    return (
+                                        <TemplateCard
+                                            key={t.id}
+                                            name={t.name}
+                                            type={t.type}
+                                            building="All Buildings"
+                                            rooms={roomCount}
+                                            items={itemCount}
+                                            selected={formData.templateId === t.id.toString()}
+                                            onClick={() => setFormData({ ...formData, templateId: t.id.toString() })}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Footer Actions */}
+                    <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between">
+                        <button
+                            onClick={handleBack}
+                            disabled={step === 1}
+                            className={`px-8 py-3 rounded-2xl text-sm font-black transition-all ${step === 1 ? 'opacity-0' : 'bg-gray-50 text-gray-500 hover:bg-gray-100 border border-gray-100'}`}
+                        >
+                            Back
+                        </button>
+                        <div className="flex items-center gap-3">
+                            <button className="px-8 py-3 bg-white text-gray-500 rounded-2xl text-sm font-black border border-gray-100 hover:bg-gray-50 transition-all">
+                                Save as Draft
+                            </button>
+                            <button
+                                onClick={handleNext}
+                                className="px-10 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
+                            >
+                                {step === 3 ? 'Finish & Create' : 'Next'}
+                                <ArrowRight size={18} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </MainLayout>
+    );
+};
+
+const InputGroup = ({ label, required, children }) => (
+    <div className="flex flex-col gap-2">
+        <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest pl-1">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        {children}
+    </div>
+);
+
+const TemplateCard = ({ name, type, building, rooms, items, selected, onClick }) => (
+    <div
+        onClick={onClick}
+        className={`p-6 rounded-[28px] border-2 transition-all cursor-pointer flex items-center justify-between group
+        ${selected ? 'border-indigo-600 bg-indigo-50/30' : 'border-gray-100 hover:border-indigo-200 bg-white'}`}
+    >
+        <div className="flex items-center gap-6">
+            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all
+                ${selected ? 'border-indigo-600' : 'border-gray-200 group-hover:border-indigo-300'}`}>
+                {selected && <div className="w-3 h-3 bg-indigo-600 rounded-full" />}
+            </div>
+            <div>
+                <h4 className="font-black text-gray-900 text-base mb-1">{name}</h4>
+                <div className="flex items-center gap-3 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    <span>{type}</span>
+                    <span className="text-gray-200">•</span>
+                    <span>{building}</span>
+                </div>
+            </div>
+        </div>
+        <div className="flex items-center gap-8 pr-4">
+            <div className="flex flex-col items-center">
+                <span className="text-base font-black text-gray-900 leading-none mb-1">{rooms}</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Rooms</span>
+            </div>
+            <div className="flex flex-col items-center">
+                <span className="text-base font-black text-gray-900 leading-none mb-1">{items}</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Items</span>
+            </div>
+        </div>
+    </div>
+);
+
+export default NewInspectionWizard;

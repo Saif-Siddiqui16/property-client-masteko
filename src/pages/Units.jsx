@@ -221,7 +221,8 @@ export const Units = () => {
         reserve_lastName: fullUnit.reserved_by_user?.lastName || '',
         reserve_email: fullUnit.reserved_by_user?.email || '',
         reserve_phone: fullUnit.reserved_by_user?.phone || '',
-        tentative_move_in_date: fullUnit.tentative_move_in_date ? new Date(fullUnit.tentative_move_in_date).toISOString().split('T')[0] : ''
+        tentative_move_in_date: fullUnit.tentative_move_in_date ? new Date(fullUnit.tentative_move_in_date).toISOString().split('T')[0] : '',
+        classification: fullUnit.classification || 'Completed'
       });
       setEditUnit(fullUnit);
       setShowModal(true);
@@ -310,7 +311,8 @@ export const Units = () => {
         reserve_lastName: formData.reserve_lastName,
         reserve_email: formData.reserve_email,
         reserve_phone: formData.reserve_phone,
-        tentative_move_in_date: formData.tentative_move_in_date || null
+        tentative_move_in_date: formData.tentative_move_in_date || null,
+        classification: formData.classification
       };
 
       console.log('SENDING UNIT PAYLOAD:', payload);
@@ -769,26 +771,39 @@ export const Units = () => {
 
                     {/* 9.2 Activation Control */}
                     <div className="pt-4 border-t border-slate-100">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-4">
                          <h4 className="text-sm font-bold text-indigo-600 uppercase tracking-widest flex items-center gap-2">
                            <CheckCircle size={16} /> Activation Control
                          </h4>
                       </div>
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 mb-2">
-                        <div className="flex items-center justify-between">
-                           <div>
-                              <p className="text-sm font-bold text-slate-800">Unit Status</p>
-                              <p className="text-[11px] text-slate-500 max-w-[280px]">
-                                This unit will remain inactive and will not appear in the rent roll until Ready for Leasing = Yes.
-                              </p>
-                           </div>
-                           <span className={`px-3 py-1 rounded-full text-xs font-black border ${
-                              formData.unit_status === 'ACTIVE' 
-                                ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
-                                : 'bg-amber-100 text-amber-700 border-amber-200'
-                           }`}>
-                             {formData.unit_status || 'INACTIVE'}
-                           </span>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                           <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Unit Classification</label>
+                           <select 
+                              name="classification"
+                              value={formData.classification}
+                              onChange={handleInputChange}
+                              className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-indigo-500 outline-none bg-white font-bold"
+                           >
+                              <option value="Completed">Completed Unit</option>
+                              <option value="New Construction">New Construction</option>
+                           </select>
+                        </div>
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                          <div className="flex items-center justify-between">
+                             <div>
+                                <p className="text-sm font-bold text-slate-800">Unit Status</p>
+                                <p className="text-[10px] text-slate-500">Currently: {formData.unit_status || 'INACTIVE'}</p>
+                             </div>
+                             <span className={`px-3 py-1 rounded-full text-xs font-black border ${
+                                formData.unit_status === 'ACTIVE' 
+                                  ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+                                  : 'bg-amber-100 text-amber-700 border-amber-200'
+                             }`}>
+                               {formData.unit_status || 'INACTIVE'}
+                             </span>
+                          </div>
                         </div>
                       </div>
                     </div>

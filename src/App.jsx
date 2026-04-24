@@ -65,6 +65,17 @@ import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { Support } from "./pages/Support";
 import { ShuttleManagement } from "./pages/ShuttleManagement";
 
+/* WORKFLOW */
+import MoveInDashboard from "./pages/workflow/MoveInDashboard";
+import MoveOutDashboard from "./pages/workflow/MoveOutDashboard";
+import UnitPrepDashboard from "./pages/workflow/UnitPrepDashboard";
+import InspectionList from "./pages/workflow/InspectionList";
+import InspectionTemplates from "./pages/workflow/InspectionTemplates";
+import NewInspectionWizard from "./pages/workflow/NewInspectionWizard";
+import InspectionForm from "./pages/workflow/InspectionForm";
+import InspectionOverview from "./pages/workflow/InspectionOverview";
+import CreateInspectionTemplate from "./pages/workflow/CreateInspectionTemplate";
+
 /* TENANT PORTAL */
 import { TenantProtectedRoute } from "./components/TenantProtectedRoute";
 import {
@@ -163,6 +174,17 @@ function App() {
           <Route path="/admin/sms/campaigns" element={<SMSCampaigns />} />
           <Route path="/admin/sms/templates" element={<SMSTemplates />} />
           <Route path="/shuttle" element={<ShuttleManagement />} />
+
+          {/* WORKFLOW ROUTES */}
+          <Route path="/admin/workflow/move-in" element={<MoveInDashboard />} />
+          <Route path="/admin/workflow/move-out" element={<MoveOutDashboard />} />
+          <Route path="/admin/workflow/unit-prep" element={<UnitPrepDashboard />} />
+          <Route path="/admin/workflow/inspections" element={<InspectionList />} />
+          <Route path="/admin/workflow/templates" element={<InspectionTemplates />} />
+          <Route path="/admin/workflow/templates/new" element={<CreateInspectionTemplate />} />
+          <Route path="/admin/workflow/inspections/new" element={<NewInspectionWizard />} />
+          <Route path="/admin/workflow/inspections/:id" element={<InspectionOverview />} />
+          <Route path="/admin/workflow/inspections/:id/form" element={<InspectionForm />} />
         </Route>
 
         {/* 📄 PUBLIC PAGES */}

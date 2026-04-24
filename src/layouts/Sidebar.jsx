@@ -20,7 +20,10 @@ import {
   Landmark,
   Mail,
   User,
-  Car
+  Car,
+  Hammer,
+  Clock,
+  Home
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -162,6 +165,30 @@ const NAV_ITEMS = [
     label: "Team Access Control",
     tKey: "sidebar.team",
     path: "/team-management"
+  },
+  {
+    icon: ClipboardList,
+    label: "Inspections",
+    path: "/admin/workflow/inspections",
+    children: [
+      { label: "Inspection List", path: "/admin/workflow/inspections" },
+      { label: "Templates", path: "/admin/workflow/templates" }
+    ]
+  },
+  {
+    icon: Hammer,
+    label: "Unit Preparation",
+    path: "/admin/workflow/unit-prep"
+  },
+  {
+    icon: Clock,
+    label: "Move-Out",
+    path: "/admin/workflow/move-out"
+  },
+  {
+    icon: Home,
+    label: "Move-In",
+    path: "/admin/workflow/move-in"
   },
   {
     icon: SettingsIcon,
