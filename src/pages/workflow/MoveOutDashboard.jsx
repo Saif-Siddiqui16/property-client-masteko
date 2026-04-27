@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import api from '../../api/client';
 import { 
     Calendar, 
     UserCheck, 
@@ -19,6 +20,7 @@ import { MainLayout } from '../../layouts/MainLayout';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const MoveOutDashboard = () => {
+    const navigate = useNavigate();
     const [moveOuts, setMoveOuts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
@@ -36,10 +38,7 @@ const MoveOutDashboard = () => {
 
     const fetchMoveOuts = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get(`${API_BASE}/admin/workflow/move-out`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.get('/api/admin/workflow/move-out');
             if (res.data.success) {
                 setMoveOuts(res.data.data);
                 calculateStats(res.data.data);
@@ -58,7 +57,7 @@ const MoveOutDashboard = () => {
             if (item.status === 'CONFIRMED') s.confirmed++;
             if (item.status === 'INSPECTION_SCHEDULED') s.scheduled++;
             if (item.status === 'INSPECTION_IN_PROGRESS') s.inProgress++;
-            if (item.status === 'READY_FOR_COMPLETION') s.ready++;
+            if (item.status === 'INSPECTIONS_COMPLETED') s.ready++;
             if (item.status === 'COMPLETED') s.completed++;
         });
         setStats(s);
@@ -122,7 +121,34 @@ const MoveOutDashboard = () => {
                 </div>
 
                 <div className="pt-3 border-t border-gray-50 flex flex-col gap-2">
-                    <button className="w-full flex items-center justify-between p-2 rounded-xl bg-gray-50 group-hover:bg-indigo-50 transition-colors border border-transparent group-hover:border-indigo-100">
+                    <button 
+                        onClick={async () => {
+                            if (item.status === 'PENDING') {
+                                try {
+                                    const res = await api.put(`/api/admin/workflow/move-out/${item.id}/confirm`);
+                                    if (res.data.success) {
+                                        fetchMoveOuts();
+                                    }
+                                } catch (e) {
+                                    alert("Error confirming: " + e.message);
+                                }
+                            } else if (item.status === 'INSPECTIONS_COMPLETED') {
+                                try {
+                                    const res = await api.put(`/api/admin/workflow/move-out/${item.id}/complete`);
+                                    if (res.data.success) {
+                                        fetchMoveOuts();
+                                    }
+                                } catch (e) {
+                                    alert("Error completing: " + e.message);
+                                }
+                            } else if (item.status === 'INSPECTION_SCHEDULED' || item.status === 'INSPECTION_IN_PROGRESS') {
+                                navigate(`/admin/workflow/inspections/${item.inspections?.[0]?.id}/form`);
+                            } else {
+                                navigate('/admin/workflow/inspections/new');
+                            }
+                        }}
+                        className="w-full flex items-center justify-between p-2 rounded-xl bg-gray-50 group-hover:bg-indigo-50 transition-colors border border-transparent group-hover:border-indigo-100"
+                    >
                         <div className="flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
                             <span className="text-[11px] font-black text-gray-700 group-hover:text-indigo-700 uppercase tracking-wider">
@@ -167,7 +193,28 @@ const MoveOutDashboard = () => {
                     <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 rounded-2xl text-sm font-black text-gray-700 hover:bg-gray-100 transition-colors border border-gray-100">
                         Export <ChevronRight size={18} className="rotate-90 text-gray-400" />
                     </button>
-                    <button className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95">
+                    <button 
+                        onClick={async () => {
+                            try {
+                                // For testing, we trigger for any active lease (this is just for your verification)
+                                const res = await api.post('/api/admin/workflow/move-out/trigger/1');
+                                if (res.data.success) {
+                                    alert("Move-Out Flow Triggered Successfully!");
+                                    fetchMoveOuts();
+                                }
+                            } catch (e) {
+                                alert("Error triggering: " + e.message);
+                            }
+                        }}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-orange-50 text-orange-700 rounded-2xl text-sm font-black hover:bg-orange-100 transition-all border border-orange-100"
+                    >
+                        <PlayCircle size={18} />
+                        Trigger Test Move-Out
+                    </button>
+                    <button 
+                        onClick={() => navigate('/admin/workflow/inspections/new')}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95"
+                    >
                         <Search size={18} />
                         Schedule Inspection
                     </button>
@@ -248,7 +295,7 @@ const MoveOutDashboard = () => {
                     icon={CheckSquare} 
                     color="bg-green-100 text-green-600" 
                     count={stats.ready} 
-                    items={moveOuts.filter(m => m.status === 'READY_FOR_COMPLETION')}
+                    items={moveOuts.filter(m => m.status === 'INSPECTIONS_COMPLETED')}
                 />
             </div>
             </div>

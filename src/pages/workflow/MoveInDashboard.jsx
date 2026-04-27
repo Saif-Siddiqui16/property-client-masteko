@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import api from '../../api/client';
 import { useNavigate } from 'react-router-dom';
+import api from '../../api/client';
 import { 
     Calendar, 
     Lock, 
@@ -119,75 +119,100 @@ const MoveInDashboard = () => {
         </div>
     );
 
-    const Card = ({ item }) => (
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer group relative">
-            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <MoreVertical size={16} className="text-gray-400" />
-            </div>
+    const handleCompleteMoveIn = async (id) => {
+        if (!window.confirm("Are you sure you want to finalize this move-in and mark the unit as OCCUPIED?")) return;
+        try {
+            setLoading(true);
+            const res = await api.post(`/api/admin/workflow/move-in/${id}/approve`);
+            if (res.data.success) {
+                alert('Move-in completed successfully! Unit is now OCCUPIED.');
+                fetchMoveIns();
+            }
+        } catch (error) {
+            alert('Failed to complete move-in: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setLoading(false);
+        }
+    };
 
-            <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                    <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-1.5 py-0.5 rounded">PRIORITY</span>
-                    <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-1.5 py-0.5 rounded">
-                        {item.unit.unitNumber}
-                    </span>
+    const Card = ({ item }) => {
+        const handleAction = (e) => {
+            e.stopPropagation();
+            if (item.status === 'REQUIREMENTS_PENDING') {
+                handleOverride(item.id);
+            } else if (item.status === 'READY_FOR_MOVE_IN') {
+                navigate('/admin/workflow/inspections/new', { state: { moveInId: item.id } });
+            } else if (item.status === 'INSPECTION_COMPLETED') {
+                handleCompleteMoveIn(item.id);
+            }
+        };
+
+        return (
+            <div 
+                onClick={handleAction}
+                className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer group relative"
+            >
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <MoreVertical size={16} className="text-gray-400" />
                 </div>
 
-                <div>
-                    <h4 className="font-bold text-gray-900">{item.unit.unitNumber}</h4>
-                    <p className="text-sm text-gray-600">
-                        {item.lease?.tenant?.name || item.unit?.reserved_by_user?.name || 'Prospect Reservation'}
-                    </p>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Calendar size={14} />
-                    <span>Move-in: {format(new Date(item.targetDate), 'MMM d, yyyy')}</span>
-                    <span className="flex items-center gap-1">
-                        <Clock size={12} />
-                        {item.daysRemaining} days
-                    </span>
-                </div>
-
-                <div className="pt-3 border-t border-gray-50 flex flex-col gap-2">
-                    <button 
-                        onClick={() => {
-                             if (item.status === 'REQUIREMENTS_PENDING') {
-                                 handleOverride(item.id);
-                             } else if (item.status === 'READY_FOR_MOVE_IN') {
-                                 navigate('/admin/workflow/inspections/new');
-                             }
-                        }}
-                        className={`w-full flex items-center justify-between p-2 rounded-xl bg-gray-50 group-hover:bg-indigo-50 transition-colors border border-transparent group-hover:border-indigo-100 ${loading ? 'opacity-50' : ''}`}
-                    >
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                            <span className="text-[11px] font-black text-gray-700 group-hover:text-indigo-700 uppercase tracking-wider">
-                                {item.status.includes('BLOCKED') ? 'Check Readiness' : 
-                                 item.status === 'REQUIREMENTS_PENDING' ? 'Admin Override' :
-                                 item.status === 'READY_FOR_MOVE_IN' ? 'Start Inspection' :
-                                 item.status === 'INSPECTION_COMPLETED' ? 'Review Inspection' : 'Complete Move-In'}
-                            </span>
-                        </div>
-                    </button>
-                </div>
-
-                {item.requirements && (
-                    <div className="grid grid-cols-2 gap-2 pt-1">
-                        <Requirement badge="Rent" status={item.requirements.deposit} />
-                        <Requirement badge="Deposit" status={item.requirements.deposit} />
-                        <Requirement badge="Insurance" status={item.requirements.insurance} />
-                        <Requirement badge="Signed" status={true} />
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                        <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-1.5 py-0.5 rounded">PRIORITY</span>
+                        <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                            {item.unit.unitNumber}
+                        </span>
                     </div>
-                )}
 
-                <div className="mt-2 group-hover:translate-x-1 transition-transform flex items-center gap-1 text-[11px] font-bold text-indigo-600 uppercase">
-                    Next Action: {item.status.includes('BLOCKED') ? 'Complete Readiness' : 'Process Move-In'}
-                    <ArrowRight size={12} />
+                    <div>
+                        <h4 className="font-bold text-gray-900">{item.unit.unitNumber}</h4>
+                        <p className="text-sm text-gray-600">
+                            {item.lease?.tenant?.name || item.unit?.reserved_by_user?.name || 'Prospect Reservation'}
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Calendar size={14} />
+                        <span>Move-in: {item.targetDate ? format(new Date(item.targetDate), 'MMM d, yyyy') : 'N/A'}</span>
+                        <span className="flex items-center gap-1">
+                            <Clock size={12} />
+                            {item.daysRemaining || 0} days
+                        </span>
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-50 flex flex-col gap-2">
+                        <div 
+                            className={`w-full flex items-center justify-between p-2 rounded-xl bg-gray-50 group-hover:bg-indigo-50 transition-colors border border-transparent group-hover:border-indigo-100 ${loading ? 'opacity-50' : ''}`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                                <span className="text-[11px] font-black text-gray-700 group-hover:text-indigo-700 uppercase tracking-wider">
+                                    {item.status.includes('BLOCKED') ? 'Check Readiness' : 
+                                     item.status === 'REQUIREMENTS_PENDING' ? 'Admin Override' :
+                                     item.status === 'READY_FOR_MOVE_IN' ? 'Start Inspection' :
+                                     item.status === 'INSPECTION_COMPLETED' ? 'Process Move-In' : 'Complete Move-In'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {item.requirements && (
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                            <Requirement badge="Rent" status={item.requirements.deposit} />
+                            <Requirement badge="Deposit" status={item.requirements.deposit} />
+                            <Requirement badge="Insurance" status={item.requirements.insurance} />
+                            <Requirement badge="Signed" status={true} />
+                        </div>
+                    )}
+
+                    <div className="mt-2 group-hover:translate-x-1 transition-transform flex items-center gap-1 text-[11px] font-bold text-indigo-600 uppercase">
+                        Next Action: {item.status.includes('BLOCKED') ? 'Complete Readiness' : 'Process Move-In'}
+                        <ArrowRight size={12} />
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const Requirement = ({ badge, status }) => (
         <div className="flex items-center gap-1.5">
@@ -211,7 +236,10 @@ const MoveInDashboard = () => {
                     <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50">
                         Export <ChevronRight size={16} className="rotate-90" />
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-sm">
+                    <button 
+                        onClick={() => navigate('/admin/workflow/inspections/new')}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-sm"
+                    >
                         <Calendar size={16} />
                         Schedule Inspection
                     </button>

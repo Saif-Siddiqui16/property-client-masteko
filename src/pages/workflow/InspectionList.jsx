@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { 
     Plus, 
     Search, 
@@ -18,14 +17,22 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import api from '../../api/client';
 import { MainLayout } from '../../layouts/MainLayout';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const InspectionList = () => {
     const navigate = useNavigate();
     const [inspections, setInspections] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [filters, setFilters] = useState({
+        type: 'All',
+        status: 'All',
+        building: 'All Buildings',
+        unit: 'All Units',
+        inspector: 'All Inspectors',
+        search: '',
+        myInspections: false
+    });
 
     useEffect(() => {
         fetchInspections();
@@ -33,20 +40,20 @@ const InspectionList = () => {
 
     const fetchInspections = async () => {
         try {
-            const token = localStorage.getItem('token');
-            // Assuming we added a getInspections endpoint or using the workflow one
-            const res = await axios.get(`${API_BASE}/admin/workflow/move-out`, { 
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.get('/api/admin/workflow/inspections');
             if (res.data.success) {
-                // Mocking inspection data based on screenshots
-                setInspections([
-                    { id: 1, type: 'Move-Out', unit: '82-101-2', tenant: 'Amy Chen', date: 'Jun 30, 2025', inspector: 'Steve Johnson', status: 'In Progress', signature: 'Pending', tickets: 2 },
-                    { id: 2, type: 'Move-In', unit: '82-203-1', tenant: 'David Lee', date: 'Jun 28, 2025', inspector: 'Maria Garcia', status: 'Completed', signature: 'Signed', tickets: 1 },
-                    { id: 3, type: 'Move-Out', unit: '81-105-3', tenant: 'John Smith', date: 'Jun 27, 2025', inspector: 'Steve Johnson', status: 'Completed', signature: 'Signed', tickets: 3 },
-                    { id: 4, type: 'Move-In', unit: '83-302-2', tenant: 'Sophie Kim', date: 'Jun 25, 2025', inspector: 'Maria Garcia', status: 'Scheduled', signature: 'Pending', tickets: 0 },
-                    { id: 5, type: 'Move-Out', unit: '81-204-1', tenant: 'Michael Brown', date: 'Jun 22, 2025', inspector: 'James Wilson', status: 'Completed', signature: 'Signed', tickets: 4 }
-                ]);
+                const mappedData = res.data.data.map(insp => ({
+                    id: insp.id,
+                    type: insp.template?.name || (insp.template?.type === 'MOVE_OUT' ? 'Move-Out' : 'Move-In'),
+                    unit: insp.unit?.name || 'Unknown',
+                    tenant: insp.lease?.tenant?.name || 'No Tenant',
+                    date: format(new Date(insp.createdAt), 'MMM dd, yyyy'),
+                    inspector: insp.inspector?.name || 'N/A',
+                    status: insp.status === 'DRAFT' ? 'In Progress' : (insp.status === 'COMPLETED' ? 'Completed' : 'Scheduled'),
+                    signature: insp.tenantSignature ? 'Signed' : 'Pending',
+                    tickets: insp.tickets?.length || 0
+                }));
+                setInspections(mappedData);
             }
         } catch (error) {
             console.error('Error fetching inspections:', error);
@@ -68,6 +75,28 @@ const InspectionList = () => {
         return sig === 'Signed' ? 'text-green-600 bg-green-50' : 'text-orange-600 bg-orange-50';
     };
 
+    const filteredInspections = inspections.filter(insp => {
+        const matchesSearch = 
+            insp.unit.toLowerCase().includes(filters.search.toLowerCase()) ||
+            insp.tenant.toLowerCase().includes(filters.search.toLowerCase()) ||
+            insp.type.toLowerCase().includes(filters.search.toLowerCase()) ||
+            insp.inspector.toLowerCase().includes(filters.search.toLowerCase());
+        
+        const matchesType = filters.type === 'All' || insp.type === filters.type;
+        const matchesStatus = filters.status === 'All' || insp.status === filters.status;
+        const matchesInspector = filters.inspector === 'All Inspectors' || insp.inspector === filters.inspector;
+        const matchesUnit = filters.unit === 'All Units' || insp.unit === filters.unit;
+        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const matchesMyInspections = !filters.myInspections || insp.inspector === currentUser.name;
+
+        return matchesSearch && matchesType && matchesStatus && matchesInspector && matchesUnit && matchesMyInspections;
+    });
+
+    const uniqueInspectors = ['All Inspectors', ...new Set(inspections.map(i => i.inspector))];
+    const uniqueUnits = ['All Units', ...new Set(inspections.map(i => i.unit))];
+    const uniqueTypes = ['All', ...new Set(inspections.map(i => i.type))];
+    const uniqueStatuses = ['All', 'Scheduled', 'In Progress', 'Completed'];
+
     if (loading) return <div className="p-8 text-center text-gray-500 font-black tracking-tighter">LOADING INSPECTIONS...</div>;
 
     return (
@@ -86,34 +115,35 @@ const InspectionList = () => {
                         <Plus size={18} />
                         New Inspection
                     </button>
-                    <button className="p-2.5 bg-gray-50 text-gray-400 rounded-2xl border border-gray-100 hover:bg-gray-100 transition-colors">
-                        <Calendar size={20} />
-                    </button>
                 </div>
             </div>
 
             {/* Filters Bar */}
             <div className="flex flex-wrap items-center gap-4 mb-8 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
-                <FilterGroup label="Inspection Type" options={['All', 'Move-In', 'Move-Out']} />
-                <FilterGroup label="Status" options={['All', 'Scheduled', 'In Progress', 'Completed']} />
-                <FilterGroup label="Building" options={['All Buildings', 'Building A', 'Building B']} />
-                <FilterGroup label="Unit / Bedroom" options={['All Units']} />
-                <FilterGroup label="Inspector" options={['All Inspectors']} />
+                <FilterGroup label="Inspection Type" value={filters.type} options={uniqueTypes} onChange={(val) => setFilters({...filters, type: val})} />
+                <FilterGroup label="Status" value={filters.status} options={uniqueStatuses} onChange={(val) => setFilters({...filters, status: val})} />
+                <FilterGroup label="Unit / Bedroom" value={filters.unit} options={uniqueUnits} onChange={(val) => setFilters({...filters, unit: val})} />
+                <FilterGroup label="Inspector" value={filters.inspector} options={uniqueInspectors} onChange={(val) => setFilters({...filters, inspector: val})} />
                 
                 <div className="flex-1 min-w-[200px] relative">
                     <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input 
                         type="text" 
                         placeholder="Search inspections..." 
+                        value={filters.search}
+                        onChange={(e) => setFilters({...filters, search: e.target.value})}
                         className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
                     />
                 </div>
 
                 <div className="flex items-center gap-2 ml-auto">
                     <span className="text-xs font-black text-gray-400 uppercase tracking-widest">My Inspections</span>
-                    <div className="w-10 h-5 bg-gray-200 rounded-full relative cursor-pointer">
-                        <div className="absolute left-1 top-1 w-3 h-3 bg-white rounded-full shadow-sm" />
-                    </div>
+                    <button 
+                        onClick={() => setFilters({...filters, myInspections: !filters.myInspections})}
+                        className={`w-10 h-5 rounded-full relative transition-all ${filters.myInspections ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                    >
+                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${filters.myInspections ? 'left-6' : 'left-1'}`} />
+                    </button>
                 </div>
             </div>
 
@@ -134,8 +164,12 @@ const InspectionList = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {inspections.map((insp) => (
-                            <tr key={insp.id} className="hover:bg-gray-50/50 transition-colors group cursor-pointer">
+                        {filteredInspections.map((insp) => (
+                            <tr 
+                                key={insp.id} 
+                                onClick={() => navigate(`/admin/workflow/inspections/${insp.id}`)}
+                                className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                            >
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-2">
                                         <div className={`w-2 h-2 rounded-full ${insp.type === 'Move-Out' ? 'bg-blue-500' : 'bg-indigo-500'}`} />
@@ -170,11 +204,25 @@ const InspectionList = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center justify-center gap-2">
-                                        <button className="p-2 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-gray-200">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/admin/workflow/inspections/${insp.id}`); }}
+                                            className="p-2 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-gray-200"
+                                            title="View Overview"
+                                        >
                                             <Eye size={16} className="text-gray-400" />
                                         </button>
-                                        <button className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 rounded-xl text-[11px] font-black text-gray-700 uppercase hover:bg-white border border-transparent hover:border-gray-200 transition-all">
-                                            Open <ChevronRight size={14} className="text-gray-400" />
+                                        <button 
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                if (insp.status === 'Completed') {
+                                                    navigate(`/admin/workflow/inspections/${insp.id}`);
+                                                } else {
+                                                    navigate(`/admin/workflow/inspections/${insp.id}/form`);
+                                                }
+                                            }}
+                                            className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 rounded-xl text-[11px] font-black text-gray-700 uppercase hover:bg-white border border-transparent hover:border-gray-200 transition-all"
+                                        >
+                                            {insp.status === 'Completed' ? 'Report' : 'Open'} <ChevronRight size={14} className="text-gray-400" />
                                         </button>
                                     </div>
                                 </td>
@@ -186,7 +234,7 @@ const InspectionList = () => {
 
             {/* Pagination Mock */}
             <div className="mt-8 flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400">Showing 1 to 5 of 23 inspections</span>
+                <span className="text-xs font-bold text-gray-400">Showing {inspections.length > 0 ? 1 : 0} to {inspections.length} of {inspections.length} inspections</span>
                 <div className="flex items-center gap-2">
                     <button className="p-2 bg-gray-50 rounded-xl border border-gray-100 text-gray-400"><ChevronRight size={16} className="rotate-180" /></button>
                     <button className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded-xl text-xs font-black">1</button>
@@ -200,12 +248,16 @@ const InspectionList = () => {
     );
 };
 
-const FilterGroup = ({ label, options }) => (
+const FilterGroup = ({ label, options, value, onChange }) => (
     <div className="flex flex-col gap-1 min-w-[140px]">
         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">{label}</label>
         <div className="relative">
-            <select className="w-full pl-3 pr-8 py-2 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-black text-gray-700 outline-none appearance-none cursor-pointer hover:bg-gray-100 transition-colors">
-                {options.map(opt => <option key={opt}>{opt}</option>)}
+            <select 
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full pl-3 pr-8 py-2 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-black text-gray-700 outline-none appearance-none cursor-pointer hover:bg-white transition-colors"
+            >
+                {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             <ChevronRight size={14} className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-gray-400 pointer-events-none" />
         </div>

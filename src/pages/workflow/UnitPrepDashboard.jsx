@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { 
-    Calendar, 
-    Hammer, 
-    CheckCircle2, 
-    Clock, 
-    AlertTriangle, 
-    Filter, 
-    Search, 
-    MoreVertical, 
+import {
+    Calendar,
+    Hammer,
+    CheckCircle2,
+    Clock,
+    AlertTriangle,
+    Filter,
+    Search,
+    MoreVertical,
     ChevronRight,
     Sparkles,
     CheckSquare,
@@ -37,13 +37,11 @@ const UnitPrepDashboard = () => {
 
     const fetchPrepUnits = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get(`${API_BASE}/admin/workflow/move-out`, { // Prep units are derived from MoveOuts or Units in Prep
+            const token = localStorage.getItem('accessToken'); // Standardized token name
+            const res = await axios.get(`${API_BASE}/admin/workflow/unit-prep`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            // Filter and map logic for prep columns
             if (res.data.success) {
-                // Mocking some prep data for visualization as the backend service just started
                 setPrepUnits(res.data.data);
                 calculateStats(res.data.data);
             }
@@ -54,12 +52,29 @@ const UnitPrepDashboard = () => {
         }
     };
 
+    const updateStage = async (unitId, nextStage) => {
+        try {
+            const token = localStorage.getItem('accessToken');
+            const res = await axios.put(`${API_BASE}/admin/workflow/unit-prep/${unitId}/stage`,
+                { nextStage },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (res.data.success) {
+                fetchPrepUnits();
+            }
+        } catch (error) {
+            alert(error.response?.data?.message || 'Error updating stage');
+        }
+    };
+
     const calculateStats = (data) => {
         const s = { pending: 0, readyCleaning: 0, cleaningInProgress: 0, cleaningCompleted: 0, unitReady: 0 };
-        // Simplified logic for demo
         data.forEach(item => {
-            if (item.status === 'READY_FOR_COMPLETION') s.pending++;
-            else s.unitReady++;
+            if (item.current_stage === 'PENDING_TICKETS') s.pending++;
+            if (item.current_stage === 'READY_FOR_CLEANING') s.readyCleaning++;
+            if (item.current_stage === 'CLEANING_IN_PROGRESS') s.cleaningInProgress++;
+            if (item.current_stage === 'CLEANING_COMPLETED') s.cleaningCompleted++;
+            if (item.current_stage === 'UNIT_READY') s.unitReady++;
         });
         setStats(s);
     };
@@ -96,32 +111,50 @@ const UnitPrepDashboard = () => {
                 </div>
 
                 <div>
-                    <h4 className="font-black text-gray-900 text-lg leading-tight tracking-tighter">{item.unit.unitNumber}</h4>
+                    <h4 className="font-black text-gray-900 text-lg leading-tight tracking-tighter">{item.unitNumber}</h4>
                     <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
-                        <span>2 Bed Unit</span>
+                        <span>{item.unitType || 'Unit'}</span>
                         <span className="text-gray-300">•</span>
-                        <span>{item.lease.tenant?.name || 'Amy Chen'}</span>
+                        <span>{item.leases?.[0]?.tenant?.name || item.reserved_by_user?.name || 'Vacant'}</span>
                     </div>
                 </div>
 
                 <div className="bg-gray-50/50 p-2.5 rounded-xl border border-gray-50">
                     <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Lease End</span>
-                        <span className="text-[10px] font-black text-gray-900 uppercase">Jun 30</span>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Open Tickets</span>
+                        <span className={`text-[10px] font-black uppercase ${item.hasRequiredTickets ? 'text-red-500' : 'text-gray-900'}`}>
+                            {item.totalOpenTickets} ({item.requiredTicketsCount} Req)
+                        </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        <span className="text-[11px] font-bold text-gray-600">Contact Required</span>
-                    </div>
+                    {item.tentative_move_in_date && (
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                            <span className="text-[11px] font-bold text-gray-600">
+                                Move-in: {format(new Date(item.tentative_move_in_date), 'MMM dd')}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
-                <button className={`w-full py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2
-                    ${columnTitle.includes('Deficiencies') ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 
-                      columnTitle.includes('Ready for Cleaning') ? 'bg-blue-600 text-white hover:bg-blue-700' :
-                      'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                    {columnTitle.includes('Deficiencies') ? 'Confirm Move-Out' : 
-                     columnTitle.includes('Ready for Cleaning') ? 'Schedule Inspection' :
-                     columnTitle.includes('Progress') ? 'Open Inspection' : 'Complete Move-In'}
+                <button
+                    onClick={() => {
+                        const stages = ['PENDING_TICKETS', 'READY_FOR_CLEANING', 'CLEANING_IN_PROGRESS', 'CLEANING_COMPLETED', 'UNIT_READY'];
+                        const currentIndex = stages.indexOf(item.current_stage);
+                        if (currentIndex < stages.length - 1) {
+                            updateStage(item.id, stages[currentIndex + 1]);
+                        }
+                    }}
+                    className={`w-full py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2
+                    ${item.hasRequiredTickets ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                            columnTitle.includes('Deficiencies') ? 'bg-indigo-600 text-white hover:bg-indigo-700' :
+                                columnTitle.includes('Ready for Cleaning') ? 'bg-amber-600 text-white hover:bg-amber-700' :
+                                    columnTitle.includes('Progress') ? 'bg-blue-600 text-white hover:bg-blue-700' :
+                                        'bg-green-600 text-white hover:bg-green-700'}`}>
+                    {item.hasRequiredTickets ? 'Blocked by Tickets' :
+                        item.current_stage === 'PENDING_TICKETS' ? 'Move to Cleaning' :
+                            item.current_stage === 'READY_FOR_CLEANING' ? 'Start Cleaning' :
+                                item.current_stage === 'CLEANING_IN_PROGRESS' ? 'Complete Cleaning' :
+                                    item.current_stage === 'CLEANING_COMPLETED' ? 'Mark Unit Ready' : 'Unit Ready'}
                     <ArrowRight size={14} />
                 </button>
             </div>
@@ -146,104 +179,104 @@ const UnitPrepDashboard = () => {
     return (
         <MainLayout title="Unit Preparation">
             <div className="p-0 bg-transparent min-h-screen">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Unit Preparation Dashboard</h1>
-                    <p className="text-gray-500 text-sm font-medium">Track units moving toward readiness • Follow your exact workflow</p>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Unit Preparation Dashboard</h1>
+                        <p className="text-gray-500 text-sm font-medium">Track units moving toward readiness • Follow your exact workflow</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 rounded-2xl text-sm font-black text-gray-700 hover:bg-gray-100 transition-colors border border-gray-100">
+                            Export <ChevronRight size={18} className="rotate-90 text-gray-400" />
+                        </button>
+                        <button className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95">
+                            <Sparkles size={18} />
+                            Schedule Inspection
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 rounded-2xl text-sm font-black text-gray-700 hover:bg-gray-100 transition-colors border border-gray-100">
-                        Export <ChevronRight size={18} className="rotate-90 text-gray-400" />
-                    </button>
-                    <button className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95">
-                        <Sparkles size={18} />
-                        Schedule Inspection
-                    </button>
-                </div>
-            </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-6 gap-4 mb-10">
-                <StatCard icon={Calendar} label="Upcoming Move-Outs" sublabel="Next 30 Days" value={18} color="text-blue-600" bg="bg-blue-50" />
-                <StatCard icon={CheckSquare} label="Confirmed Move-Outs" sublabel="Next 30 Days" value={7} color="text-orange-600" bg="bg-orange-50" />
-                <StatCard icon={Clock} label="Inspections Scheduled" sublabel="Next 30 Days" value={6} color="text-purple-600" bg="bg-purple-50" />
-                <StatCard icon={Hammer} label="In Progress" sublabel="Maintenance active" value={3} color="text-red-600" bg="bg-red-50" />
-                <StatCard icon={CheckCircle2} label="Ready for Completion" sublabel="Next 30 Days" value={12} color="text-green-600" bg="bg-green-50" />
-                <StatCard icon={Sparkles} label="Units Ready" sublabel="Units Ready" value={12} color="text-indigo-600" bg="bg-indigo-50" />
-            </div>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-6 gap-4 mb-10">
+                    <StatCard icon={Calendar} label="Upcoming Move-Outs" sublabel="Next 30 Days" value={18} color="text-blue-600" bg="bg-blue-50" />
+                    <StatCard icon={CheckSquare} label="Confirmed Move-Outs" sublabel="Next 30 Days" value={7} color="text-orange-600" bg="bg-orange-50" />
+                    <StatCard icon={Clock} label="Inspections Scheduled" sublabel="Next 30 Days" value={6} color="text-purple-600" bg="bg-purple-50" />
+                    <StatCard icon={Hammer} label="In Progress" sublabel="Maintenance active" value={3} color="text-red-600" bg="bg-red-50" />
+                    <StatCard icon={CheckCircle2} label="Ready for Completion" sublabel="Next 30 Days" value={12} color="text-green-600" bg="bg-green-50" />
+                    <StatCard icon={Sparkles} label="Units Ready" sublabel="Units Ready" value={12} color="text-indigo-600" bg="bg-indigo-50" />
+                </div>
 
-            {/* Filters */}
-            <div className="flex items-center gap-4 mb-8">
-                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-2xl border border-gray-100">
-                    <Filter size={16} className="text-gray-400" />
-                    <select className="bg-transparent text-xs font-black text-gray-700 outline-none border-none uppercase tracking-wider">
-                        <option>Building: All Buildings</option>
-                    </select>
+                {/* Filters */}
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-2xl border border-gray-100">
+                        <Filter size={16} className="text-gray-400" />
+                        <select className="bg-transparent text-xs font-black text-gray-700 outline-none border-none uppercase tracking-wider">
+                            <option>Building: All Buildings</option>
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-3 ml-4">
+                        <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" id="priority" />
+                        <label htmlFor="priority" className="text-xs font-black text-gray-700 uppercase tracking-widest cursor-pointer">Priority Only</label>
+                    </div>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-2xl border border-gray-100 ml-4">
+                        <Calendar size={16} className="text-gray-400" />
+                        <select className="bg-transparent text-xs font-black text-gray-700 outline-none border-none uppercase tracking-wider">
+                            <option>Next 30 Days</option>
+                        </select>
+                    </div>
+                    <div className="flex-1 relative ml-4">
+                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Search units, tenants..."
+                            className="w-full pl-12 pr-6 py-3 bg-gray-50 border border-gray-100 rounded-3xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner"
+                        />
+                    </div>
                 </div>
-                <div className="flex items-center gap-3 ml-4">
-                    <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" id="priority" />
-                    <label htmlFor="priority" className="text-xs font-black text-gray-700 uppercase tracking-widest cursor-pointer">Priority Only</label>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-2xl border border-gray-100 ml-4">
-                    <Calendar size={16} className="text-gray-400" />
-                    <select className="bg-transparent text-xs font-black text-gray-700 outline-none border-none uppercase tracking-wider">
-                        <option>Next 30 Days</option>
-                    </select>
-                </div>
-                <div className="flex-1 relative ml-4">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input 
-                        type="text" 
-                        placeholder="Search units, tenants..." 
-                        className="w-full pl-12 pr-6 py-3 bg-gray-50 border border-gray-100 rounded-3xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner"
+
+                {/* Kanban Columns */}
+                <div className="flex gap-6 overflow-x-auto pb-6 h-[calc(100vh-380px)] scrollbar-thin scrollbar-thumb-gray-200">
+                    <Column
+                        title="Pending Inspection Deficiencies"
+                        subtitle="Blocked due to required tickets: fix deficiencies first"
+                        icon={AlertTriangle}
+                        badgeColor="bg-red-500 text-white"
+                        count={stats.pending}
+                        items={prepUnits.filter(p => p.current_stage === 'PENDING_TICKETS')}
+                    />
+                    <Column
+                        title="Ready for Cleaning"
+                        subtitle="Deficiencies fixed: ready for professional cleaning"
+                        icon={Sparkles}
+                        badgeColor="bg-amber-500 text-white"
+                        count={stats.readyCleaning}
+                        items={prepUnits.filter(p => p.current_stage === 'READY_FOR_CLEANING')}
+                    />
+                    <Column
+                        title="Cleaning In Progress"
+                        subtitle="Professional cleaning team currently on-site"
+                        icon={Hammer}
+                        badgeColor="bg-blue-500 text-white"
+                        count={stats.cleaningInProgress}
+                        items={prepUnits.filter(p => p.current_stage === 'CLEANING_IN_PROGRESS')}
+                    />
+                    <Column
+                        title="Cleaning Completed"
+                        subtitle="Cleaning done: awaiting final admin sign-off"
+                        icon={CheckSquare}
+                        badgeColor="bg-green-500 text-white"
+                        count={stats.cleaningCompleted}
+                        items={prepUnits.filter(p => p.current_stage === 'CLEANING_COMPLETED')}
+                    />
+                    <Column
+                        title="Unit Ready"
+                        subtitle="Unit is 100% ready for move-in"
+                        icon={CheckCircle2}
+                        badgeColor="bg-indigo-500 text-white"
+                        count={stats.unitReady}
+                        items={prepUnits.filter(p => p.current_stage === 'UNIT_READY')}
                     />
                 </div>
-            </div>
-
-            {/* Kanban Columns */}
-            <div className="flex gap-6 overflow-x-auto pb-6 h-[calc(100vh-380px)] scrollbar-thin scrollbar-thumb-gray-200">
-                <Column 
-                    title="Pending Inspection Deficiencies" 
-                    subtitle="Blocked due to required tickets: swap components to fix"
-                    icon={AlertTriangle} 
-                    badgeColor="bg-red-500 text-white" 
-                    count={3} 
-                    items={prepUnits.filter(p => p.status === 'READY_FOR_COMPLETION').slice(0, 2)}
-                />
-                <Column 
-                    title="Ready for Cleaning" 
-                    subtitle="Tenant confirmed: move-out date confirmed"
-                    icon={Sparkles} 
-                    badgeColor="bg-amber-500 text-white" 
-                    count={2} 
-                    items={prepUnits.filter(p => p.status === 'PENDING').slice(0, 2)}
-                />
-                <Column 
-                    title="Cleaning In Progress" 
-                    subtitle="Visual and Move-Out Inspections in progress"
-                    icon={Hammer} 
-                    badgeColor="bg-blue-500 text-white" 
-                    count={1} 
-                    items={prepUnits.filter(p => p.status === 'PENDING').slice(2, 3)}
-                />
-                <Column 
-                    title="Cleaning Completed" 
-                    subtitle="Inspections currently being completed"
-                    icon={CheckSquare} 
-                    badgeColor="bg-green-500 text-white" 
-                    count={2} 
-                    items={prepUnits.filter(p => p.status === 'READY_FOR_COMPLETION').slice(1, 2)}
-                />
-                <Column 
-                    title="Unit Ready" 
-                    subtitle="You are ready for Move-In"
-                    icon={CheckCircle2} 
-                    badgeColor="bg-indigo-500 text-white" 
-                    count={2} 
-                    items={prepUnits.filter(p => p.status === 'COMPLETED').slice(0, 2)}
-                />
-            </div>
             </div>
         </MainLayout>
     );

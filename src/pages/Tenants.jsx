@@ -124,10 +124,15 @@ export const Tenants = () => {
       const allTenants = tenantsRes.data?.data || tenantsRes.data || [];
       const billable = allTenants.filter(t => t.type !== 'RESIDENT' && t.type !== 'Resident');
       setBillableTenants(billable);
+
+      // Fetch all units for dropdowns
+      const unitsRes = await api.get('/api/admin/units?limit=1000&showInactive=true');
+      setAllUnits(unitsRes.data?.data || unitsRes.data || []);
     } catch (e) {
       console.error("Failed to fetch dropdown data", e);
       setProperties([]);
       setBillableTenants([]);
+      setAllUnits([]);
     }
   };
 
@@ -447,7 +452,13 @@ export const Tenants = () => {
   return (
     <>
       {viewingTenant ? (
-        <TenantDetail tenant={viewingTenant} onBack={handleBack} onSendInvite={handleSendInvite} onEdit={() => handleEditTenant(viewingTenant)} />
+        <TenantDetail 
+          tenant={viewingTenant} 
+          onBack={handleBack} 
+          onSendInvite={handleSendInvite} 
+          onEdit={() => handleEditTenant(viewingTenant)}
+          allUnits={allUnits}
+        />
       ) : (
         <MainLayout title="Tenants">
           <div className="flex flex-col gap-6">
@@ -1185,7 +1196,7 @@ export const Tenants = () => {
    TENANT DETAIL COMPONENT
   ========================= */
 
-const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit }) => {
+const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit, allUnits = [] }) => {
   const [activeTab, setActiveTab] = useState('Details');
   const [loading, setLoading] = useState(false);
   const [tenantData, setTenantData] = useState({
@@ -1398,11 +1409,29 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit }) => {
     }
   };
 
-  const handleSaveLease = (e) => {
+  const handleSaveLease = async (e) => {
     e.preventDefault();
     const form = e.target;
-    // ... logic ...
-    setShowAddLease(false);
+    const formData = new FormData(form);
+
+    try {
+      const payload = {
+        tenantId: tenantData.id,
+        unitId: parseInt(formData.get('unitId')),
+        startDate: formData.get('startDate'),
+        endDate: formData.get('endDate'),
+        monthlyRent: parseFloat(formData.get('rent')),
+        type: formData.get('type')
+      };
+
+      await api.post('/api/admin/leases', payload);
+      alert('Lease added successfully');
+      setShowAddLease(false);
+      fetchTenantData();
+    } catch (e) {
+      console.error("Failed to save lease", e);
+      alert(e.response?.data?.message || "Error saving lease");
+    }
   };
 
   const handleActivateLease = async (leaseId) => {
@@ -1439,7 +1468,7 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit }) => {
 
 
   return (
-    <MainLayout title={`Tenant: ${tenant.name}`}>
+    <MainLayout title={`Tenant: ${tenantData?.name || 'Loading...'}`}>
       <div className="flex flex-col gap-6">
 
         {/* HEADER */}
@@ -2315,11 +2344,11 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit }) => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5 opacity-60">
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Tenant</label>
-                      <input disabled value={tenant.name} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 font-medium" />
+                      <input disabled value={tenantData?.name || ''} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 font-medium" />
                     </div>
                     <div className="space-y-1.5 opacity-60">
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Unit</label>
-                      <input disabled value={tenant.unit} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 font-medium" />
+                      <input disabled value={tenantData?.unit || ''} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 font-medium" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
@@ -2418,7 +2447,14 @@ const TenantDetail = ({ tenant, onBack, onSendInvite, onEdit }) => {
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Unit / Room</label>
-                      <input name="unit" defaultValue={tenantData.unit} required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none font-medium text-slate-700" />
+                      <select name="unitId" required className="w-full px-4 py-2.5 rounded-xl border border-slate-200 outline-none transition-all appearance-none bg-white font-medium text-slate-700">
+                        <option value="">Select Unit</option>
+                        {allUnits.map(u => (
+                          <option key={u.id} value={u.id} selected={u.unitNumber === tenantData?.unit}>
+                            {u.property?.name} - {u.unitNumber}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">

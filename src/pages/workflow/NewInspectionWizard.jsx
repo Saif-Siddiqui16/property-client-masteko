@@ -12,18 +12,21 @@ import {
     Layout,
     ArrowRight
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { MainLayout } from '../../layouts/MainLayout';
 import api from '../../api/client';
 
 const NewInspectionWizard = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
+        type: 'Move-In',
         templateId: '',
         unitId: '',
         leaseId: '',
         propertyId: '',
+        inspectorId: '1',
         date: new Date().toISOString().split('T')[0]
     });
     const [loading, setLoading] = useState(false);
@@ -41,10 +44,10 @@ const NewInspectionWizard = () => {
                     api.get('/api/admin/properties'),
                     api.get('/api/admin/coworkers')
                 ]);
-                if (unitsRes.data.success) {
-                    console.log('Fetched units:', unitsRes.data.data);
-                    setUnits(unitsRes.data.data || unitsRes.data);
-                }
+                
+                const moveInUnits = unitsRes.data.success ? (unitsRes.data.data || unitsRes.data) : [];
+                setUnits(moveInUnits);
+
                 if (templatesRes.data.success) setTemplates(templatesRes.data.data || templatesRes.data);
                 
                 const propData = propertiesRes.data.data || propertiesRes.data;
@@ -52,10 +55,24 @@ const NewInspectionWizard = () => {
 
                 const staffData = coworkersRes.data.data || coworkersRes.data;
                 setInspectors(Array.isArray(staffData) ? staffData : []);
+
+                // Auto-fill from location state
+                if (location.state?.moveInId) {
+                    const target = moveInUnits.find(u => u.id === location.state.moveInId);
+                    if (target) {
+                        setFormData(prev => ({
+                            ...prev,
+                            type: 'Move-In',
+                            unitId: target.unitId.toString(),
+                            propertyId: target.unit?.propertyId?.toString() || '',
+                            leaseId: target.leaseId?.toString() || ''
+                        }));
+                    }
+                }
             } catch (err) { console.error('Fetch error:', err); }
         };
         fetchData();
-    }, []);
+    }, [location.state]);
 
     const steps = [
         { id: 1, label: 'Basic Info', icon: FileText },
@@ -144,15 +161,25 @@ const NewInspectionWizard = () => {
 
                             <div className="grid grid-cols-2 gap-8">
                                 <InputGroup label="Inspection Type" required>
-                                    <select className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all">
-                                        <option>Move-Out</option>
-                                        <option>Move-In</option>
+                                    <select 
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                        value={formData.type}
+                                        onChange={(e) => setFormData({...formData, type: e.target.value})}
+                                    >
+                                        <option value="Move-Out">Move-Out</option>
+                                        <option value="Visual">Visual Walkthrough</option>
+                                        <option value="Move-In">Move-In</option>
                                     </select>
                                 </InputGroup>
 
                                 <InputGroup label="Scheduled Date" required>
                                     <div className="relative">
-                                        <input type="date" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all" />
+                                        <input 
+                                            type="date" 
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all" 
+                                            value={formData.date}
+                                            onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                        />
                                         <Calendar size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                     </div>
                                 </InputGroup>
