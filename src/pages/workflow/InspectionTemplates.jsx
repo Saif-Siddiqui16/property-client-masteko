@@ -10,7 +10,8 @@ import {
     Layout, 
     Settings,
     ChevronRight,
-    Lock
+    Lock,
+    RotateCcw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { MainLayout } from '../../layouts/MainLayout';
@@ -63,9 +64,15 @@ const InspectionTemplates = () => {
                         <Plus size={18} />
                         Create Template
                     </button>
-                    <button className="flex items-center gap-2 px-6 py-2.5 bg-gray-50 text-gray-700 rounded-2xl text-sm font-black hover:bg-gray-100 transition-all border border-gray-100">
-                        <Settings size={18} />
-                        Manage Templates
+                    <button 
+                        onClick={() => {
+                            setLoading(true);
+                            fetchTemplates();
+                        }}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-gray-50 text-gray-700 rounded-2xl text-sm font-black hover:bg-gray-100 transition-all border border-gray-100 active:scale-95"
+                    >
+                        <RotateCcw size={18} className={loading ? 'animate-spin' : ''} />
+                        Refresh Page
                     </button>
                 </div>
             </div>
@@ -113,9 +120,40 @@ const InspectionTemplates = () => {
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center justify-end gap-2">
-                                        <ActionButton icon={Edit2} />
-                                        <ActionButton icon={Copy} />
-                                        <ActionButton icon={MoreHorizontal} />
+                                        <ActionButton 
+                                            icon={Edit2} 
+                                            onClick={() => navigate(`/admin/workflow/templates/${temp.id}/edit`)}
+                                            title="Edit Template"
+                                        />
+                                        <ActionButton 
+                                            icon={Copy} 
+                                            onClick={async () => {
+                                                if (window.confirm('Duplicate this template?')) {
+                                                    try {
+                                                        await api.post(`/api/admin/workflow/templates/${temp.id}/duplicate`);
+                                                        fetchTemplates();
+                                                    } catch (e) {
+                                                        alert('Failed to duplicate');
+                                                    }
+                                                }
+                                            }}
+                                            title="Duplicate Template"
+                                        />
+                                        <ActionButton 
+                                            icon={Trash2} 
+                                            onClick={async () => {
+                                                if (window.confirm('Delete this template?')) {
+                                                    try {
+                                                        await api.delete(`/api/admin/workflow/templates/${temp.id}`);
+                                                        fetchTemplates();
+                                                    } catch (e) {
+                                                        alert('Failed to delete');
+                                                    }
+                                                }
+                                            }}
+                                            title="Delete Template"
+                                            className="hover:text-red-600"
+                                        />
                                     </div>
                                 </td>
                             </tr>
@@ -137,8 +175,15 @@ const InspectionTemplates = () => {
     );
 };
 
-const ActionButton = ({ icon: Icon }) => (
-    <button className="p-2.5 hover:bg-white rounded-2xl transition-colors border border-transparent hover:border-gray-200 text-gray-400 hover:text-indigo-600 shadow-sm hover:shadow-md">
+const ActionButton = ({ icon: Icon, onClick, title, className = "" }) => (
+    <button 
+        onClick={(e) => {
+            e.stopPropagation();
+            onClick?.();
+        }}
+        title={title}
+        className={`p-2.5 hover:bg-white rounded-2xl transition-colors border border-transparent hover:border-gray-200 text-gray-400 hover:text-indigo-600 shadow-sm hover:shadow-md ${className}`}
+    >
         <Icon size={16} />
     </button>
 );

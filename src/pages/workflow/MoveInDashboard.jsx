@@ -83,6 +83,21 @@ const MoveInDashboard = () => {
         setStats(s);
     };
 
+    const handleExport = async () => {
+        try {
+            const res = await api.get('/api/admin/workflow/move-in/export', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `move-in-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            alert('Failed to export PDF: ' + error.message);
+        }
+    };
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'BLOCKED_IN_PREPARATION':
@@ -233,7 +248,10 @@ const MoveInDashboard = () => {
                     <p className="text-gray-500 text-sm">Track tenant move-ins and readiness • Follow your exact workflow</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50">
+                    <button 
+                        onClick={handleExport}
+                        className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50"
+                    >
                         Export <ChevronRight size={16} className="rotate-90" />
                     </button>
                     <button 

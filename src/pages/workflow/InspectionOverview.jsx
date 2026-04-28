@@ -89,12 +89,36 @@ const InspectionOverview = () => {
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="p-2.5 bg-white rounded-2xl border border-gray-100 text-gray-400 hover:text-gray-900 transition-colors shadow-sm">
+                    <button 
+                        onClick={() => navigate(`/admin/workflow/inspections/${id}/form`)}
+                        className="p-2.5 bg-white rounded-2xl border border-gray-100 text-gray-400 hover:text-gray-900 transition-colors shadow-sm"
+                        title="Edit Inspection"
+                    >
                         <Edit2 size={18} />
                     </button>
-                    <button className="p-2.5 bg-white rounded-2xl border border-gray-100 text-gray-400 hover:text-gray-900 transition-colors shadow-sm">
-                        <MoreHorizontal size={18} />
-                    </button>
+                    <div className="relative group/more">
+                        <button className="p-2.5 bg-white rounded-2xl border border-gray-100 text-gray-400 hover:text-gray-900 transition-colors shadow-sm">
+                            <MoreHorizontal size={18} />
+                        </button>
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 hidden group-hover/more:block z-50">
+                            <button 
+                                onClick={async () => {
+                                    if (window.confirm('Are you sure you want to delete this inspection? This cannot be undone.')) {
+                                        try {
+                                            await api.delete(`/api/admin/workflow/inspections/${id}`);
+                                            navigate('/admin/workflow/inspections');
+                                        } catch (e) {
+                                            alert('Failed to delete: ' + (e.response?.data?.message || e.message));
+                                        }
+                                    }
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold flex items-center gap-2"
+                            >
+                                <XCircle size={16} />
+                                Delete Inspection
+                            </button>
+                        </div>
+                    </div>
                     {inspection.status !== 'COMPLETED' && (
                         <button 
                             onClick={() => navigate(`/admin/workflow/inspections/${id}/form`)}
@@ -213,7 +237,7 @@ const InspectionOverview = () => {
                                     <div key={i} className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{resp.questionText || 'Observation'}</span>
-                                            <span className="text-[10px] font-bold text-gray-400">{resp.value || 'N/A'}</span>
+                                            <span className="text-[10px] font-bold text-gray-400">{resp.response || 'N/A'}</span>
                                         </div>
                                         <p className="text-sm font-bold text-gray-700 leading-relaxed">{resp.notes}</p>
                                     </div>

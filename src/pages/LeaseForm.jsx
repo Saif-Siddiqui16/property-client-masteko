@@ -57,8 +57,8 @@ export const LeaseForm = () => {
 
     if (buildingId) {
       try {
-        // Fetch all units for this building
-        const unitsRes = await api.get(`/api/admin/units?propertyId=${buildingId}&limit=1000`);
+        // Fetch all units for this building, including New Construction (INACTIVE) units so they can be reserved
+        const unitsRes = await api.get(`/api/admin/units?propertyId=${buildingId}&limit=1000&showInactive=true`);
         const allUnits = Array.isArray(unitsRes.data.data) ? unitsRes.data.data : (Array.isArray(unitsRes.data) ? unitsRes.data : []);
 
         // Simplified filtering for Full Unit Lease:

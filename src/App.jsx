@@ -182,6 +182,7 @@ function App() {
           <Route path="/admin/workflow/inspections" element={<InspectionList />} />
           <Route path="/admin/workflow/templates" element={<InspectionTemplates />} />
           <Route path="/admin/workflow/templates/new" element={<CreateInspectionTemplate />} />
+          <Route path="/admin/workflow/templates/:id/edit" element={<CreateInspectionTemplate />} />
           <Route path="/admin/workflow/inspections/new" element={<NewInspectionWizard />} />
           <Route path="/admin/workflow/inspections/:id" element={<InspectionOverview />} />
           <Route path="/admin/workflow/inspections/:id/form" element={<InspectionForm />} />

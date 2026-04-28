@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../../api/client';
 import axios from 'axios';
 import {
     Calendar,
@@ -21,6 +23,7 @@ import { MainLayout } from '../../layouts/MainLayout';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const UnitPrepDashboard = () => {
+    const navigate = useNavigate();
     const [prepUnits, setPrepUnits] = useState([]);
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
@@ -77,6 +80,21 @@ const UnitPrepDashboard = () => {
             if (item.current_stage === 'UNIT_READY') s.unitReady++;
         });
         setStats(s);
+    };
+
+    const handleExport = async () => {
+        try {
+            const res = await api.get('/api/admin/workflow/unit-prep/export', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `unit-prep-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            alert('Failed to export PDF: ' + error.message);
+        }
     };
 
     const Column = ({ title, icon: Icon, color, count, items, subtitle, badgeColor }) => (
@@ -186,10 +204,16 @@ const UnitPrepDashboard = () => {
                         <p className="text-gray-500 text-sm font-medium">Track units moving toward readiness • Follow your exact workflow</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 rounded-2xl text-sm font-black text-gray-700 hover:bg-gray-100 transition-colors border border-gray-100">
+                        <button 
+                            onClick={handleExport}
+                            className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 rounded-2xl text-sm font-black text-gray-700 hover:bg-gray-100 transition-colors border border-gray-100"
+                        >
                             Export <ChevronRight size={18} className="rotate-90 text-gray-400" />
                         </button>
-                        <button className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95">
+                        <button 
+                            onClick={() => navigate('/admin/workflow/inspections/new')}
+                            className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95"
+                        >
                             <Sparkles size={18} />
                             Schedule Inspection
                         </button>

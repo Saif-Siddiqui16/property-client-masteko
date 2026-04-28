@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { 
     Plus, 
     Trash2, 
@@ -14,6 +14,7 @@ import api from '../../api/client';
 
 const CreateInspectionTemplate = () => {
     const navigate = useNavigate();
+    const { id } = useParams();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
@@ -28,6 +29,30 @@ const CreateInspectionTemplate = () => {
             }
         ]
     });
+
+    useEffect(() => {
+        if (id) {
+            fetchTemplate();
+        }
+    }, [id]);
+
+    const fetchTemplate = async () => {
+        try {
+            const res = await api.get('/api/admin/workflow/templates');
+            if (res.data.success) {
+                const template = res.data.data.find(t => t.id === parseInt(id));
+                if (template) {
+                    setFormData({
+                        name: template.name,
+                        type: template.type,
+                        rooms: template.structure?.rooms || []
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Fetch error:', error);
+        }
+    };
 
     const addRoom = () => {
         setFormData({
@@ -85,7 +110,11 @@ const CreateInspectionTemplate = () => {
                 type: formData.type,
                 structure: { rooms: formData.rooms }
             };
-            const res = await api.post('/api/admin/workflow/templates', payload);
+            
+            const res = id 
+                ? await api.put(`/api/admin/workflow/templates/${id}`, payload)
+                : await api.post('/api/admin/workflow/templates', payload);
+
             if (res.data.success) {
                 navigate('/admin/workflow/templates');
             }
@@ -109,8 +138,8 @@ const CreateInspectionTemplate = () => {
                             <ChevronLeft size={24} className="text-gray-400" />
                         </button>
                         <div>
-                            <h1 className="text-3xl font-black text-gray-900 tracking-tighter">New Template</h1>
-                            <p className="text-gray-500 text-sm font-medium">Design your room-by-room inspection checklist</p>
+                            <h1 className="text-3xl font-black text-gray-900 tracking-tighter">{id ? 'Edit Template' : 'New Template'}</h1>
+                            <p className="text-gray-500 text-sm font-medium">{id ? 'Update your existing checklist' : 'Design your room-by-room inspection checklist'}</p>
                         </div>
                     </div>
                     <button 

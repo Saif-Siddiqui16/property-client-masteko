@@ -63,6 +63,21 @@ const MoveOutDashboard = () => {
         setStats(s);
     };
 
+    const handleExport = async () => {
+        try {
+            const res = await api.get('/api/admin/workflow/move-out/export', { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `move-out-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            alert('Failed to export PDF: ' + error.message);
+        }
+    };
+
     const Column = ({ title, icon: Icon, color, count, items, subtitle }) => (
         <div className="flex-1 min-w-[320px] bg-gray-50/50 rounded-2xl p-4 flex flex-col gap-4">
             <div className="flex items-center justify-between">
@@ -190,7 +205,10 @@ const MoveOutDashboard = () => {
                     <p className="text-gray-500 text-sm font-medium">Track upcoming move-outs readiness • Follow your exact workflow</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 rounded-2xl text-sm font-black text-gray-700 hover:bg-gray-100 transition-colors border border-gray-100">
+                    <button 
+                        onClick={handleExport}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 rounded-2xl text-sm font-black text-gray-700 hover:bg-gray-100 transition-colors border border-gray-100"
+                    >
                         Export <ChevronRight size={18} className="rotate-90 text-gray-400" />
                     </button>
                     <button 
