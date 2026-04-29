@@ -47,7 +47,8 @@ export const Units = () => {
     reserve_lastName: '',
     reserve_email: '',
     reserve_phone: '',
-    tentative_move_in_date: ''
+    tentative_move_in_date: '',
+    classification: 'New Construction'
   });
   const [tenants, setTenants] = useState([]);
   const [showQuickAddTenant, setShowQuickAddTenant] = useState(false);
@@ -175,7 +176,8 @@ export const Units = () => {
       reserve_lastName: '',
       reserve_email: '',
       reserve_phone: '',
-      tentative_move_in_date: ''
+      tentative_move_in_date: '',
+      classification: 'New Construction'
     });
   };
 
@@ -204,6 +206,9 @@ export const Units = () => {
       const res = await api.get(`/api/admin/units/${unit.id}`);
       const fullUnit = res.data;
 
+      const activeLease = fullUnit.leases?.[0]; // Get latest lease
+      const reservedUser = fullUnit.reserved_by_user;
+
       setFormData({
         propertyId: fullUnit.propertyId?.toString() || '',
         unitNumber: fullUnit.unitNumber || '',
@@ -215,14 +220,14 @@ export const Units = () => {
         bedroomIdentifiers: fullUnit.bedroomsList?.map(b => b.bedroomNumber) || [],
         unit_status: fullUnit.unit_status || 'INACTIVE',
         gc_delivered_target_date: fullUnit.gc_delivered_target_date ? new Date(fullUnit.gc_delivered_target_date).toISOString().split('T')[0] : '',
-        reserved_flag: fullUnit.reserved_flag || false,
-        reserved_by_id: fullUnit.reserved_by_id?.toString() || '',
-        reserve_firstName: fullUnit.reserved_by_user?.firstName || '',
-        reserve_lastName: fullUnit.reserved_by_user?.lastName || '',
-        reserve_email: fullUnit.reserved_by_user?.email || '',
-        reserve_phone: fullUnit.reserved_by_user?.phone || '',
-        tentative_move_in_date: fullUnit.tentative_move_in_date ? new Date(fullUnit.tentative_move_in_date).toISOString().split('T')[0] : '',
-        classification: fullUnit.classification || 'Completed'
+        reserved_flag: fullUnit.reserved_flag || !!activeLease,
+        reserved_by_id: reservedUser?.id?.toString() || activeLease?.tenantId?.toString() || '',
+        reserve_firstName: reservedUser?.firstName || activeLease?.tenant?.firstName || activeLease?.tenant?.name?.split(' ')[0] || '',
+        reserve_lastName: reservedUser?.lastName || activeLease?.tenant?.lastName || activeLease?.tenant?.name?.split(' ').slice(1).join(' ') || '',
+        reserve_email: reservedUser?.email || activeLease?.tenant?.email || '',
+        reserve_phone: reservedUser?.phone || activeLease?.tenant?.phone || '',
+        tentative_move_in_date: (fullUnit.tentative_move_in_date || activeLease?.startDate) ? new Date(fullUnit.tentative_move_in_date || activeLease?.startDate).toISOString().split('T')[0] : '',
+        classification: fullUnit.unit_status === 'INACTIVE' ? 'New Construction' : (fullUnit.classification || 'Completed')
       });
       setEditUnit(fullUnit);
       setShowModal(true);

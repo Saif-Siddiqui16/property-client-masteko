@@ -126,7 +126,7 @@ const MoveInDashboard = () => {
                 </span>
             </div>
 
-            <div className="flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-320px)] pr-1 scrollbar-thin scrollbar-thumb-gray-200">
+            <div className="flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-280px)] pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
                 {items.map(item => (
                     <Card key={item.id} item={item} />
                 ))}
@@ -150,10 +150,42 @@ const MoveInDashboard = () => {
         }
     };
 
+    const handleToggleRequirement = async (moveInId, requirement, currentStatus) => {
+        try {
+            const res = await api.put(`/api/admin/workflow/move-in/${moveInId}/requirement`, {
+                requirement,
+                completed: !currentStatus
+            });
+            if (res.data.success) {
+                fetchMoveIns();
+            }
+        } catch (error) {
+            console.error('Error toggling requirement:', error);
+            alert('Failed to update requirement');
+        }
+    };
+
+    // Timezone-safe date parser
+    const safeDate = (dateStr) => {
+        if (!dateStr) return null;
+        const datePart = String(dateStr).substring(0, 10);
+        return new Date(datePart + 'T12:00:00');
+    };
+
     const Card = ({ item }) => {
         const handleAction = (e) => {
             e.stopPropagation();
-            if (item.status === 'REQUIREMENTS_PENDING') {
+            if (item.status === 'PENDING' || item.status.includes('BLOCKED')) {
+                // If blocked, maybe just show a note or guide to Unit Prep
+                if (item.status.includes('PREPARATION')) {
+                    navigate('/admin/workflow/unit-preparation');
+                } else if (item.status.includes('CONSTRUCTION')) {
+                    navigate('/admin/readiness');
+                } else {
+                    // Try to advance it if possible
+                    handleToggleRequirement(item.id, 'Process', true);
+                }
+            } else if (item.status === 'REQUIREMENTS_PENDING') {
                 handleOverride(item.id);
             } else if (item.status === 'READY_FOR_MOVE_IN') {
                 navigate('/admin/workflow/inspections/new', { state: { moveInId: item.id } });
@@ -162,10 +194,13 @@ const MoveInDashboard = () => {
             }
         };
 
+        const isBlocked = item.status.includes('BLOCKED');
+        const displayDate = safeDate(item.targetDate);
+
         return (
             <div 
-                onClick={handleAction}
                 className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer group relative"
+                onClick={handleAction}
             >
                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                     <MoreVertical size={16} className="text-gray-400" />
@@ -173,66 +208,95 @@ const MoveInDashboard = () => {
 
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-2">
-                        <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-1.5 py-0.5 rounded">PRIORITY</span>
-                        <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-1.5 py-0.5 rounded">
-                            {item.unit.unitNumber}
+                        {item.unit.is_priority && (
+                            <span className="bg-red-100 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded animate-pulse">PRIORITY</span>
+                        )}
+                        <span className="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-100">
+                           {item.unit.property?.name || 'Unit'}
                         </span>
                     </div>
 
                     <div>
-                        <h4 className="font-bold text-gray-900">{item.unit.unitNumber}</h4>
-                        <p className="text-sm text-gray-600">
+                        <h4 className="font-bold text-gray-900 text-base">Unit {item.unit.unitNumber}</h4>
+                        <p className="text-sm text-gray-600 font-medium">
                             {item.lease?.tenant?.name || item.unit?.reserved_by_user?.name || 'Prospect Reservation'}
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <Calendar size={14} />
-                        <span>Move-in: {item.targetDate ? format(new Date(item.targetDate), 'MMM d, yyyy') : 'N/A'}</span>
-                        <span className="flex items-center gap-1">
+                    <div className="flex items-center gap-2 text-[11px] text-gray-500 bg-gray-50 p-1.5 rounded-lg border border-gray-100/50">
+                        <Calendar size={14} className="text-indigo-500" />
+                        <span className="font-bold">{displayDate ? format(displayDate, 'MMM d, yyyy') : 'TBD'}</span>
+                        <div className="w-1 h-1 rounded-full bg-gray-300" />
+                        <span className="flex items-center gap-1 font-medium">
                             <Clock size={12} />
-                            {item.daysRemaining || 0} days
+                            {item.daysRemaining > 0 ? `${item.daysRemaining} days left` : item.daysRemaining === 0 ? 'Today' : `${Math.abs(item.daysRemaining)} days overdue`}
                         </span>
                     </div>
 
-                    <div className="pt-3 border-t border-gray-50 flex flex-col gap-2">
+                    <div className="pt-2 flex flex-col gap-2">
                         <div 
-                            className={`w-full flex items-center justify-between p-2 rounded-xl bg-gray-50 group-hover:bg-indigo-50 transition-colors border border-transparent group-hover:border-indigo-100 ${loading ? 'opacity-50' : ''}`}
+                            className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-all border ${
+                                item.status === 'INSPECTION_COMPLETED' 
+                                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-100' 
+                                    : 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-100'
+                            } ${loading ? 'opacity-50' : 'hover:scale-[1.02]'}`}
                         >
                             <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                <span className="text-[11px] font-black text-gray-700 group-hover:text-indigo-700 uppercase tracking-wider">
-                                    {item.status.includes('BLOCKED') ? 'Check Readiness' : 
+                                {item.status === 'INSPECTION_COMPLETED' ? <CheckCircle2 size={16} /> : <Unlock size={16} />}
+                                <span className="text-[11px] font-black uppercase tracking-wider">
+                                    {isBlocked ? 'In Preparation' : 
                                      item.status === 'REQUIREMENTS_PENDING' ? 'Admin Override' :
-                                     item.status === 'READY_FOR_MOVE_IN' ? 'Start Inspection' :
-                                     item.status === 'INSPECTION_COMPLETED' ? 'Process Move-In' : 'Complete Move-In'}
+                                     item.status === 'READY_FOR_MOVE_IN' ? 'Start Move-In Inspection' :
+                                     item.status === 'INSPECTION_COMPLETED' ? 'Approve Final Move-In' : 'Process Move-In'}
                                 </span>
                             </div>
+                            <ChevronRight size={14} />
                         </div>
                     </div>
 
                     {item.requirements && (
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                            <Requirement badge="Rent" status={item.requirements.deposit} />
-                            <Requirement badge="Deposit" status={item.requirements.deposit} />
-                            <Requirement badge="Insurance" status={item.requirements.insurance} />
-                            <Requirement badge="Signed" status={true} />
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-3 pt-2 mt-1 border-t border-gray-50">
+                            <Requirement 
+                                badge="Rent" 
+                                status={item.requirements.rent} 
+                                onClick={(e) => { e.stopPropagation(); handleToggleRequirement(item.id, 'Rent', item.requirements.rent); }}
+                            />
+                            <Requirement 
+                                badge="Deposit" 
+                                status={item.requirements.deposit} 
+                                onClick={(e) => { e.stopPropagation(); handleToggleRequirement(item.id, 'Deposit', item.requirements.deposit); }}
+                            />
+                            <Requirement 
+                                badge="Insurance" 
+                                status={item.requirements.insurance} 
+                                onClick={(e) => { e.stopPropagation(); handleToggleRequirement(item.id, 'Insurance', item.requirements.insurance); }}
+                            />
+                            <Requirement 
+                                badge="Signed" 
+                                status={!!item.leaseId} 
+                            />
                         </div>
                     )}
-
-                    <div className="mt-2 group-hover:translate-x-1 transition-transform flex items-center gap-1 text-[11px] font-bold text-indigo-600 uppercase">
-                        Next Action: {item.status.includes('BLOCKED') ? 'Complete Readiness' : 'Process Move-In'}
-                        <ArrowRight size={12} />
-                    </div>
                 </div>
             </div>
         );
     };
 
-    const Requirement = ({ badge, status }) => (
-        <div className="flex items-center gap-1.5">
-            {status ? <CheckCircle2 size={12} className="text-green-500" /> : <AlertCircle size={12} className="text-red-500" />}
-            <span className={`text-[10px] font-medium ${status ? 'text-gray-700' : 'text-red-500'}`}>{badge}</span>
+    const Requirement = ({ badge, status, onClick }) => (
+        <div 
+            onClick={onClick}
+            className={`flex items-center gap-1.5 p-1 rounded-md transition-all ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+        >
+            {status ? (
+                <div className="bg-emerald-500 rounded-full p-0.5">
+                    <CheckCircle2 size={10} className="text-white" />
+                </div>
+            ) : (
+                <div className="bg-red-500 rounded-full p-0.5">
+                    <AlertCircle size={10} className="text-white" />
+                </div>
+            )}
+            <span className={`text-[10px] font-bold uppercase tracking-tight ${status ? 'text-gray-700' : 'text-red-500'}`}>{badge}</span>
         </div>
     );
 
