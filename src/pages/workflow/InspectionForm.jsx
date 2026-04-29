@@ -12,7 +12,9 @@ import {
     Plus,
     X,
     MoreHorizontal,
-    Edit3
+    Edit3,
+    Trash2,
+    Loader2
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MainLayout } from '../../layouts/MainLayout';
@@ -30,6 +32,7 @@ const InspectionForm = () => {
     const [noDeficiency, setNoDeficiency] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [ticketLoading, setTicketLoading] = useState({});
 
     // Signature Canvas
     const signatureCanvasRef = useRef(null);
@@ -126,22 +129,46 @@ const InspectionForm = () => {
 
     const handleCreateTicket = async (question) => {
         try {
+            setTicketLoading(prev => ({ ...prev, [question.id]: true }));
             const res = await api.post(`/api/admin/workflow/inspections/${id}/tickets`, {
                 questionId: question.id,
                 questionText: question.text,
                 notes: responses[question.id]?.notes || 'No notes provided'
             });
             if (res.data.success) {
+                const newTicket = res.data.data;
                 setResponses(prev => ({
                     ...prev,
-                    [question.id]: { ...prev[question.id], ticketCreated: true, ticketId: res.data.data.id }
+                    [question.id]: { ...prev[question.id], ticketCreated: true, ticketId: newTicket.id }
                 }));
-                setTickets(prev => [...prev, res.data.data]);
+                setTickets(prev => [...prev, newTicket]);
                 alert('Deficiency Ticket Created Successfully!');
             }
         } catch (error) {
             console.error('Ticket creation error:', error);
-            alert('Failed to create ticket. Please try again.');
+            alert('Failed to create ticket: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setTicketLoading(prev => ({ ...prev, [question.id]: false }));
+        }
+    };
+
+    const handleDeleteTicket = async (questionId, ticketId) => {
+        if (!window.confirm('Are you sure you want to delete this ticket?')) return;
+        try {
+            const res = await api.delete(`/api/admin/workflow/inspections/${id}/tickets/${ticketId}`);
+            if (res.data.success) {
+                // Update responses state to clear the ticket link
+                setResponses(prev => ({
+                    ...prev,
+                    [questionId]: { ...prev[questionId], ticketCreated: false, ticketId: null }
+                }));
+                // Update tickets list
+                setTickets(prev => prev.filter(t => t.id !== ticketId));
+                alert('Ticket deleted successfully.');
+            }
+        } catch (error) {
+            console.error('Ticket deletion error:', error);
+            alert('Failed to delete ticket.');
         }
     };
 
@@ -383,17 +410,71 @@ const InspectionForm = () => {
                                                         </td>
                                                         <td className="px-8 py-6 align-top">
                                                             <div className="flex flex-col gap-2">
-                                                                {['Good', 'Fair', 'Poor'].map(status => (
-                                                                    <ConditionToggle
-                                                                        key={status}
-                                                                        label={status}
-                                                                        active={responses[q.id]?.status === status}
-                                                                        color={status === 'Good' ? 'text-green-600' : status === 'Fair' ? 'text-orange-600' : 'text-red-600'}
-                                                                        dot={status === 'Good' ? 'bg-green-500' : status === 'Fair' ? 'bg-orange-500' : 'bg-red-500'}
-                                                                        onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, status)}
+                                                                {q.type === 'DROPDOWN' ? (
+                                                                    <select
+                                                                        value={responses[q.id]?.status || ''}
                                                                         disabled={!isEditMode && inspection.status !== 'DRAFT'}
+                                                                        onChange={(e) => handleConditionChange(q.id, e.target.value)}
+                                                                        className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                                                    >
+                                                                        <option value="">Select Option...</option>
+                                                                        {(q.options || '').split(',').map(opt => (
+                                                                            <option key={opt.trim()} value={opt.trim()}>{opt.trim()}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                ) : q.type === 'TEXT' ? (
+                                                                    <textarea 
+                                                                        placeholder="Enter response..."
+                                                                        value={responses[q.id]?.status || ''}
+                                                                        readOnly={!isEditMode && inspection.status !== 'DRAFT'}
+                                                                        onChange={(e) => handleConditionChange(q.id, e.target.value)}
+                                                                        className="w-full p-3 bg-white border border-gray-100 rounded-xl text-xs font-bold"
                                                                     />
-                                                                ))}
+                                                                ) : q.type === 'RATING' ? (
+                                                                    <div className="flex gap-1">
+                                                                        {[1,2,3,4,5].map(num => (
+                                                                            <button 
+                                                                                key={num}
+                                                                                onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, num.toString())}
+                                                                                className={`w-8 h-8 rounded-lg text-xs font-black ${responses[q.id]?.status === num.toString() ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}
+                                                                            >
+                                                                                {num}
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : q.type === 'YES_NO' ? (
+                                                                    <div className="flex flex-col gap-2">
+                                                                        {['Yes', 'No'].map(choice => (
+                                                                            <ConditionToggle
+                                                                                key={choice}
+                                                                                label={choice}
+                                                                                active={responses[q.id]?.status === choice}
+                                                                                color={choice === 'Yes' ? 'text-green-600' : 'text-red-600'}
+                                                                                dot={choice === 'Yes' ? 'bg-green-500' : 'bg-red-500'}
+                                                                                onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, choice)}
+                                                                                disabled={!isEditMode && inspection.status !== 'DRAFT'}
+                                                                            />
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex flex-col gap-2">
+                                                                        {(inspection.template?.structure?.responseChoices || [
+                                                                            { label: 'Good', color: 'green' },
+                                                                            { label: 'Fair', color: 'orange' },
+                                                                            { label: 'Poor', color: 'red' }
+                                                                        ]).map(choice => (
+                                                                            <ConditionToggle
+                                                                                key={choice.label}
+                                                                                label={choice.label}
+                                                                                active={responses[q.id]?.status === choice.label}
+                                                                                color={`text-${choice.color}-600`}
+                                                                                dot={`bg-${choice.color}-500`}
+                                                                                onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, choice.label)}
+                                                                                disabled={!isEditMode && inspection.status !== 'DRAFT'}
+                                                                            />
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </td>
                                                         <td className="px-8 py-6 align-top">
@@ -437,16 +518,32 @@ const InspectionForm = () => {
                                                         </td>
                                                         <td className="px-8 py-6 align-top">
                                                             {responses[q.id]?.ticketCreated ? (
-                                                                <div className="flex items-center gap-2 text-green-600 font-black text-[10px] uppercase bg-green-50 p-3 rounded-xl border border-green-100">
-                                                                    <CheckCircle2 size={14} /> Ticket Created
+                                                                <div className="flex items-center justify-between gap-2 text-green-600 font-black text-[10px] uppercase bg-green-50 p-3 rounded-xl border border-green-100">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <CheckCircle2 size={14} /> Ticket Created
+                                                                    </div>
+                                                                    {(isEditMode || inspection.status === 'DRAFT') && (
+                                                                        <button 
+                                                                            onClick={() => handleDeleteTicket(q.id, responses[q.id].ticketId)}
+                                                                            className="text-red-400 hover:text-red-600 transition-colors"
+                                                                            title="Delete Ticket"
+                                                                        >
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    )}
                                                                 </div>
                                                             ) : (
                                                                 <button 
                                                                     onClick={() => handleCreateTicket(q)}
-                                                                    disabled={!isEditMode && inspection.status !== 'DRAFT'}
-                                                                    className="flex items-center gap-2 px-4 py-3 bg-gray-50 rounded-xl text-[10px] font-black text-gray-600 uppercase hover:bg-white border border-transparent hover:border-gray-200 transition-all shadow-sm group/btn disabled:opacity-50"
+                                                                    disabled={ticketLoading[q.id] || (!isEditMode && inspection.status !== 'DRAFT')}
+                                                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 rounded-xl text-[10px] font-black text-gray-600 uppercase hover:bg-white border border-transparent hover:border-gray-200 transition-all shadow-sm group/btn disabled:opacity-50"
                                                                 >
-                                                                    <Plus size={14} className="group-hover/btn:rotate-90 transition-transform" /> Create Ticket
+                                                                    {ticketLoading[q.id] ? (
+                                                                        <Loader2 size={14} className="animate-spin" />
+                                                                    ) : (
+                                                                        <Plus size={14} className="group-hover/btn:rotate-90 transition-transform" />
+                                                                    )}
+                                                                    {ticketLoading[q.id] ? 'Creating...' : 'Create Ticket'}
                                                                 </button>
                                                             )}
                                                         </td>
@@ -475,7 +572,20 @@ const InspectionForm = () => {
                                                         <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest bg-orange-50 px-2 py-0.5 rounded border border-orange-100">{t.category}</span>
                                                         <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{t.priority}</span>
                                                     </div>
-                                                    <span className="text-[9px] font-black text-gray-300 uppercase">#{t.id}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-[9px] font-black text-gray-300 uppercase">#{t.id}</span>
+                                                        {(isEditMode || inspection.status === 'DRAFT') && (
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const qId = Object.keys(responses).find(key => responses[key].ticketId === t.id);
+                                                                    handleDeleteTicket(qId, t.id);
+                                                                }}
+                                                                className="text-red-300 hover:text-red-500 transition-colors"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <h4 className="font-black text-gray-900 tracking-tight text-lg">{t.subject}</h4>
                                                 <p className="text-xs text-gray-500 leading-relaxed">{t.description}</p>

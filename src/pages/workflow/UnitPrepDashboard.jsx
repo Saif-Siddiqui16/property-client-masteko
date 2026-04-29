@@ -26,12 +26,15 @@ const UnitPrepDashboard = () => {
     const navigate = useNavigate();
     const [prepUnits, setPrepUnits] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [buildingFilter, setBuildingFilter] = useState('All');
     const [stats, setStats] = useState({
-        pending: 0,
-        readyCleaning: 0,
-        cleaningInProgress: 0,
-        cleaningCompleted: 0,
-        unitReady: 0
+        upcomingMoveOuts: 0,
+        confirmedMoveOuts: 0,
+        inspectionsScheduled: 0,
+        inRepair: 0,
+        readyForCompletion: 0,
+        unitsReady: 0
     });
 
     useEffect(() => {
@@ -40,13 +43,13 @@ const UnitPrepDashboard = () => {
 
     const fetchPrepUnits = async () => {
         try {
-            const token = localStorage.getItem('accessToken'); // Standardized token name
+            const token = localStorage.getItem('accessToken');
             const res = await axios.get(`${API_BASE}/admin/workflow/unit-prep`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success) {
                 setPrepUnits(res.data.data);
-                calculateStats(res.data.data);
+                if (res.data.stats) setStats(res.data.stats);
             }
         } catch (error) {
             console.error('Error fetching prep units:', error);
@@ -222,85 +225,95 @@ const UnitPrepDashboard = () => {
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-6 gap-4 mb-10">
-                    <StatCard icon={Calendar} label="Upcoming Move-Outs" sublabel="Next 30 Days" value={18} color="text-blue-600" bg="bg-blue-50" />
-                    <StatCard icon={CheckSquare} label="Confirmed Move-Outs" sublabel="Next 30 Days" value={7} color="text-orange-600" bg="bg-orange-50" />
-                    <StatCard icon={Clock} label="Inspections Scheduled" sublabel="Next 30 Days" value={6} color="text-purple-600" bg="bg-purple-50" />
-                    <StatCard icon={Hammer} label="In Progress" sublabel="Maintenance active" value={3} color="text-red-600" bg="bg-red-50" />
-                    <StatCard icon={CheckCircle2} label="Ready for Completion" sublabel="Next 30 Days" value={12} color="text-green-600" bg="bg-green-50" />
-                    <StatCard icon={Sparkles} label="Units Ready" sublabel="Units Ready" value={12} color="text-indigo-600" bg="bg-indigo-50" />
+                    <StatCard icon={Calendar} label="Upcoming Move-Outs" sublabel="Next 30 Days" value={stats.upcomingMoveOuts} color="text-blue-600" bg="bg-blue-50" />
+                    <StatCard icon={CheckSquare} label="Confirmed Move-Outs" sublabel="Next 30 Days" value={stats.confirmedMoveOuts} color="text-orange-600" bg="bg-orange-50" />
+                    <StatCard icon={Clock} label="Inspections Scheduled" sublabel="Next 30 Days" value={stats.inspectionsScheduled} color="text-purple-600" bg="bg-purple-50" />
+                    <StatCard icon={Hammer} label="In Repair" sublabel="Maintenance active" value={stats.inRepair} color="text-red-600" bg="bg-red-50" />
+                    <StatCard icon={CheckCircle2} label="Cleaning Done" sublabel="Awaiting Ready" value={stats.readyForCompletion} color="text-green-600" bg="bg-green-50" />
+                    <StatCard icon={Sparkles} label="Units Ready" sublabel="Units Ready" value={stats.unitsReady} color="text-indigo-600" bg="bg-indigo-50" />
                 </div>
 
                 {/* Filters */}
                 <div className="flex items-center gap-4 mb-8">
                     <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-2xl border border-gray-100">
                         <Filter size={16} className="text-gray-400" />
-                        <select className="bg-transparent text-xs font-black text-gray-700 outline-none border-none uppercase tracking-wider">
-                            <option>Building: All Buildings</option>
-                        </select>
-                    </div>
-                    <div className="flex items-center gap-3 ml-4">
-                        <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" id="priority" />
-                        <label htmlFor="priority" className="text-xs font-black text-gray-700 uppercase tracking-widest cursor-pointer">Priority Only</label>
-                    </div>
-                    <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-2xl border border-gray-100 ml-4">
-                        <Calendar size={16} className="text-gray-400" />
-                        <select className="bg-transparent text-xs font-black text-gray-700 outline-none border-none uppercase tracking-wider">
-                            <option>Next 30 Days</option>
+                        <select 
+                            value={buildingFilter}
+                            onChange={(e) => setBuildingFilter(e.target.value)}
+                            className="bg-transparent text-xs font-black text-gray-700 outline-none border-none uppercase tracking-wider"
+                        >
+                            <option value="All">All Buildings</option>
+                            {[...new Set(prepUnits.map(u => u.property?.name).filter(Boolean))].map(b => (
+                                <option key={b} value={b}>{b}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="flex-1 relative ml-4">
                         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search units, tenants..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search unit number or tenant..."
                             className="w-full pl-12 pr-6 py-3 bg-gray-50 border border-gray-100 rounded-3xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-inner"
                         />
                     </div>
                 </div>
 
                 {/* Kanban Columns */}
-                <div className="flex gap-6 overflow-x-auto pb-6 h-[calc(100vh-380px)] scrollbar-thin scrollbar-thumb-gray-200">
-                    <Column
-                        title="Pending Inspection Deficiencies"
-                        subtitle="Blocked due to required tickets: fix deficiencies first"
-                        icon={AlertTriangle}
-                        badgeColor="bg-red-500 text-white"
-                        count={stats.pending}
-                        items={prepUnits.filter(p => p.current_stage === 'PENDING_TICKETS')}
-                    />
-                    <Column
-                        title="Ready for Cleaning"
-                        subtitle="Deficiencies fixed: ready for professional cleaning"
-                        icon={Sparkles}
-                        badgeColor="bg-amber-500 text-white"
-                        count={stats.readyCleaning}
-                        items={prepUnits.filter(p => p.current_stage === 'READY_FOR_CLEANING')}
-                    />
-                    <Column
-                        title="Cleaning In Progress"
-                        subtitle="Professional cleaning team currently on-site"
-                        icon={Hammer}
-                        badgeColor="bg-blue-500 text-white"
-                        count={stats.cleaningInProgress}
-                        items={prepUnits.filter(p => p.current_stage === 'CLEANING_IN_PROGRESS')}
-                    />
-                    <Column
-                        title="Cleaning Completed"
-                        subtitle="Cleaning done: awaiting final admin sign-off"
-                        icon={CheckSquare}
-                        badgeColor="bg-green-500 text-white"
-                        count={stats.cleaningCompleted}
-                        items={prepUnits.filter(p => p.current_stage === 'CLEANING_COMPLETED')}
-                    />
-                    <Column
-                        title="Unit Ready"
-                        subtitle="Unit is 100% ready for move-in"
-                        icon={CheckCircle2}
-                        badgeColor="bg-indigo-500 text-white"
-                        count={stats.unitReady}
-                        items={prepUnits.filter(p => p.current_stage === 'UNIT_READY')}
-                    />
-                </div>
+                {(() => {
+                    const filtered = prepUnits.filter(u => {
+                        const matchesSearch = u.unitNumber?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                           u.leases?.[0]?.tenant?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+                        const matchesBuilding = buildingFilter === 'All' || u.property?.name === buildingFilter;
+                        return matchesSearch && matchesBuilding;
+                    });
+
+                    return (
+                        <div className="flex gap-6 overflow-x-auto pb-6 h-[calc(100vh-380px)] scrollbar-thin scrollbar-thumb-gray-200">
+                            <Column
+                                title="Maintenance Required"
+                                subtitle="Blocked: Fix required tickets first"
+                                icon={AlertTriangle}
+                                badgeColor="bg-red-500 text-white"
+                                count={filtered.filter(p => p.current_stage === 'PENDING_TICKETS').length}
+                                items={filtered.filter(p => p.current_stage === 'PENDING_TICKETS')}
+                            />
+                            <Column
+                                title="Ready for Cleaning"
+                                subtitle="Maintenance clear: start cleaning"
+                                icon={Sparkles}
+                                badgeColor="bg-amber-500 text-white"
+                                count={filtered.filter(p => p.current_stage === 'READY_FOR_CLEANING').length}
+                                items={filtered.filter(p => p.current_stage === 'READY_FOR_CLEANING')}
+                            />
+                            <Column
+                                title="Cleaning In Progress"
+                                subtitle="Team is currently cleaning"
+                                icon={Hammer}
+                                badgeColor="bg-blue-500 text-white"
+                                count={filtered.filter(p => p.current_stage === 'CLEANING_IN_PROGRESS').length}
+                                items={filtered.filter(p => p.current_stage === 'CLEANING_IN_PROGRESS')}
+                            />
+                            <Column
+                                title="Cleaning Completed"
+                                subtitle="Awaiting final readiness check"
+                                icon={CheckSquare}
+                                badgeColor="bg-green-500 text-white"
+                                count={filtered.filter(p => p.current_stage === 'CLEANING_COMPLETED').length}
+                                items={filtered.filter(p => p.current_stage === 'CLEANING_COMPLETED')}
+                            />
+                            <Column
+                                title="Unit Ready"
+                                subtitle="100% Ready for new move-in"
+                                icon={CheckCircle2}
+                                badgeColor="bg-indigo-500 text-white"
+                                count={filtered.filter(p => p.current_stage === 'UNIT_READY').length}
+                                items={filtered.filter(p => p.current_stage === 'UNIT_READY')}
+                            />
+                        </div>
+                    );
+                })()}
             </div>
         </MainLayout>
     );

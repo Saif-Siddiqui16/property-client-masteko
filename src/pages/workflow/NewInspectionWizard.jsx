@@ -39,7 +39,7 @@ const NewInspectionWizard = () => {
         const fetchData = async () => {
             try {
                 const [unitsRes, templatesRes, propertiesRes, coworkersRes] = await Promise.all([
-                    api.get('/api/admin/workflow/move-in'),
+                    api.get('/api/admin/workflow/units'),
                     api.get('/api/admin/workflow/templates'),
                     api.get('/api/admin/properties'),
                     api.get('/api/admin/coworkers')

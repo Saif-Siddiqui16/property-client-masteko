@@ -19,12 +19,17 @@ const CreateInspectionTemplate = () => {
     const [formData, setFormData] = useState({
         name: '',
         type: 'MOVE_OUT',
+        responseChoices: [
+            { label: 'Good', color: 'green' },
+            { label: 'Fair', color: 'orange' },
+            { label: 'Poor', color: 'red' }
+        ],
         rooms: [
             { 
                 id: Date.now(), 
                 name: 'Kitchen', 
                 questions: [
-                    { id: Date.now() + 1, text: 'Is the countertop clean?', type: 'YES_NO' }
+                    { id: Date.now() + 1, text: 'Is the countertop clean?', type: 'GLOBAL' }
                 ] 
             }
         ]
@@ -45,6 +50,11 @@ const CreateInspectionTemplate = () => {
                     setFormData({
                         name: template.name,
                         type: template.type,
+                        responseChoices: template.structure?.responseChoices || [
+                            { label: 'Good', color: 'green' },
+                            { label: 'Fair', color: 'orange' },
+                            { label: 'Poor', color: 'red' }
+                        ],
                         rooms: template.structure?.rooms || []
                     });
                 }
@@ -73,7 +83,7 @@ const CreateInspectionTemplate = () => {
             ...formData,
             rooms: formData.rooms.map(r => 
                 r.id === roomId 
-                ? { ...r, questions: [...r.questions, { id: Date.now(), text: '', type: 'YES_NO' }] }
+                ? { ...r, questions: [...r.questions, { id: Date.now(), text: '', type: 'GLOBAL' }] }
                 : r
             )
         });
@@ -108,7 +118,10 @@ const CreateInspectionTemplate = () => {
             const payload = {
                 name: formData.name,
                 type: formData.type,
-                structure: { rooms: formData.rooms }
+                structure: { 
+                    rooms: formData.rooms,
+                    responseChoices: formData.responseChoices
+                }
             };
             
             const res = id 
@@ -154,7 +167,7 @@ const CreateInspectionTemplate = () => {
                 <div className="grid grid-cols-1 gap-6">
                     {/* Basic Info */}
                     <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-                        <div className="grid grid-cols-2 gap-6">
+                        <div className="grid grid-cols-2 gap-6 mb-6">
                             <div className="space-y-2">
                                 <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Template Name</label>
                                 <input 
@@ -175,6 +188,53 @@ const CreateInspectionTemplate = () => {
                                     <option value="MOVE_IN">Move-In Inspection</option>
                                     <option value="MOVE_OUT">Move-Out Inspection</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Response Options (e.g. Yes/No or Good/Fair/Poor)</label>
+                            <div className="flex flex-wrap gap-3">
+                                {formData.responseChoices.map((choice, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 group">
+                                        <div className={`w-3 h-3 rounded-full bg-${choice.color}-500`} />
+                                        <input 
+                                            className="bg-transparent text-xs font-black outline-none w-16"
+                                            value={choice.label}
+                                            onChange={(e) => {
+                                                const newChoices = [...formData.responseChoices];
+                                                newChoices[idx].label = e.target.value;
+                                                setFormData({ ...formData, responseChoices: newChoices });
+                                            }}
+                                        />
+                                        <select 
+                                            className="text-[9px] font-bold bg-white rounded border border-gray-100 outline-none"
+                                            value={choice.color}
+                                            onChange={(e) => {
+                                                const newChoices = [...formData.responseChoices];
+                                                newChoices[idx].color = e.target.value;
+                                                setFormData({ ...formData, responseChoices: newChoices });
+                                            }}
+                                        >
+                                            <option value="green">Green</option>
+                                            <option value="orange">Orange</option>
+                                            <option value="red">Red</option>
+                                            <option value="blue">Blue</option>
+                                            <option value="gray">Gray</option>
+                                        </select>
+                                        <button 
+                                            onClick={() => setFormData({ ...formData, responseChoices: formData.responseChoices.filter((_, i) => i !== idx) })}
+                                            className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-all"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button 
+                                    onClick={() => setFormData({ ...formData, responseChoices: [...formData.responseChoices, { label: 'New', color: 'gray' }] })}
+                                    className="px-3 py-2 border-2 border-dashed border-gray-100 rounded-xl text-[10px] font-black text-gray-400 hover:text-indigo-600 hover:border-indigo-100 transition-all"
+                                >
+                                    + Add Choice
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -217,19 +277,36 @@ const CreateInspectionTemplate = () => {
                                                 placeholder="Enter inspection question..."
                                                 className="flex-1 px-4 py-3 bg-gray-50 border border-transparent rounded-xl text-sm font-bold outline-none focus:bg-white focus:border-gray-200 transition-all"
                                             />
-                                            <select 
-                                                value={q.type}
-                                                onChange={(e) => {
-                                                    const newRooms = [...formData.rooms];
-                                                    newRooms[index].questions[qIndex].type = e.target.value;
-                                                    setFormData({ ...formData, rooms: newRooms });
-                                                }}
-                                                className="px-4 py-3 bg-gray-50 border border-transparent rounded-xl text-xs font-black text-gray-500 outline-none"
-                                            >
-                                                <option value="YES_NO">YES/NO</option>
-                                                <option value="TEXT">Text Input</option>
-                                                <option value="RATING">1-5 Rating</option>
-                                            </select>
+                                            <div className="flex flex-col gap-2 min-w-[150px]">
+                                                <select 
+                                                    value={q.type}
+                                                    onChange={(e) => {
+                                                        const newRooms = [...formData.rooms];
+                                                        newRooms[index].questions[qIndex].type = e.target.value;
+                                                        setFormData({ ...formData, rooms: newRooms });
+                                                    }}
+                                                    className="px-4 py-3 bg-gray-50 border border-transparent rounded-xl text-xs font-black text-gray-500 outline-none w-full"
+                                                >
+                                                    <option value="GLOBAL">Template Buttons</option>
+                                                    <option value="YES_NO">YES/NO (Standard)</option>
+                                                    <option value="DROPDOWN">Custom Dropdown</option>
+                                                    <option value="TEXT">Text Input</option>
+                                                    <option value="RATING">1-5 Rating</option>
+                                                </select>
+                                                {q.type === 'DROPDOWN' && (
+                                                    <input 
+                                                        type="text"
+                                                        placeholder="Options (comma separated)..."
+                                                        value={q.options || ''}
+                                                        onChange={(e) => {
+                                                            const newRooms = [...formData.rooms];
+                                                            newRooms[index].questions[qIndex].options = e.target.value;
+                                                            setFormData({ ...formData, rooms: newRooms });
+                                                        }}
+                                                        className="px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg text-[10px] font-bold outline-none placeholder:text-indigo-300"
+                                                    />
+                                                )}
+                                            </div>
                                             <button 
                                                 onClick={() => removeQuestion(room.id, q.id)}
                                                 className="p-2 text-gray-300 hover:text-red-500 transition-all"
