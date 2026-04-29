@@ -141,7 +141,7 @@ export const UnitDetail = () => {
                             <Card className="p-3 flex flex-col gap-1">
                                 <div className="text-[10px] text-slate-500 uppercase font-bold">Status</div>
                                 <div className={`text-base font-bold ${unit.status === 'Occupied' ? 'text-green-600' : 'text-red-600'}`}>
-                                    {unit.status}
+                                    {unit.status || 'Vacant'}
                                 </div>
                             </Card>
                         </section>
@@ -346,11 +346,11 @@ export const UnitDetail = () => {
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                                 <div className="flex items-center gap-4">
                                     <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 border border-indigo-100">
-                                        <div className="text-xl font-bold">{unit.activeLease.tenantName[0]}</div>
+                                        <div className="text-xl font-bold">{unit.activeLease?.tenantName?.[0] || 'T'}</div>
                                     </div>
                                     <div className="flex flex-col">
                                         <div className="text-xs text-slate-400 uppercase font-black tracking-widest mb-1">Current Lease Holder</div>
-                                        <div className="text-xl font-black text-slate-800 tracking-tight">{unit.activeLease.tenantName}</div>
+                                        <div className="text-xl font-black text-slate-800 tracking-tight">{unit.activeLease?.tenantName || 'N/A'}</div>
                                         <div className="text-sm text-slate-500 font-medium">
                                             {new Date(unit.activeLease.startDate).toLocaleDateString()} — {new Date(unit.activeLease.endDate).toLocaleDateString()}
                                         </div>
@@ -359,7 +359,7 @@ export const UnitDetail = () => {
                                 <div className="flex flex-col items-end bg-slate-50 p-4 rounded-2xl border border-slate-100 min-w-[200px]">
                                     <div className="text-[10px] text-slate-400 uppercase font-bold mb-1">Monthly Billing</div>
                                     <div className="text-2xl font-black text-indigo-600">
-                                        ${parseFloat(unit.activeLease.amount).toLocaleString()}
+                                        ${unit.activeLease?.amount ? parseFloat(unit.activeLease.amount).toLocaleString() : '0'}
                                     </div>
                                     <div className="text-[10px] text-slate-400 font-medium">Charged to Tenant account</div>
                                 </div>

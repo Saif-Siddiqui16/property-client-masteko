@@ -54,11 +54,11 @@ const MoveOutDashboard = () => {
         const s = { upcoming: 0, confirmed: 0, scheduled: 0, inProgress: 0, ready: 0, completed: 0 };
         data.forEach(item => {
             if (item.status === 'PENDING') s.upcoming++;
-            if (item.status === 'CONFIRMED') s.confirmed++;
-            if (item.status === 'INSPECTION_SCHEDULED') s.scheduled++;
-            if (item.status === 'INSPECTION_IN_PROGRESS') s.inProgress++;
-            if (item.status === 'INSPECTIONS_COMPLETED') s.ready++;
-            if (item.status === 'COMPLETED') s.completed++;
+            else if (item.status === 'CONFIRMED') s.confirmed++;
+            else if (item.status === 'VISUAL_INSPECTION_SCHEDULED' || item.status === 'FINAL_INSPECTION_SCHEDULED') s.scheduled++;
+            else if (item.status === 'INSPECTION_IN_PROGRESS') s.inProgress++;
+            else if (item.status === 'INSPECTIONS_COMPLETED') s.ready++;
+            else if (item.status === 'COMPLETED') s.completed++;
         });
         setStats(s);
     };
@@ -103,82 +103,125 @@ const MoveOutDashboard = () => {
         </div>
     );
 
-    const Card = ({ item }) => (
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-indigo-100 transition-all cursor-pointer group relative overflow-hidden">
-            <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                        <span className="bg-blue-100 text-blue-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Move-Out</span>
-                        <span className="bg-gray-100 text-gray-500 text-[10px] font-black px-2 py-0.5 rounded-full">
-                            {item.unit.unitNumber}
-                        </span>
-                    </div>
-                    <MoreVertical size={16} className="text-gray-300 hover:text-gray-600 transition-colors" />
-                </div>
+    const Card = ({ item }) => {
+        const [menuOpen, setMenuOpen] = useState(false);
 
-                <div>
-                    <h4 className="font-black text-gray-900 text-base leading-tight tracking-tight">{item.unit.unitNumber}</h4>
-                    <p className="text-sm font-bold text-gray-500">{item.lease.tenant?.name || 'N/A'}</p>
-                    <p className="text-xs text-gray-400 font-medium">{item.unit.building || 'Main Building'}</p>
-                </div>
+        const handleAction = async (action) => {
+            setMenuOpen(false);
+            try {
+                if (action === 'CANCEL') {
+                    if (window.confirm("Are you sure you want to cancel this Move-Out?")) {
+                        const res = await api.put(`/api/admin/workflow/move-out/cancel/${item.leaseId}`);
+                        if (res.data.success) fetchMoveOuts();
+                    }
+                }
+                // Add more actions here
+            } catch (e) {
+                alert("Action failed: " + e.message);
+            }
+        };
 
-                <div className="flex flex-col gap-1.5 py-2">
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400">
-                        <Calendar size={12} className="text-indigo-400" />
-                        Move-Out: {format(new Date(item.targetDate), 'MMM d, yyyy')}
-                    </div>
-                    <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400">
-                        <Clock size={12} className={item.urgency === 'OVERDUE' ? 'text-red-400' : 'text-orange-400'} />
-                        <span className={item.urgency === 'OVERDUE' ? 'text-red-500' : ''}>
-                            {Math.abs(item.daysRemaining)} {item.daysRemaining < 0 ? 'days overdue' : 'days remaining'}
-                        </span>
-                    </div>
-                </div>
-
-                <div className="pt-3 border-t border-gray-50 flex flex-col gap-2">
-                    <button 
-                        onClick={async () => {
-                            if (item.status === 'PENDING') {
-                                try {
-                                    const res = await api.put(`/api/admin/workflow/move-out/${item.id}/confirm`);
-                                    if (res.data.success) {
-                                        fetchMoveOuts();
-                                    }
-                                } catch (e) {
-                                    alert("Error confirming: " + e.message);
-                                }
-                            } else if (item.status === 'INSPECTIONS_COMPLETED') {
-                                try {
-                                    const res = await api.put(`/api/admin/workflow/move-out/${item.id}/complete`);
-                                    if (res.data.success) {
-                                        fetchMoveOuts();
-                                    }
-                                } catch (e) {
-                                    alert("Error completing: " + e.message);
-                                }
-                            } else if (item.status === 'INSPECTION_SCHEDULED' || item.status === 'INSPECTION_IN_PROGRESS') {
-                                navigate(`/admin/workflow/inspections/${item.inspections?.[0]?.id}/form`);
-                            } else {
-                                navigate('/admin/workflow/inspections/new');
-                            }
-                        }}
-                        className="w-full flex items-center justify-between p-2 rounded-xl bg-gray-50 group-hover:bg-indigo-50 transition-colors border border-transparent group-hover:border-indigo-100"
-                    >
-                        <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                            <span className="text-[11px] font-black text-gray-700 group-hover:text-indigo-700 uppercase tracking-wider">
-                                {item.status === 'PENDING' ? 'Confirm Move-Out' : 
-                                 item.status === 'CONFIRMED' ? 'Schedule Inspection' :
-                                 item.status === 'INSPECTION_SCHEDULED' ? 'Start Inspection' :
-                                 item.status === 'INSPECTION_IN_PROGRESS' ? 'Resume Inspection' : 'Finish Move-Out'}
+        return (
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-indigo-100 transition-all group relative overflow-visible">
+                <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                            <span className="bg-blue-100 text-blue-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Move-Out</span>
+                            <span className="bg-gray-100 text-gray-500 text-[10px] font-black px-2 py-0.5 rounded-full">
+                                {item.unit.unitNumber}
                             </span>
                         </div>
-                        <ArrowRight size={14} className="text-gray-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
-                    </button>
+                        <div className="relative">
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setMenuOpen(!menuOpen);
+                                }}
+                                className="p-1 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-gray-600 transition-colors"
+                            >
+                                <MoreVertical size={16} />
+                            </button>
+                            
+                            {menuOpen && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 animate-in fade-in zoom-in duration-100">
+                                    <button 
+                                        onClick={() => handleAction('CANCEL')}
+                                        className="w-full text-left px-4 py-2 text-xs font-black text-red-600 hover:bg-red-50 transition-colors uppercase tracking-wider"
+                                    >
+                                        Cancel Move-Out
+                                    </button>
+                                    <button 
+                                        onClick={() => navigate(`/units/${item.unitId}`)}
+                                        className="w-full text-left px-4 py-2 text-xs font-black text-gray-700 hover:bg-gray-50 transition-colors uppercase tracking-wider"
+                                    >
+                                        View Unit Details
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div onClick={() => navigate(`/units/${item.unitId}`)} className="cursor-pointer">
+                        <h4 className="font-black text-gray-900 text-base leading-tight tracking-tight">{item.unit.unitNumber}</h4>
+                        <p className="text-sm font-bold text-gray-500">{item.lease.tenant?.name || 'N/A'}</p>
+                        <p className="text-xs text-gray-400 font-medium">{item.unit.property?.name || 'Main Building'}</p>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 py-2">
+                        <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400">
+                            <Calendar size={12} className="text-indigo-400" />
+                            Move-Out: {format(new Date(item.targetDate), 'MMM d, yyyy')}
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400">
+                            <Clock size={12} className={item.urgency === 'OVERDUE' ? 'text-red-400' : 'text-orange-400'} />
+                            <span className={item.urgency === 'OVERDUE' ? 'text-red-500' : ''}>
+                                {Math.abs(item.daysRemaining)} {item.daysRemaining < 0 ? 'days overdue' : 'days remaining'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-50 flex flex-col gap-2">
+                        <button 
+                            onClick={async (e) => {
+                                e.stopPropagation();
+                                if (item.status === 'PENDING') {
+                                    try {
+                                        const res = await api.put(`/api/admin/workflow/move-out/${item.id}/confirm`);
+                                        if (res.data.success) fetchMoveOuts();
+                                    } catch (e) {
+                                        alert("Error confirming: " + e.message);
+                                    }
+                                } else if (item.status === 'INSPECTIONS_COMPLETED') {
+                                    try {
+                                        const res = await api.put(`/api/admin/workflow/move-out/${item.id}/complete`);
+                                        if (res.data.success) fetchMoveOuts();
+                                    } catch (e) {
+                                        alert("Error completing: " + e.message);
+                                    }
+                                } else if (item.status.includes('SCHEDULED') || item.status === 'INSPECTION_IN_PROGRESS') {
+                                    navigate(`/admin/workflow/inspections/${item.inspections?.[0]?.id}/form`);
+                                } else {
+                                    navigate('/admin/workflow/inspections/new');
+                                }
+                            }}
+                            className="w-full flex items-center justify-between p-2 rounded-xl bg-gray-50 hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100"
+                        >
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                                <span className="text-[11px] font-black text-gray-700 hover:text-indigo-700 uppercase tracking-wider">
+                                    {item.status === 'PENDING' ? 'Confirm Move-Out' : 
+                                     item.status === 'CONFIRMED' ? 'Schedule Inspection' :
+                                     item.status.includes('SCHEDULED') ? 'Start Inspection' :
+                                     item.status === 'INSPECTION_IN_PROGRESS' ? 'Resume Inspection' : 'Finish Move-Out'}
+                                </span>
+                            </div>
+                            <ArrowRight size={14} className="text-gray-400 hover:text-indigo-500 hover:translate-x-1 transition-all" />
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const StatCard = ({ icon: Icon, label, sublabel, value, color, bg }) => (
         <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex items-start gap-4 hover:shadow-lg transition-all cursor-pointer group">
@@ -245,8 +288,8 @@ const MoveOutDashboard = () => {
                 <StatCard icon={UserCheck} label="Confirmed Move-Out" sublabel="Next 30 Days" value={stats.confirmed} color="text-orange-600" bg="bg-orange-50" />
                 <StatCard icon={Clock} label="Inspections Scheduled" sublabel="Action needed" value={stats.scheduled} color="text-yellow-600" bg="bg-yellow-50" />
                 <StatCard icon={PlayCircle} label="Inspection In Progress" sublabel="Active surveys" value={stats.inProgress} color="text-purple-600" bg="bg-purple-50" />
-                <StatCard icon={ClipboardList} label="Inspection In Progress" sublabel="Reports pending" value={stats.inProgress} color="text-green-600" bg="bg-green-50" />
-                <StatCard icon={CheckSquare} label="Ready for Completion" sublabel="Ready for end" value={stats.ready} color="text-indigo-600" bg="bg-indigo-50" />
+                <StatCard icon={CheckSquare} label="Ready for Completion" sublabel="Ready for end" value={stats.ready} color="text-green-600" bg="bg-green-50" />
+                <StatCard icon={ClipboardList} label="Move-Out Completed" sublabel="Archived flows" value={stats.completed} color="text-indigo-600" bg="bg-indigo-50" />
             </div>
 
             {/* Search & Filter Bar */}
@@ -297,7 +340,7 @@ const MoveOutDashboard = () => {
                     icon={Clock} 
                     color="bg-yellow-100 text-yellow-600" 
                     count={stats.scheduled} 
-                    items={moveOuts.filter(m => m.status === 'INSPECTION_SCHEDULED')}
+                    items={moveOuts.filter(m => m.status.includes('SCHEDULED'))}
                 />
                 <Column 
                     title="Inspection In Progress" 
