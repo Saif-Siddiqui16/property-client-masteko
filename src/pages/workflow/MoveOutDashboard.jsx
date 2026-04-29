@@ -151,7 +151,7 @@ const MoveOutDashboard = () => {
                                         Cancel Move-Out
                                     </button>
                                     <button 
-                                        onClick={() => navigate(`/admin/units/${item.unitId}`)}
+                                        onClick={() => navigate(`/units/${item.unitId}`)}
                                         className="w-full text-left px-4 py-2 text-xs font-black text-gray-700 hover:bg-gray-50 transition-colors uppercase tracking-wider"
                                     >
                                         View Unit Details
@@ -161,7 +161,7 @@ const MoveOutDashboard = () => {
                         </div>
                     </div>
 
-                    <div onClick={() => navigate(`/admin/units/${item.unitId}`)} className="cursor-pointer">
+                    <div onClick={() => navigate(`/units/${item.unitId}`)} className="cursor-pointer">
                         <h4 className="font-black text-gray-900 text-base leading-tight tracking-tight">{item.unit.unitNumber}</h4>
                         <p className="text-sm font-bold text-gray-500">{item.lease.tenant?.name || 'N/A'}</p>
                         <p className="text-xs text-gray-400 font-medium">{item.unit.property?.name || 'Main Building'}</p>
