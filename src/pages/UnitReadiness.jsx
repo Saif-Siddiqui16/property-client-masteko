@@ -435,7 +435,9 @@ const UnitReadiness = () => {
                     const allDone = Object.values(unit.completion || {}).filter(v => v).length === 7;
                     let statusNote = "";
  
-                    if (unit.reserved) {
+                    if (unit.isPriority) {
+                      statusNote = unit.stage || "Priority Blocked";
+                    } else if (unit.reserved) {
                       statusNote = allDone ? "Reserved – Ready" : "Reserved – Not Ready";
                     } else if (allDone) {
                       statusNote = unit.isActive ? "Unit Ready" : "Ready – Pending Activation";
@@ -460,6 +462,11 @@ const UnitReadiness = () => {
                              <span className="font-black text-indigo-600 group-hover/link:underline cursor-pointer tracking-tighter text-sm">
                                {unit.unitNumber}
                              </span>
+                             {unit.isPriority && (
+                               <span className="ml-2 px-1.5 py-0.5 bg-red-600 text-white text-[8px] font-black rounded-sm animate-pulse uppercase tracking-widest">
+                                 Priority
+                               </span>
+                             )}
                              <ChevronRight size={10} className="text-slate-300 group-hover/link:text-indigo-600 group-hover/link:translate-x-1 transition-all" />
                           </button>
                         </td>
@@ -541,6 +548,14 @@ const UnitReadiness = () => {
                                 Reserve
                               </button>
                             )}
+                            {unit.isPriority && unit.moveInDate && (
+                              <div className="mt-1 flex flex-col items-center">
+                                <span className="text-[9px] font-black text-red-600 uppercase">Urgent Move-In</span>
+                                <span className="text-[8px] font-bold text-slate-400">
+                                  {Math.ceil((new Date(unit.moveInDate) - new Date()) / (1000 * 60 * 60 * 24))} Days Left
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-1 py-4 text-[10px] font-bold text-slate-600 text-center">
@@ -550,7 +565,7 @@ const UnitReadiness = () => {
                            <span className={`text-[10px] font-black px-2 py-1 rounded inline-block min-w-[90px] text-center ${
                              statusNote === 'Unit Ready' || statusNote === 'Reserved – Ready' ? 'bg-emerald-100 text-emerald-800' : 
                              (statusNote.includes('Pending') || statusNote === 'Reserved – Not Ready' ? 'bg-blue-100 text-blue-800' : 
-                             (statusNote.includes('Required') ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-500'))
+                             (statusNote.includes('Required') || statusNote.includes('Blocked') ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-500'))
                            }`}>
                              {statusNote}
                            </span>
