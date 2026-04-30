@@ -165,7 +165,7 @@ export const Vehicles = () => {
                 <h3 className="text-xl font-bold text-slate-800">No Vehicles Found</h3>
                 <p className="text-slate-500 mt-1 max-w-xs">No vehicle records match your current filters or none have been registered yet.</p>
               </div>
-              <Button variant="secondary" onClick={() => { setSearch(''); setBuildingFilter(''); }}>Clear Filters</Button>
+              <Button variant="secondary" onClick={() => { setSearch(''); setBuildingFilter(''); setStatusFilter(''); setPage(1); }}>Clear Filters</Button>
             </div>
           ) : (
             <div className="overflow-x-auto">

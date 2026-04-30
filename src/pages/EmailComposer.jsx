@@ -89,7 +89,7 @@ const EmailComposer = () => {
 
             const [buildingsData, tenantsData, coworkersData, templatesData, documentsData, signatureData] = await Promise.all([
                 tryFetch('/api/admin/properties'),
-                tryFetch('/api/admin/tenants?limit=1000'), 
+                tryFetch('/api/admin/tenants?limit=1000&status=Active'), 
                 tryFetch('/api/admin/coworkers'), // Fetch team members
                 tryFetch('/api/admin/email/templates'),
                 tryFetch('/api/admin/documents?limit=1000'),

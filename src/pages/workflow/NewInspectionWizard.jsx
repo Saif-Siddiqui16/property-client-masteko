@@ -81,10 +81,20 @@ const NewInspectionWizard = () => {
     ];
 
     const handleNext = () => {
-        if (step === 3) {
+        if (step === 1) {
+            if (!formData.propertyId || !formData.unitId) {
+                alert('Please select both Building and Unit before continuing.');
+                return;
+            }
+            setStep(2);
+        } else if (step === 2) {
+            if (!formData.templateId) {
+                alert('Please select an inspection template before continuing.');
+                return;
+            }
+            setStep(3);
+        } else if (step === 3) {
             handleCreateInspection();
-        } else {
-            setStep(s => s + 1);
         }
     };
 
