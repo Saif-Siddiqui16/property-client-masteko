@@ -184,9 +184,11 @@ const EmailComposer = () => {
                     const hasLink = String(t.buildingId) === selectedId || 
                                   String(t.propertyId) === selectedId ||
                                   t.leases?.some(l => 
-                                      String(l.unit?.propertyId) === selectedId || 
+                                      (String(l.unit?.propertyId) === selectedId || 
                                       String(l.unit?.property?.id) === selectedId ||
-                                      String(l.propertyId) === selectedId
+                                      String(l.propertyId) === selectedId) &&
+                                      l.status === 'Active' &&
+                                      (!l.endDate || new Date(l.endDate) >= new Date())
                                   );
                     
                     if (hasLink) {

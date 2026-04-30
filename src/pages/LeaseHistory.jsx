@@ -23,6 +23,7 @@ export const LeaseHistory = () => {
     const [search, setSearch] = useState('');
     const [buildingFilter, setBuildingFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
     const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +33,14 @@ export const LeaseHistory = () => {
         setIsLoading(true);
         try {
             const res = await api.get('/api/admin/leases', {
-                params: { page, limit: 15 }
+                params: { 
+                    page, 
+                    limit: 15,
+                    status: statusFilter || undefined,
+                    propertyId: buildingFilter || undefined,
+                    leaseType: typeFilter || undefined,
+                    search: search || undefined
+                }
             });
             // Handle new paginated response structure
             if (res.data.status === 'success') {
@@ -50,7 +58,16 @@ export const LeaseHistory = () => {
 
     useEffect(() => {
         fetchLeases();
-    }, [page]);
+    }, [page, statusFilter, buildingFilter, typeFilter]);
+
+    // Handle search debouncing or immediate effect
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (page === 1) fetchLeases();
+            else setPage(1);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search]);
 
     useEffect(() => {
         const fetchBuildings = async () => {
@@ -114,16 +131,7 @@ export const LeaseHistory = () => {
         }
     };
 
-    const filteredLeases = leases.filter(l => {
-        const matchesSearch = l.tenant?.toLowerCase().includes(search.toLowerCase()) ||
-            l.unit?.toLowerCase().includes(search.toLowerCase()) ||
-            l.buildingName?.toLowerCase().includes(search.toLowerCase());
-
-        const matchesBuilding = !buildingFilter || l.propertyId === parseInt(buildingFilter);
-        const matchesType = !typeFilter || l.leaseType === typeFilter;
-
-        return matchesSearch && matchesBuilding && matchesType;
-    });
+    const displayLeases = leases;
 
     return (
         <MainLayout title="Lease History">
@@ -147,7 +155,10 @@ export const LeaseHistory = () => {
                         <select
                             className="bg-transparent border-none outline-none text-sm text-slate-700 min-w-[150px] cursor-pointer"
                             value={buildingFilter}
-                            onChange={(e) => setBuildingFilter(e.target.value)}
+                            onChange={(e) => {
+                                setBuildingFilter(e.target.value);
+                                setPage(1);
+                            }}
                         >
                             <option value="">All Buildings</option>
                             {buildings.map(b => (
@@ -161,11 +172,30 @@ export const LeaseHistory = () => {
                         <select
                             className="bg-transparent border-none outline-none text-sm text-slate-700 min-w-[150px] cursor-pointer"
                             value={typeFilter}
-                            onChange={(e) => setTypeFilter(e.target.value)}
+                            onChange={(e) => {
+                                setTypeFilter(e.target.value);
+                                setPage(1);
+                            }}
                         >
                             <option value="">All Lease Types</option>
                             <option value="Full Unit Lease">Full Unit Lease</option>
                             <option value="Bedroom Lease">Bedroom Lease</option>
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                        <AlertTriangle size={18} className="text-slate-400" />
+                        <select
+                            className="bg-transparent border-none outline-none text-sm text-slate-700 min-w-[150px] cursor-pointer font-medium"
+                            value={statusFilter}
+                            onChange={(e) => {
+                                setStatusFilter(e.target.value);
+                                setPage(1); // Reset to page 1 on filter change
+                            }}
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="Active">Active</option>
+                            <option value="Expired">Expired</option>
                         </select>
                     </div>
 
@@ -204,7 +234,7 @@ export const LeaseHistory = () => {
                             </thead>
 
                             <tbody className="divide-y divide-slate-100">
-                                {filteredLeases.map((lease, index) => (
+                                {displayLeases.map((lease, index) => (
                                     <tr
                                         key={lease.id}
                                         className="hover:bg-slate-50/80 transition-all duration-200 animate-in slide-in-from-left-2 fade-in fill-mode-forwards"
