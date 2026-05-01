@@ -20,6 +20,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { MainLayout } from '../../layouts/MainLayout';
 
 import api from '../../api/client';
+import PhotoAnnotationModal from '../../components/PhotoAnnotationModal';
+import TicketCreationModal from '../../components/TicketCreationModal';
 
 const InspectionForm = () => {
     const navigate = useNavigate();
@@ -34,6 +36,14 @@ const InspectionForm = () => {
     const [saving, setSaving] = useState(false);
     const [ticketLoading, setTicketLoading] = useState({});
 
+    // Modals state
+    const [annotationModal, setAnnotationModal] = useState({ isOpen: false, questionId: null, photoUrl: '' });
+    const [ticketModal, setTicketModal] = useState({ isOpen: false, question: null, initialData: null });
+
+    // Series/Groups state
+    const [series, setSeries] = useState([]);
+    const [activeSeries, setActiveSeries] = useState({}); // questionId -> seriesId
+
     // Signature Canvas
     const signatureCanvasRef = useRef(null);
     const isDrawing = useRef(false);
@@ -44,7 +54,19 @@ const InspectionForm = () => {
 
     useEffect(() => {
         fetchInspection();
+        fetchSeries();
     }, [id]);
+
+    const fetchSeries = async () => {
+        try {
+            const res = await api.get('/api/admin/workflow/response-series');
+            if (res.data.success) {
+                setSeries(res.data.data.filter(s => s.isActive));
+            }
+        } catch (error) {
+            console.error('Fetch series error:', error);
+        }
+    };
 
     const fetchInspection = async () => {
         try {
@@ -57,9 +79,21 @@ const InspectionForm = () => {
                 setIsEditMode(data.status === 'DRAFT');
                 setTickets(data.tickets || []);
 
+                const templateRooms = data.template?.structure?.rooms || [];
+
+                // Initialize activeSeries from template structure
+                const initialActiveSeries = {};
+                templateRooms.forEach(room => {
+                    room.questions?.forEach(q => {
+                        if (q.type === 'SERIES' && q.seriesId) {
+                            initialActiveSeries[q.id] = q.seriesId;
+                        }
+                    });
+                });
+                setActiveSeries(initialActiveSeries);
+
                 // Pre-fill responses - Match by question text since DB doesn't store questionId
                 const initialResponses = {};
-                const templateRooms = data.template?.structure?.rooms || [];
                 
                 data.responses?.forEach(r => {
                     // Find the question ID from the template structure that matches this response's question text
@@ -77,7 +111,10 @@ const InspectionForm = () => {
                         status: r.response,
                         notes: r.notes,
                         annotation: r.annotation,
-                        photo: r.photoUrl || r.media?.[0]?.url
+                        photo: r.photoUrl || r.media?.[0]?.url,
+                        annotatedPhoto: r.annotatedPhotoUrl,
+                        ticketCreated: !!r.ticketId,
+                        ticketId: r.ticketId
                     };
                 });
                 setResponses(initialResponses);
@@ -127,13 +164,27 @@ const InspectionForm = () => {
         reader.readAsDataURL(file);
     };
 
-    const handleCreateTicket = async (question) => {
+    const handleCreateTicketClick = (question) => {
+        if (!isEditMode && inspection.status !== 'DRAFT') return;
+        setTicketModal({
+            isOpen: true,
+            question,
+            initialData: {
+                title: `DEFICIENCY: ${question.text}`,
+                description: responses[question.id]?.notes || ''
+            }
+        });
+    };
+
+    const handleTicketSubmit = async (formData) => {
+        const question = ticketModal.question;
         try {
             setTicketLoading(prev => ({ ...prev, [question.id]: true }));
             const res = await api.post(`/api/admin/workflow/inspections/${id}/tickets`, {
                 questionId: question.id,
                 questionText: question.text,
-                notes: responses[question.id]?.notes || 'No notes provided'
+                notes: responses[question.id]?.notes || '',
+                ...formData
             });
             if (res.data.success) {
                 const newTicket = res.data.data;
@@ -142,11 +193,11 @@ const InspectionForm = () => {
                     [question.id]: { ...prev[question.id], ticketCreated: true, ticketId: newTicket.id }
                 }));
                 setTickets(prev => [...prev, newTicket]);
-                alert('Deficiency Ticket Created Successfully!');
+                setTicketModal({ isOpen: false, question: null, initialData: null });
             }
         } catch (error) {
             console.error('Ticket creation error:', error);
-            alert('Failed to create ticket: ' + (error.response?.data?.message || error.message));
+            alert('Failed to create ticket');
         } finally {
             setTicketLoading(prev => ({ ...prev, [question.id]: false }));
         }
@@ -157,14 +208,11 @@ const InspectionForm = () => {
         try {
             const res = await api.delete(`/api/admin/workflow/inspections/${id}/tickets/${ticketId}`);
             if (res.data.success) {
-                // Update responses state to clear the ticket link
                 setResponses(prev => ({
                     ...prev,
                     [questionId]: { ...prev[questionId], ticketCreated: false, ticketId: null }
                 }));
-                // Update tickets list
                 setTickets(prev => prev.filter(t => t.id !== ticketId));
-                alert('Ticket deleted successfully.');
             }
         } catch (error) {
             console.error('Ticket deletion error:', error);
@@ -173,7 +221,6 @@ const InspectionForm = () => {
     };
 
     const validateForm = () => {
-        // Check if all questions in all rooms have a status
         for (const room of rooms) {
             for (const q of room.questions) {
                 if (!responses[q.id]?.status) {
@@ -205,7 +252,8 @@ const InspectionForm = () => {
                     response: responses[qId].status,
                     notes: responses[qId].notes || '',
                     annotation: responses[qId].annotation || '',
-                    photo: responses[qId].photo || null
+                    photo: responses[qId].photo || null,
+                    annotatedPhoto: responses[qId].annotatedPhoto || null
                 };
             });
 
@@ -280,7 +328,6 @@ const InspectionForm = () => {
     const stopDraw = (e) => {
         if (!isDrawing.current) return;
         isDrawing.current = false;
-        // Save canvas data as base64 string
         const canvas = signatureCanvasRef.current;
         setSignature(canvas.toDataURL('image/png'));
     };
@@ -294,9 +341,30 @@ const InspectionForm = () => {
 
     return (
         <MainLayout title="Professional Inspection">
+             <style dangerouslySetInnerHTML={{ __html: `
+                @media (max-width: 1180px) {
+                    .inspection-grid {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 2rem;
+                    }
+                    .inspection-card {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                    }
+                    .sidebar-nav {
+                        display: none !important;
+                    }
+                }
+                .tablet-scroll-x {
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                }
+            `}} />
+
             <div className="flex bg-gray-50/50 min-h-screen">
                 {/* Fixed Sidebar Navigation */}
-                <div className="w-72 bg-white border-r border-gray-100 p-8 flex flex-col gap-8 sticky top-0 h-screen overflow-y-auto hidden lg:flex">
+                <div className="w-72 bg-white border-r border-gray-100 p-8 flex flex-col gap-8 sticky top-0 h-screen overflow-y-auto hidden lg:flex sidebar-nav">
                     <div>
                         <button onClick={() => navigate(-1)} className="text-indigo-600 font-black text-[10px] uppercase flex items-center gap-2 mb-6 hover:gap-3 transition-all">
                             <ArrowLeft size={14} /> Back to Dashboard
@@ -340,13 +408,13 @@ const InspectionForm = () => {
                 </div>
 
                 {/* Main Scrollable Content */}
-                <div className="flex-1 p-8 lg:p-12 overflow-y-auto">
+                <div className="flex-1 p-4 lg:p-12 overflow-y-auto">
                     <div className="max-w-5xl mx-auto">
                         {/* Header Area */}
-                        <div className="flex items-center justify-between mb-12">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
                             <div>
                                 <h1 className="text-4xl font-black text-gray-900 tracking-tighter mb-2">Inspection Record</h1>
-                                <div className="flex items-center gap-6">
+                                <div className="flex flex-wrap items-center gap-6">
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</span>
                                         <span className="text-sm font-black text-gray-700">{inspection.template?.type}</span>
@@ -390,15 +458,16 @@ const InspectionForm = () => {
                                         </div>
                                     </div>
 
-                                    <div className="p-0 overflow-x-auto">
-                                        <table className="w-full text-left border-collapse min-w-[1000px]">
+                                    {/* Desktop Table View (lg and above) */}
+                                    <div className="hidden lg:block p-0 overflow-x-auto">
+                                        <table className="w-full text-left border-collapse lg:min-w-full">
                                             <thead>
                                                 <tr className="bg-white border-b border-gray-100 text-[11px] font-black text-gray-400 uppercase tracking-widest">
-                                                    <th className="px-8 py-5 w-[250px]">Item / Question</th>
-                                                    <th className="px-8 py-5 w-[150px]">Condition</th>
-                                                    <th className="px-8 py-5 w-[220px]">Photos & Annotation</th>
-                                                    <th className="px-8 py-5">Notes</th>
-                                                    <th className="px-8 py-5 w-[160px]">Ticket</th>
+                                                    <th className="px-8 py-5 min-w-[200px]">Item / Question</th>
+                                                    <th className="px-8 py-5 min-w-[150px]">Condition</th>
+                                                    <th className="px-8 py-5 min-w-[200px]">Photos & Annotation</th>
+                                                    <th className="px-8 py-5 min-w-[220px]">Notes</th>
+                                                    <th className="px-8 py-5 min-w-[120px] text-right">Ticket</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
@@ -458,30 +527,56 @@ const InspectionForm = () => {
                                                                     </div>
                                                                 ) : (
                                                                     <div className="flex flex-col gap-2">
-                                                                        {(inspection.template?.structure?.responseChoices || [
-                                                                            { label: 'Good', color: 'green' },
-                                                                            { label: 'Fair', color: 'orange' },
-                                                                            { label: 'Poor', color: 'red' }
-                                                                        ]).map(choice => (
-                                                                            <ConditionToggle
-                                                                                key={choice.label}
-                                                                                label={choice.label}
-                                                                                active={responses[q.id]?.status === choice.label}
-                                                                                color={`text-${choice.color}-600`}
-                                                                                dot={`bg-${choice.color}-500`}
-                                                                                onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, choice.label)}
-                                                                                disabled={!isEditMode && inspection.status !== 'DRAFT'}
-                                                                            />
-                                                                        ))}
+                                                                        {/* Series Selection */}
+                                                                        <div className="flex flex-wrap gap-1 mb-2">
+                                                                            {series.map(s => (
+                                                                                <button 
+                                                                                    key={s.id}
+                                                                                    onClick={() => setActiveSeries(prev => ({ ...prev, [q.id]: s.id }))}
+                                                                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeSeries[q.id] === s.id ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                                                >
+                                                                                    {s.name}
+                                                                                </button>
+                                                                            ))}
+                                                                            <button 
+                                                                                onClick={() => setActiveSeries(prev => ({ ...prev, [q.id]: null }))}
+                                                                                className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${!activeSeries[q.id] ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                                                            >
+                                                                                Template
+                                                                            </button>
+                                                                        </div>
+
+                                                                        <div className="flex flex-col gap-2">
+                                                                            {(activeSeries[q.id] 
+                                                                                ? (series.find(s => s.id === activeSeries[q.id])?.responses || [])
+                                                                                : (inspection.template?.structure?.responseChoices || [
+                                                                                    { label: 'Good', color: 'green' },
+                                                                                    { label: 'Fair', color: 'orange' },
+                                                                                    { label: 'Poor', color: 'red' }
+                                                                                ]).filter(choice => !q.selectedChoices || q.selectedChoices.length === 0 || q.selectedChoices.includes(choice.label))
+                                                                            ).map(choice => (
+                                                                                <ConditionToggle
+                                                                                    key={choice.label}
+                                                                                    label={choice.label}
+                                                                                    active={responses[q.id]?.status === choice.label}
+                                                                                    color={`text-${choice.color}-600`}
+                                                                                    dot={`bg-${choice.color}-500`}
+                                                                                    onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, choice.label)}
+                                                                                    disabled={!isEditMode && inspection.status !== 'DRAFT'}
+                                                                                />
+                                                                            ))}
+                                                                        </div>
                                                                     </div>
                                                                 )}
                                                             </div>
                                                         </td>
                                                         <td className="px-8 py-6 align-top">
                                                             <div className="flex flex-col gap-3">
-                                                                <div className="w-full h-32 rounded-3xl bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-200 group-hover:border-indigo-200 transition-all relative overflow-hidden">
-                                                                    {responses[q.id]?.photo ? (
-                                                                        <img src={responses[q.id].photo} className="w-full h-full object-cover" alt="Captured" />
+                                                                <div className="w-full aspect-video rounded-3xl bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-200 group-hover:border-indigo-200 transition-all relative overflow-hidden shadow-inner">
+                                                                    {responses[q.id]?.annotatedPhoto ? (
+                                                                        <img src={responses[q.id].annotatedPhoto} className="w-full h-full object-contain" alt="Annotated" />
+                                                                    ) : responses[q.id]?.photo ? (
+                                                                        <img src={responses[q.id].photo} className="w-full h-full object-contain" alt="Captured" />
                                                                     ) : (
                                                                         <Camera size={24} className="text-gray-300 group-hover:text-indigo-400" />
                                                                     )}
@@ -496,27 +591,36 @@ const InspectionForm = () => {
                                                                     )}
                                                                 </div>
                                                                 {responses[q.id]?.photo && (
-                                                                    <input 
-                                                                        type="text"
-                                                                        placeholder="Add photo annotation..."
-                                                                        value={responses[q.id]?.annotation || ''}
-                                                                        readOnly={!isEditMode && inspection.status !== 'DRAFT'}
-                                                                        onChange={(e) => handleAnnotationChange(q.id, e.target.value)}
-                                                                        className="text-[10px] font-bold p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                                                                    />
+                                                                    <div className="flex flex-col gap-2">
+                                                                        <button 
+                                                                            onClick={() => setAnnotationModal({ isOpen: true, questionId: q.id, photoUrl: responses[q.id].photo })}
+                                                                            className="w-full py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md flex items-center justify-center gap-2"
+                                                                        >
+                                                                            <Edit3 size={12} /> {responses[q.id]?.annotatedPhoto ? 'Edit Markings' : 'Draw / Mark Photo'}
+                                                                        </button>
+                                                                        <input 
+                                                                            type="text"
+                                                                            placeholder="Add photo text note..."
+                                                                            value={responses[q.id]?.annotation || ''}
+                                                                            readOnly={!isEditMode && inspection.status !== 'DRAFT'}
+                                                                            onChange={(e) => handleAnnotationChange(q.id, e.target.value)}
+                                                                            className="text-[10px] font-bold p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                                                                        />
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td className="px-8 py-6 align-top">
+                                                        <td className="px-6 py-6 align-top min-w-[220px] w-[220px]">
                                                             <textarea
-                                                                placeholder="Add line item notes..."
+                                                                placeholder="Add detailed item notes..."
                                                                 value={responses[q.id]?.notes || ''}
                                                                 readOnly={!isEditMode && inspection.status !== 'DRAFT'}
                                                                 onChange={(e) => handleNoteChange(q.id, e.target.value)}
-                                                                className="w-full px-4 py-4 bg-gray-50 border border-transparent hover:border-gray-100 rounded-3xl text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all min-h-[120px] resize-none shadow-inner"
+                                                                rows={5}
+                                                                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all resize-y placeholder:text-gray-300 leading-relaxed"
                                                             />
                                                         </td>
-                                                        <td className="px-8 py-6 align-top">
+                                                        <td className="px-8 py-6 align-top text-right">
                                                             {responses[q.id]?.ticketCreated ? (
                                                                 <div className="flex items-center justify-between gap-2 text-green-600 font-black text-[10px] uppercase bg-green-50 p-3 rounded-xl border border-green-100">
                                                                     <div className="flex items-center gap-2">
@@ -534,7 +638,7 @@ const InspectionForm = () => {
                                                                 </div>
                                                             ) : (
                                                                 <button 
-                                                                    onClick={() => handleCreateTicket(q)}
+                                                                    onClick={() => handleCreateTicketClick(q)}
                                                                     disabled={ticketLoading[q.id] || (!isEditMode && inspection.status !== 'DRAFT')}
                                                                     className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 rounded-xl text-[10px] font-black text-gray-600 uppercase hover:bg-white border border-transparent hover:border-gray-200 transition-all shadow-sm group/btn disabled:opacity-50"
                                                                 >
@@ -645,7 +749,7 @@ const InspectionForm = () => {
                                                         <Save size={28} className="text-gray-200" />
                                                     </div>
                                                     <p className="text-[11px] font-black text-gray-300 uppercase tracking-widest">Draw signature here</p>
-                                                    <p className="text-[10px] text-gray-300 mt-1">Use finger on tablet · mouse on desktop</p>
+                                                    <p className="text-[10px] text-gray-300 mt-1">Use finger on tablet - mouse on desktop</p>
                                                 </div>
                                             )}
 
@@ -699,6 +803,27 @@ const InspectionForm = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Modals */}
+            <PhotoAnnotationModal 
+                isOpen={annotationModal.isOpen}
+                onClose={() => setAnnotationModal({ ...annotationModal, isOpen: false })}
+                photoUrl={annotationModal.photoUrl}
+                onSave={(annotatedData) => {
+                    setResponses(prev => ({
+                        ...prev,
+                        [annotationModal.questionId]: { ...prev[annotationModal.questionId], annotatedPhoto: annotatedData }
+                    }));
+                    setAnnotationModal({ ...annotationModal, isOpen: false });
+                }}
+            />
+
+            <TicketCreationModal 
+                isOpen={ticketModal.isOpen}
+                onClose={() => setTicketModal({ ...ticketModal, isOpen: false })}
+                onSubmit={handleTicketSubmit}
+                initialData={ticketModal.initialData}
+            />
         </MainLayout>
     );
 };
@@ -709,12 +834,10 @@ const ConditionToggle = ({ label, active, color, dot, onClick, disabled }) => (
         disabled={disabled}
         className={`flex items-center gap-3 p-2 rounded-xl transition-all text-left ${disabled ? 'cursor-default' : 'hover:bg-white active:scale-95'}`}
     >
-        <div className={`w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center
-            ${active ? `border-indigo-600 bg-indigo-50` : 'border-gray-200'}`}>
+        <div className={`w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center ${active ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}`}>
             {active && <div className={`w-2.5 h-2.5 rounded-full ${dot}`} />}
         </div>
-        <span className={`text-[11px] font-black tracking-widest uppercase transition-all
-            ${active ? color : 'text-gray-400'}`}>{label}</span>
+        <span className={`text-[11px] font-black tracking-widest uppercase transition-all ${active ? color : 'text-gray-400'}`}>{label}</span>
     </button>
 );
 
