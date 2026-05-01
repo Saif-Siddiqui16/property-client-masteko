@@ -4,7 +4,7 @@ const api = axios.create({
     baseURL: 'http://localhost:5000',
     //baseURL: 'https://property-demo-saif-production.up.railway.app',
     //baseURL: 'https://saif-property-news-production-9d29.up.railway.app',
-    // baseURL: 'https://saif-property-client-railway-production.up.railway.app',
+    //baseURL: 'https://saif-property-client-railway-production.up.railway.app',
 
     headers: {
         'Content-Type': 'application/json',

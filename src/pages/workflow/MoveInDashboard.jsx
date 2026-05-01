@@ -178,9 +178,9 @@ const MoveInDashboard = () => {
             if (item.status === 'PENDING' || item.status.includes('BLOCKED')) {
                 // If blocked, maybe just show a note or guide to Unit Prep
                 if (item.status.includes('PREPARATION')) {
-                    navigate('/admin/workflow/unit-preparation');
+                    navigate('/admin/workflow/unit-prep');
                 } else if (item.status.includes('CONSTRUCTION')) {
-                    navigate('/admin/readiness');
+                    navigate('/unit-readiness');
                 } else {
                     // Try to advance it if possible
                     handleToggleRequirement(item.id, 'Process', true);
