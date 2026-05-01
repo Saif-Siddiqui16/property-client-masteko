@@ -226,7 +226,8 @@ const RefundsAdjustments = () => {
       setCalcData(null); // Clear calculation data after save
       await fetchRecords(currentPage);
     } catch (e) {
-      alert('Error saving refund');
+      const msg = e.response?.data?.message || 'Error saving refund';
+      alert(msg);
       console.error(e);
     } finally {
       setSaving(false);

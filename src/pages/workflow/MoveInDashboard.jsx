@@ -110,23 +110,23 @@ const MoveInDashboard = () => {
     };
 
     const Column = ({ title, subtitle, icon: Icon, color, count, items }) => (
-        <div className="flex-1 min-w-[320px] bg-gray-50/50 rounded-xl p-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+        <div className="flex-1 min-w-[280px] bg-gray-50/50 rounded-xl p-3 flex flex-col gap-3">
+            <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                    <div className={`p-2 rounded-lg ${color}`}>
-                        <Icon size={18} />
+                    <div className={`p-1.5 rounded-lg ${color}`}>
+                        <Icon size={16} />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-gray-900 text-sm">{title}</h3>
-                        <p className="text-xs text-gray-500">{subtitle}</p>
+                        <h3 className="font-bold text-gray-900 text-[13px] leading-tight">{title}</h3>
+                        <p className="text-[10px] text-gray-500 font-medium">{subtitle}</p>
                     </div>
                 </div>
-                <span className="bg-white px-2 py-1 rounded-md text-xs font-bold text-gray-400 border border-gray-100">
+                <span className="bg-white px-1.5 py-0.5 rounded-md text-[10px] font-black text-gray-400 border border-gray-100">
                     {count}
                 </span>
             </div>
 
-            <div className="flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-280px)] pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-320px)] pr-1 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
                 {items.map(item => (
                     <Card key={item.id} item={item} />
                 ))}
@@ -199,63 +199,63 @@ const MoveInDashboard = () => {
 
         return (
             <div 
-                className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer group relative"
+                className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer group relative"
                 onClick={handleAction}
             >
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreVertical size={16} className="text-gray-400" />
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <MoreVertical size={14} className="text-gray-400" />
                 </div>
 
-                <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-1.5">
                         {item.unit.is_priority && (
-                            <span className="bg-red-100 text-red-600 text-[10px] font-bold px-1.5 py-0.5 rounded animate-pulse">PRIORITY</span>
+                            <span className="bg-red-100 text-red-600 text-[9px] font-black px-1.5 py-0.5 rounded animate-pulse">PRIORITY</span>
                         )}
-                        <span className="bg-indigo-50 text-indigo-600 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-100">
+                        <span className="bg-indigo-50 text-indigo-600 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100">
                            {item.unit.property?.name || 'Unit'}
                         </span>
                     </div>
 
                     <div>
-                        <h4 className="font-bold text-gray-900 text-base">Unit {item.unit.unitNumber}</h4>
-                        <p className="text-sm text-gray-600 font-medium">
+                        <h4 className="font-black text-gray-900 text-sm leading-tight">Unit {item.unit.unitNumber}</h4>
+                        <p className="text-xs text-gray-500 font-bold truncate">
                             {item.lease?.tenant?.name || item.unit?.reserved_by_user?.name || 'Prospect Reservation'}
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-2 text-[11px] text-gray-500 bg-gray-50 p-1.5 rounded-lg border border-gray-100/50">
-                        <Calendar size={14} className="text-indigo-500" />
-                        <span className="font-bold">{displayDate ? format(displayDate, 'MMM d, yyyy') : 'TBD'}</span>
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-500 bg-gray-50 p-1 rounded-lg border border-gray-100/50">
+                        <Calendar size={12} className="text-indigo-500" />
+                        <span className="font-black">{displayDate ? format(displayDate, 'MMM d, yyyy') : 'TBD'}</span>
                         <div className="w-1 h-1 rounded-full bg-gray-300" />
-                        <span className="flex items-center gap-1 font-medium">
-                            <Clock size={12} />
+                        <span className="flex items-center gap-1 font-bold">
+                            <Clock size={10} />
                             {item.daysRemaining > 0 ? `${item.daysRemaining} days left` : item.daysRemaining === 0 ? 'Today' : `${Math.abs(item.daysRemaining)} days overdue`}
                         </span>
                     </div>
 
-                    <div className="pt-2 flex flex-col gap-2">
+                    <div className="pt-1 flex flex-col gap-1.5">
                         <div 
-                            className={`w-full flex items-center justify-between p-2.5 rounded-xl transition-all border ${
+                            className={`w-full flex items-center justify-between p-2 rounded-lg transition-all border ${
                                 item.status === 'INSPECTION_COMPLETED' 
-                                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-100' 
-                                    : 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-100'
-                            } ${loading ? 'opacity-50' : 'hover:scale-[1.02]'}`}
+                                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm' 
+                                    : 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                            } ${loading ? 'opacity-50' : 'hover:brightness-110 active:scale-95'}`}
                         >
                             <div className="flex items-center gap-2">
-                                {item.status === 'INSPECTION_COMPLETED' ? <CheckCircle2 size={16} /> : <Unlock size={16} />}
-                                <span className="text-[11px] font-black uppercase tracking-wider">
+                                {item.status === 'INSPECTION_COMPLETED' ? <CheckCircle2 size={14} /> : <Unlock size={14} />}
+                                <span className="text-[9px] font-black uppercase tracking-wider">
                                     {isBlocked ? 'In Preparation' : 
                                      item.status === 'REQUIREMENTS_PENDING' ? 'Admin Override' :
-                                     item.status === 'READY_FOR_MOVE_IN' ? 'Start Move-In Inspection' :
-                                     item.status === 'INSPECTION_COMPLETED' ? 'Approve Final Move-In' : 'Process Move-In'}
+                                     item.status === 'READY_FOR_MOVE_IN' ? 'Start Inspection' :
+                                     item.status === 'INSPECTION_COMPLETED' ? 'Approve Move-In' : 'Process'}
                                 </span>
                             </div>
-                            <ChevronRight size={14} />
+                            <ChevronRight size={12} />
                         </div>
                     </div>
 
                     {item.requirements && (
-                        <div className="grid grid-cols-2 gap-x-2 gap-y-3 pt-2 mt-1 border-t border-gray-50">
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-2 pt-1.5 mt-0.5 border-t border-gray-50">
                             <Requirement 
                                 badge="Rent" 
                                 status={item.requirements.rent} 
@@ -267,7 +267,7 @@ const MoveInDashboard = () => {
                                 onClick={(e) => { e.stopPropagation(); handleToggleRequirement(item.id, 'Deposit', item.requirements.deposit); }}
                             />
                             <Requirement 
-                                badge="Insurance" 
+                                badge="Insure" 
                                 status={item.requirements.insurance} 
                                 onClick={(e) => { e.stopPropagation(); handleToggleRequirement(item.id, 'Insurance', item.requirements.insurance); }}
                             />
@@ -306,35 +306,35 @@ const MoveInDashboard = () => {
         <MainLayout title="Move-In Dashboard">
             <div className="p-0 bg-transparent min-h-screen">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-4 mt-2">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Move-In Dashboard</h1>
-                    <p className="text-gray-500 text-sm">Track tenant move-ins and readiness • Follow your exact workflow</p>
+                    <h1 className="text-xl font-black text-gray-900 tracking-tight">Move-In Dashboard</h1>
+                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Track tenant move-ins • Follow workflow</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={handleExport}
-                        className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50"
+                        className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-xl text-xs font-black text-gray-600 hover:bg-gray-50 uppercase tracking-widest"
                     >
-                        Export <ChevronRight size={16} className="rotate-90" />
+                        Export <ChevronRight size={14} className="rotate-90" />
                     </button>
                     <button 
                         onClick={() => navigate('/admin/workflow/inspections/new')}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 shadow-md uppercase tracking-widest"
                     >
-                        <Calendar size={16} />
-                        Schedule Inspection
+                        <Calendar size={14} />
+                        Schedule
                     </button>
                 </div>
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-5 gap-4 mb-8">
-                <StatCard icon={Calendar} label="Upcoming Move-Ins" sublabel="Next 30 Days" value={stats.upcoming} color="text-blue-600" bg="bg-blue-50" />
-                <StatCard icon={Lock} label="Blocked - In Preparation" sublabel="Unit not ready" value={stats.blockedPrep} color="text-red-600" bg="bg-red-50" />
-                <StatCard icon={FileCheck} label="Blocked - Missing Requirements" sublabel="Action needed" value={stats.blockedReq} color="text-orange-600" bg="bg-orange-50" />
-                <StatCard icon={Search} label="Ready for Move-In Inspection" sublabel="All conditions met" value={stats.readyInspection} color="text-yellow-600" bg="bg-yellow-50" />
-                <StatCard icon={CheckCircle2} label="Inspection Completed" sublabel="Review deficiencies" value={stats.completed} color="text-green-600" bg="bg-green-50" />
+            <div className="grid grid-cols-5 gap-3 mb-6">
+                <StatCard icon={Calendar} label="Upcoming" sublabel="30 Days" value={stats.upcoming} color="text-blue-600" bg="bg-blue-50" />
+                <StatCard icon={Lock} label="Blocked Prep" sublabel="Not ready" value={stats.blockedPrep} color="text-red-600" bg="bg-red-50" />
+                <StatCard icon={FileCheck} label="Blocked Req" sublabel="Action needed" value={stats.blockedReq} color="text-orange-600" bg="bg-orange-50" />
+                <StatCard icon={Search} label="Ready" sublabel="Verified" value={stats.readyInspection} color="text-indigo-600" bg="bg-indigo-50" />
+                <StatCard icon={CheckCircle2} label="Completed" sublabel="Done" value={stats.completed} color="text-green-600" bg="bg-green-50" />
             </div>
 
             {/* Filters */}
@@ -415,14 +415,14 @@ const MoveInDashboard = () => {
 };
 
 const StatCard = ({ icon: Icon, label, sublabel, value, color, bg }) => (
-    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-start gap-4 hover:border-indigo-100 transition-all cursor-pointer group">
-        <div className={`p-3 rounded-xl ${bg} ${color} group-hover:scale-110 transition-transform`}>
-            <Icon size={24} />
+    <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex items-start gap-3 hover:border-indigo-100 transition-all cursor-pointer group">
+        <div className={`p-2 rounded-xl ${bg} ${color} group-hover:scale-110 transition-transform`}>
+            <Icon size={18} />
         </div>
         <div className="flex flex-col">
-            <span className="text-2xl font-black text-gray-900">{value}</span>
-            <span className="text-[13px] font-bold text-gray-900 leading-tight">{label}</span>
-            <span className="text-[11px] font-medium text-gray-400">{sublabel}</span>
+            <span className="text-xl font-black text-gray-900 leading-none">{value}</span>
+            <span className="text-[11px] font-black text-gray-900 leading-tight mt-1">{label}</span>
+            <span className="text-[9px] font-bold text-gray-400 uppercase">{sublabel}</span>
         </div>
     </div>
 );

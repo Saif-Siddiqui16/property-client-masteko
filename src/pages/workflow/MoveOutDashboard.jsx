@@ -63,6 +63,13 @@ const MoveOutDashboard = () => {
         setStats(s);
     };
 
+    const safeDate = (dateStr) => {
+        if (!dateStr) return null;
+        // Extracts YYYY-MM-DD and sets to noon to avoid timezone shifts
+        const datePart = String(dateStr).substring(0, 10);
+        return new Date(datePart + 'T12:00:00');
+    };
+
     const handleExport = async () => {
         try {
             const res = await api.get('/api/admin/workflow/move-out/export', { responseType: 'blob' });
@@ -79,23 +86,23 @@ const MoveOutDashboard = () => {
     };
 
     const Column = ({ title, icon: Icon, color, count, items, subtitle }) => (
-        <div className="flex-1 min-w-[320px] bg-gray-50/50 rounded-2xl p-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+        <div className="flex-1 min-w-[280px] bg-gray-50/50 rounded-2xl p-3 flex flex-col gap-3">
+            <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-2">
-                    <div className={`p-2 rounded-xl ${color}`}>
-                        <Icon size={18} />
+                    <div className={`p-1.5 rounded-xl ${color}`}>
+                        <Icon size={16} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900 text-sm tracking-tight">{title}</h3>
-                        <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">{subtitle}</p>
+                        <h3 className="font-black text-gray-900 text-[13px] leading-tight tracking-tight">{title}</h3>
+                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{subtitle}</p>
                     </div>
                 </div>
-                <span className="bg-white px-2 py-1 rounded-lg text-xs font-black text-gray-400 border border-gray-100 shadow-sm">
+                <span className="bg-white px-1.5 py-0.5 rounded-lg text-[10px] font-black text-gray-400 border border-gray-100 shadow-sm">
                     {count}
                 </span>
             </div>
 
-            <div className="flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-320px)] pr-1 scrollbar-thin scrollbar-thumb-gray-200">
+            <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-320px)] pr-1 scrollbar-thin scrollbar-thumb-gray-200">
                 {items.map(item => (
                     <Card key={item.id} item={item} />
                 ))}
@@ -122,12 +129,12 @@ const MoveOutDashboard = () => {
         };
 
         return (
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:border-indigo-100 transition-all group relative overflow-visible">
-                <div className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
+            <div className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:border-indigo-100 transition-all group relative overflow-visible">
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between px-0.5">
                         <div className="flex items-center gap-1.5">
-                            <span className="bg-blue-100 text-blue-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Move-Out</span>
-                            <span className="bg-gray-100 text-gray-500 text-[10px] font-black px-2 py-0.5 rounded-full">
+                            <span className="bg-blue-100 text-blue-600 text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase">Move-Out</span>
+                            <span className="bg-gray-100 text-gray-500 text-[9px] font-black px-1.5 py-0.5 rounded-full truncate max-w-[60px]">
                                 {item.unit.unitNumber}
                             </span>
                         </div>
@@ -137,9 +144,9 @@ const MoveOutDashboard = () => {
                                     e.stopPropagation();
                                     setMenuOpen(!menuOpen);
                                 }}
-                                className="p-1 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-gray-600 transition-colors"
+                                className="p-0.5 rounded-lg hover:bg-gray-100 text-gray-300 hover:text-gray-600 transition-colors"
                             >
-                                <MoreVertical size={16} />
+                                <MoreVertical size={14} />
                             </button>
                             
                             {menuOpen && (
@@ -161,29 +168,29 @@ const MoveOutDashboard = () => {
                         </div>
                     </div>
 
-                    <div onClick={() => navigate(`/units/${item.unitId}`)} className="cursor-pointer">
-                        <h4 className="font-black text-gray-900 text-base leading-tight tracking-tight">{item.unit.unitNumber}</h4>
-                        <p className="text-sm font-bold text-gray-500">{item.lease.tenant?.name || 'N/A'}</p>
-                        <p className="text-xs text-gray-400 font-medium">{item.unit.property?.name || 'Main Building'}</p>
+                    <div onClick={() => navigate(`/units/${item.unitId}`)} className="cursor-pointer px-0.5">
+                        <h4 className="font-black text-gray-900 text-sm leading-tight tracking-tight truncate">Unit {item.unit.unitNumber}</h4>
+                        <p className="text-[11px] font-black text-gray-500 truncate">{item.lease.tenant?.name || 'N/A'}</p>
                     </div>
 
-                    <div className="flex flex-col gap-1.5 py-2">
-                        <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400">
-                            <Calendar size={12} className="text-indigo-400" />
-                            Move-Out: {format(new Date(item.targetDate), 'MMM d, yyyy')}
+                    <div className="flex flex-col gap-1 py-1 px-0.5">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+                            <Calendar size={10} className="text-indigo-400" />
+                            {format(safeDate(item.targetDate) || new Date(), 'MMM d, yyyy')}
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] font-bold text-gray-400">
-                            <Clock size={12} className={item.urgency === 'OVERDUE' ? 'text-red-400' : 'text-orange-400'} />
-                            <span className={item.urgency === 'OVERDUE' ? 'text-red-500' : ''}>
-                                {Math.abs(item.daysRemaining)} {item.daysRemaining < 0 ? 'days overdue' : 'days remaining'}
+                        <div className="flex items-center gap-1.5 text-[10px] font-black">
+                            <Clock size={10} className={item.urgency === 'OVERDUE' ? 'text-red-400' : 'text-orange-400'} />
+                            <span className={item.urgency === 'OVERDUE' ? 'text-red-500' : 'text-gray-400'}>
+                                {Math.abs(item.daysRemaining)} {item.daysRemaining < 0 ? 'days overdue' : 'days left'}
                             </span>
                         </div>
                     </div>
 
-                    <div className="pt-3 border-t border-gray-50 flex flex-col gap-2">
+                    <div className="pt-2 border-t border-gray-50 flex flex-col gap-2">
                         <button 
                             onClick={async (e) => {
                                 e.stopPropagation();
+                                const activeInspection = item.inspections?.find(i => i.status === 'DRAFT');
                                 if (item.status === 'PENDING') {
                                     try {
                                         const res = await api.put(`/api/admin/workflow/move-out/${item.id}/confirm`);
@@ -191,6 +198,18 @@ const MoveOutDashboard = () => {
                                     } catch (e) {
                                         alert("Error confirming: " + e.message);
                                     }
+                                    handleStatusUpdate(item.id, 'CONFIRMED');
+                                } else if (item.status === 'CONFIRMED') {
+                                    navigate('/admin/workflow/inspections/new', { 
+                                        state: { 
+                                            moveOutId: item.id,
+                                            unitId: item.unitId,
+                                            leaseId: item.leaseId,
+                                            type: 'VISUAL'
+                                        } 
+                                    });
+                                } else if (activeInspection) {
+                                    navigate(`/admin/workflow/inspections/${activeInspection.id}/form`);
                                 } else if (item.status === 'INSPECTIONS_COMPLETED') {
                                     try {
                                         const res = await api.put(`/api/admin/workflow/move-out/${item.id}/complete`);
@@ -198,24 +217,29 @@ const MoveOutDashboard = () => {
                                     } catch (e) {
                                         alert("Error completing: " + e.message);
                                     }
-                                } else if (item.status.includes('SCHEDULED') || item.status === 'INSPECTION_IN_PROGRESS') {
-                                    navigate(`/admin/workflow/inspections/${item.inspections?.[0]?.id}/form`);
                                 } else {
-                                    navigate('/admin/workflow/inspections/new');
+                                    navigate('/admin/workflow/inspections/new', { 
+                                        state: { 
+                                            moveOutId: item.id,
+                                            unitId: item.unitId,
+                                            leaseId: item.leaseId,
+                                            type: item.inspections?.some(i => i.template?.type === 'VISUAL') ? 'MOVE_OUT' : 'VISUAL'
+                                        } 
+                                    });
                                 }
                             }}
-                            className="w-full flex items-center justify-between p-2 rounded-xl bg-gray-50 hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100"
+                            className="w-full flex items-center justify-between p-1.5 rounded-xl bg-gray-50 hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100"
                         >
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                <span className="text-[11px] font-black text-gray-700 hover:text-indigo-700 uppercase tracking-wider">
-                                    {item.status === 'PENDING' ? 'Confirm Move-Out' : 
-                                     item.status === 'CONFIRMED' ? 'Schedule Inspection' :
-                                     item.status.includes('SCHEDULED') ? 'Start Inspection' :
-                                     item.status === 'INSPECTION_IN_PROGRESS' ? 'Resume Inspection' : 'Finish Move-Out'}
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                                <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">
+                                    {item.status === 'PENDING' ? 'CONFIRM' : 
+                                     item.status === 'CONFIRMED' ? 'SCHEDULE' :
+                                     item.inspections?.some(i => i.status === 'DRAFT') ? 'START' :
+                                     item.status === 'INSPECTIONS_COMPLETED' ? 'FINISH' : 'SCHEDULE'}
                                 </span>
                             </div>
-                            <ArrowRight size={14} className="text-gray-400 hover:text-indigo-500 hover:translate-x-1 transition-all" />
+                            <ArrowRight size={12} className="text-gray-400" />
                         </button>
                     </div>
                 </div>
@@ -224,14 +248,14 @@ const MoveOutDashboard = () => {
     };
 
     const StatCard = ({ icon: Icon, label, sublabel, value, color, bg }) => (
-        <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm flex items-start gap-4 hover:shadow-lg transition-all cursor-pointer group">
-            <div className={`p-4 rounded-2xl ${bg} ${color} group-hover:scale-110 transition-transform shadow-sm`}>
-                <Icon size={24} />
+        <div className="bg-white p-3 rounded-2xl border border-gray-100 shadow-sm flex items-start gap-3 hover:shadow-lg transition-all cursor-pointer group">
+            <div className={`p-2.5 rounded-xl ${bg} ${color} group-hover:scale-110 transition-transform shadow-sm`}>
+                <Icon size={18} />
             </div>
             <div className="flex flex-col">
-                <span className="text-2xl font-black text-gray-900 leading-none mb-1">{value}</span>
-                <span className="text-[13px] font-black text-gray-900 leading-tight mb-0.5">{label}</span>
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">{sublabel}</span>
+                <span className="text-xl font-black text-gray-900 leading-none mb-1">{value}</span>
+                <span className="text-[11px] font-black text-gray-900 leading-tight mb-0.5">{label}</span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{sublabel}</span>
             </div>
         </div>
     );
@@ -242,54 +266,36 @@ const MoveOutDashboard = () => {
         <MainLayout title="Move-Out Dashboard">
             <div className="p-0 bg-transparent min-h-screen">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-4 mt-2">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Move-Out Dashboard</h1>
-                    <p className="text-gray-500 text-sm font-medium">Track upcoming move-outs readiness • Follow your exact workflow</p>
+                    <h1 className="text-xl font-black text-gray-900 tracking-tight">Move-Out Dashboard</h1>
+                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Track upcoming move-outs • Follow workflow</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={handleExport}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 rounded-2xl text-sm font-black text-gray-700 hover:bg-gray-100 transition-colors border border-gray-100"
+                        className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-xl text-xs font-black text-gray-700 hover:bg-gray-100 transition-colors border border-gray-100"
                     >
-                        Export <ChevronRight size={18} className="rotate-90 text-gray-400" />
-                    </button>
-                    <button 
-                        onClick={async () => {
-                            try {
-                                // For testing, we trigger for any active lease (this is just for your verification)
-                                const res = await api.post('/api/admin/workflow/move-out/trigger/1');
-                                if (res.data.success) {
-                                    alert("Move-Out Flow Triggered Successfully!");
-                                    fetchMoveOuts();
-                                }
-                            } catch (e) {
-                                alert("Error triggering: " + e.message);
-                            }
-                        }}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-orange-50 text-orange-700 rounded-2xl text-sm font-black hover:bg-orange-100 transition-all border border-orange-100"
-                    >
-                        <PlayCircle size={18} />
-                        Trigger Test Move-Out
+                        Export <ChevronRight size={14} className="rotate-90 text-gray-400" />
                     </button>
                     <button 
                         onClick={() => navigate('/admin/workflow/inspections/new')}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95"
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 shadow-md transition-all active:scale-95"
                     >
-                        <Search size={18} />
-                        Schedule Inspection
+                        <Search size={14} />
+                        Schedule
                     </button>
                 </div>
             </div>
 
             {/* Premium Stats Grid */}
-            <div className="grid grid-cols-6 gap-4 mb-10">
-                <StatCard icon={Calendar} label="Upcoming Move-Outs" sublabel="Next 30 Days" value={stats.upcoming} color="text-blue-600" bg="bg-blue-50" />
-                <StatCard icon={UserCheck} label="Confirmed Move-Out" sublabel="Next 30 Days" value={stats.confirmed} color="text-orange-600" bg="bg-orange-50" />
-                <StatCard icon={Clock} label="Inspections Scheduled" sublabel="Action needed" value={stats.scheduled} color="text-yellow-600" bg="bg-yellow-50" />
-                <StatCard icon={PlayCircle} label="Inspection In Progress" sublabel="Active surveys" value={stats.inProgress} color="text-purple-600" bg="bg-purple-50" />
-                <StatCard icon={CheckSquare} label="Ready for Completion" sublabel="Ready for end" value={stats.ready} color="text-green-600" bg="bg-green-50" />
-                <StatCard icon={ClipboardList} label="Move-Out Completed" sublabel="Archived flows" value={stats.completed} color="text-indigo-600" bg="bg-indigo-50" />
+            <div className="grid grid-cols-6 gap-3 mb-6">
+                <StatCard icon={Calendar} label="Upcoming" sublabel="30 Days" value={stats.upcoming} color="text-blue-600" bg="bg-blue-50" />
+                <StatCard icon={UserCheck} label="Confirmed" sublabel="30 Days" value={stats.confirmed} color="text-orange-600" bg="bg-orange-50" />
+                <StatCard icon={Clock} label="Scheduled" sublabel="Action" value={stats.scheduled} color="text-yellow-600" bg="bg-yellow-50" />
+                <StatCard icon={PlayCircle} label="Progress" sublabel="Active" value={stats.inProgress} color="text-purple-600" bg="bg-purple-50" />
+                <StatCard icon={CheckSquare} label="Ready" sublabel="Verified" value={stats.ready} color="text-green-600" bg="bg-green-50" />
+                <StatCard icon={ClipboardList} label="Completed" sublabel="Archived" value={stats.completed} color="text-indigo-600" bg="bg-indigo-50" />
             </div>
 
             {/* Search & Filter Bar */}
@@ -317,7 +323,7 @@ const MoveOutDashboard = () => {
             </div>
 
             {/* Kanban Columns */}
-            <div className="flex gap-6 overflow-x-auto pb-6 h-[calc(100vh-380px)] scrollbar-thin scrollbar-thumb-gray-200">
+            <div className="flex gap-4 overflow-x-auto pb-6 h-[calc(100vh-380px)] scrollbar-thin scrollbar-thumb-gray-200">
                 <Column 
                     title="Upcoming Move-Outs" 
                     subtitle="Upcoming within 30 days"

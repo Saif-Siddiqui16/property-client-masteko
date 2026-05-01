@@ -57,12 +57,15 @@ const NewInspectionWizard = () => {
                 setInspectors(Array.isArray(staffData) ? staffData : []);
 
                 // Auto-fill from location state
-                if (location.state?.moveInId) {
-                    const target = moveInUnits.find(u => u.id === location.state.moveInId);
+                if (location.state?.moveInId || location.state?.moveOutId || location.state?.unitId) {
+                    const stateUnitId = location.state.unitId || 
+                                       moveInUnits.find(u => u.id === location.state.moveInId)?.unitId;
+                    
+                    const target = moveInUnits.find(u => u.unitId === parseInt(stateUnitId));
                     if (target) {
                         setFormData(prev => ({
                             ...prev,
-                            type: 'Move-In',
+                            type: location.state.type || (location.state.moveInId ? 'Move-In' : 'Move-Out'),
                             unitId: target.unitId.toString(),
                             propertyId: target.unit?.propertyId?.toString() || '',
                             leaseId: target.leaseId?.toString() || ''
@@ -123,35 +126,35 @@ const NewInspectionWizard = () => {
         <MainLayout title="Create New Inspection">
             <div className="p-0 bg-transparent min-h-screen">
                 {/* Header */}
-                <div className="max-w-4xl mx-auto flex items-center justify-between mb-10">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => navigate(-1)} className="p-2.5 bg-white rounded-2xl border border-gray-100 text-gray-400 hover:text-gray-900 transition-colors shadow-sm">
-                            <ArrowLeft size={20} />
+                <div className="w-full max-w-4xl mx-auto flex items-center justify-between mb-6 md:mb-10 px-4 md:px-0">
+                    <div className="flex items-center gap-3 md:gap-4">
+                        <button onClick={() => navigate(-1)} className="p-2 md:p-2.5 bg-white rounded-2xl border border-gray-100 text-gray-400 hover:text-gray-900 transition-colors shadow-sm">
+                            <ArrowLeft size={18} />
                         </button>
-                        <h1 className="text-3xl font-black text-gray-900 tracking-tighter">New Inspection</h1>
+                        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tighter">New Inspection</h1>
                     </div>
-                    <button onClick={() => navigate(-1)} className="px-6 py-2.5 bg-white text-gray-600 rounded-2xl text-sm font-black border border-gray-100 hover:bg-gray-50 transition-colors shadow-sm">
+                    <button onClick={() => navigate(-1)} className="px-4 md:px-6 py-2 md:py-2.5 bg-white text-gray-600 rounded-2xl text-xs md:sm font-black border border-gray-100 hover:bg-gray-50 transition-colors shadow-sm">
                         Cancel
                     </button>
                 </div>
 
                 {/* Stepper */}
-                <div className="max-w-4xl mx-auto mb-12">
-                    <div className="flex items-center justify-between px-10">
+                <div className="w-full max-w-4xl mx-auto mb-8 md:mb-12 px-2 md:px-0">
+                    <div className="flex items-center justify-between px-4 md:px-10 overflow-x-auto pb-4 scrollbar-hide">
                         {steps.map((s, idx) => (
                             <React.Fragment key={s.id}>
-                                <div className="flex flex-col items-center gap-2 group cursor-pointer" onClick={() => step > s.id && setStep(s.id)}>
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm
+                                <div className="flex flex-col items-center gap-2 group cursor-pointer min-w-[80px]" onClick={() => step > s.id && setStep(s.id)}>
+                                    <div className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center transition-all shadow-sm
                                     ${step === s.id ? 'bg-indigo-600 text-white scale-110 shadow-indigo-100' :
                                             step > s.id ? 'bg-green-100 text-green-600' : 'bg-white text-gray-400 border border-gray-100'}`}>
-                                        <s.icon size={22} />
+                                        <s.icon size={18} className="md:w-[22px] md:h-[22px]" />
                                     </div>
-                                    <span className={`text-[11px] font-black uppercase tracking-widest ${step === s.id ? 'text-indigo-600' : 'text-gray-400'}`}>
-                                        {s.id}. {s.label}
+                                    <span className={`text-[9px] md:text-[11px] font-black uppercase tracking-widest text-center ${step === s.id ? 'text-indigo-600' : 'text-gray-400'}`}>
+                                        {s.label}
                                     </span>
                                 </div>
                                 {idx < steps.length - 1 && (
-                                    <div className="flex-1 h-0.5 mx-6 bg-gray-200 mt-[-20px]">
+                                    <div className="flex-1 h-0.5 mx-2 md:mx-6 bg-gray-200 mt-[-18px] md:mt-[-20px] min-w-[20px]">
                                         <div className={`h-full transition-all duration-500 ${step > s.id ? 'bg-green-500 w-full' : 'bg-gray-200 w-0'}`} />
                                     </div>
                                 )}
@@ -161,7 +164,7 @@ const NewInspectionWizard = () => {
                 </div>
 
                 {/* Content Area */}
-                <div className="max-w-4xl mx-auto bg-white rounded-[40px] shadow-2xl shadow-indigo-500/5 border border-gray-100 p-10">
+                <div className="w-full max-w-4xl mx-auto bg-white rounded-[32px] md:rounded-[40px] shadow-2xl shadow-indigo-500/5 border border-gray-100 p-6 md:p-10 mb-10">
                     {step === 1 && (
                         <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <div>
@@ -169,7 +172,7 @@ const NewInspectionWizard = () => {
                                 <p className="text-gray-500 text-sm">Provide the basic details for this inspection.</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                                 <InputGroup label="Inspection Type" required>
                                     <select 
                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
@@ -246,7 +249,7 @@ const NewInspectionWizard = () => {
                                 </InputGroup>
 
                                 <InputGroup label="Tenant" required>
-                                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-100 rounded-2xl text-sm font-bold text-gray-500">
+                                    <div className="w-full px-4 py-3 bg-gray-100 border border-gray-100 rounded-2xl text-sm font-bold text-gray-500 truncate">
                                         {(() => {
                                             const selectedUnit = units.find(u => u.unitId === parseInt(formData.unitId));
                                             if (!selectedUnit) return 'Select a unit first';

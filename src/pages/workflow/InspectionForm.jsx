@@ -410,22 +410,22 @@ const InspectionForm = () => {
                 {/* Main Scrollable Content */}
                 <div className="flex-1 p-4 lg:p-12 overflow-y-auto">
                     <div className="max-w-5xl mx-auto">
-                        {/* Header Area */}
-                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
+                        {/* Header Area - Optimized for Tablet */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-12 gap-6 px-2">
                             <div>
-                                <h1 className="text-4xl font-black text-gray-900 tracking-tighter mb-2">Inspection Record</h1>
-                                <div className="flex flex-wrap items-center gap-6">
+                                <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter mb-2">Inspection Record</h1>
+                                <div className="flex flex-wrap items-center gap-4 md:gap-6">
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</span>
-                                        <span className="text-sm font-black text-gray-700">{inspection.template?.type}</span>
+                                        <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</span>
+                                        <span className="text-xs md:text-sm font-black text-gray-700">{inspection.template?.type}</span>
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit</span>
-                                        <span className="text-sm font-black text-gray-700">{inspection.unit?.unitNumber}</span>
+                                        <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit</span>
+                                        <span className="text-xs md:text-sm font-black text-gray-700">{inspection.unit?.unitNumber}</span>
                                     </div>
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</span>
-                                        <span className="text-sm font-black text-gray-700">{new Date(inspection.createdAt).toLocaleDateString()}</span>
+                                        <span className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</span>
+                                        <span className="text-xs md:text-sm font-black text-gray-700">{new Date(inspection.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 </div>
                             </div>
@@ -433,15 +433,28 @@ const InspectionForm = () => {
                             {inspection.status === 'COMPLETED' && !isEditMode && (
                                 <button 
                                     onClick={() => setIsEditMode(true)}
-                                    className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-100 rounded-2xl text-xs font-black text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
+                                    className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-100 rounded-2xl text-xs font-black text-gray-600 hover:bg-gray-50 transition-all shadow-sm"
                                 >
-                                    <Edit3 size={16} /> Enter Edit Mode (Audited)
+                                    <Edit3 size={16} /> Enter Edit Mode
                                 </button>
                             )}
                         </div>
 
+                        {/* Horizontal Room Navigator for Tablets/Mobile */}
+                        <div className="xl:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 -mx-4 px-4 py-3 mb-6 tablet-scroll-x flex items-center gap-2">
+                            {rooms.map((room, idx) => (
+                                <button
+                                    key={room.id}
+                                    onClick={() => scrollToSection(room.id)}
+                                    className="whitespace-nowrap px-4 py-2 rounded-xl bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-gray-100"
+                                >
+                                    {idx + 1}. {room.name}
+                                </button>
+                            ))}
+                        </div>
+
                         {/* Long Scroll Form */}
-                        <div className="flex flex-col gap-12">
+                        <div className="flex flex-col gap-8 md:gap-12">
                             {rooms.map((room, idx) => (
                                 <section 
                                     key={room.id} 
@@ -458,203 +471,68 @@ const InspectionForm = () => {
                                         </div>
                                     </div>
 
-                                    {/* Desktop Table View (lg and above) */}
-                                    <div className="hidden lg:block p-0 overflow-x-auto">
-                                        <table className="w-full text-left border-collapse lg:min-w-full">
-                                            <thead>
-                                                <tr className="bg-white border-b border-gray-100 text-[11px] font-black text-gray-400 uppercase tracking-widest">
-                                                    <th className="px-8 py-5 min-w-[200px]">Item / Question</th>
-                                                    <th className="px-8 py-5 min-w-[150px]">Condition</th>
-                                                    <th className="px-8 py-5 min-w-[200px]">Photos & Annotation</th>
-                                                    <th className="px-8 py-5 min-w-[220px]">Notes</th>
-                                                    <th className="px-8 py-5 min-w-[120px] text-right">Ticket</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50">
-                                                {room.questions?.map((q) => (
-                                                    <tr key={q.id} className="hover:bg-gray-50/30 transition-colors group">
-                                                        <td className="px-8 py-6 align-top">
-                                                            <h4 className="font-black text-gray-900 text-base mb-1">{q.text}</h4>
-                                                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-tighter">Operational Check</span>
-                                                        </td>
-                                                        <td className="px-8 py-6 align-top">
-                                                            <div className="flex flex-col gap-2">
-                                                                {q.type === 'DROPDOWN' ? (
-                                                                    <select
-                                                                        value={responses[q.id]?.status || ''}
-                                                                        disabled={!isEditMode && inspection.status !== 'DRAFT'}
-                                                                        onChange={(e) => handleConditionChange(q.id, e.target.value)}
-                                                                        className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                                                                    >
-                                                                        <option value="">Select Option...</option>
-                                                                        {(q.options || '').split(',').map(opt => (
-                                                                            <option key={opt.trim()} value={opt.trim()}>{opt.trim()}</option>
-                                                                        ))}
-                                                                    </select>
-                                                                ) : q.type === 'TEXT' ? (
-                                                                    <textarea 
-                                                                        placeholder="Enter response..."
-                                                                        value={responses[q.id]?.status || ''}
-                                                                        readOnly={!isEditMode && inspection.status !== 'DRAFT'}
-                                                                        onChange={(e) => handleConditionChange(q.id, e.target.value)}
-                                                                        className="w-full p-3 bg-white border border-gray-100 rounded-xl text-xs font-bold"
-                                                                    />
-                                                                ) : q.type === 'RATING' ? (
-                                                                    <div className="flex gap-1">
-                                                                        {[1,2,3,4,5].map(num => (
-                                                                            <button 
-                                                                                key={num}
-                                                                                onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, num.toString())}
-                                                                                className={`w-8 h-8 rounded-lg text-xs font-black ${responses[q.id]?.status === num.toString() ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}
-                                                                            >
-                                                                                {num}
-                                                                            </button>
-                                                                        ))}
-                                                                    </div>
-                                                                ) : q.type === 'YES_NO' ? (
-                                                                    <div className="flex flex-col gap-2">
-                                                                        {['Yes', 'No'].map(choice => (
-                                                                            <ConditionToggle
-                                                                                key={choice}
-                                                                                label={choice}
-                                                                                active={responses[q.id]?.status === choice}
-                                                                                color={choice === 'Yes' ? 'text-green-600' : 'text-red-600'}
-                                                                                dot={choice === 'Yes' ? 'bg-green-500' : 'bg-red-500'}
-                                                                                onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, choice)}
-                                                                                disabled={!isEditMode && inspection.status !== 'DRAFT'}
-                                                                            />
-                                                                        ))}
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="flex flex-col gap-2">
-                                                                        {/* Series Selection */}
-                                                                        <div className="flex flex-wrap gap-1 mb-2">
-                                                                            {series.map(s => (
-                                                                                <button 
-                                                                                    key={s.id}
-                                                                                    onClick={() => setActiveSeries(prev => ({ ...prev, [q.id]: s.id }))}
-                                                                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeSeries[q.id] === s.id ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                                                                >
-                                                                                    {s.name}
-                                                                                </button>
-                                                                            ))}
-                                                                            <button 
-                                                                                onClick={() => setActiveSeries(prev => ({ ...prev, [q.id]: null }))}
-                                                                                className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${!activeSeries[q.id] ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                                                            >
-                                                                                Template
-                                                                            </button>
-                                                                        </div>
-
-                                                                        <div className="flex flex-col gap-2">
-                                                                            {(activeSeries[q.id] 
-                                                                                ? (series.find(s => s.id === activeSeries[q.id])?.responses || [])
-                                                                                : (inspection.template?.structure?.responseChoices || [
-                                                                                    { label: 'Good', color: 'green' },
-                                                                                    { label: 'Fair', color: 'orange' },
-                                                                                    { label: 'Poor', color: 'red' }
-                                                                                ]).filter(choice => !q.selectedChoices || q.selectedChoices.length === 0 || q.selectedChoices.includes(choice.label))
-                                                                            ).map(choice => (
-                                                                                <ConditionToggle
-                                                                                    key={choice.label}
-                                                                                    label={choice.label}
-                                                                                    active={responses[q.id]?.status === choice.label}
-                                                                                    color={`text-${choice.color}-600`}
-                                                                                    dot={`bg-${choice.color}-500`}
-                                                                                    onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, choice.label)}
-                                                                                    disabled={!isEditMode && inspection.status !== 'DRAFT'}
-                                                                                />
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-8 py-6 align-top">
-                                                            <div className="flex flex-col gap-3">
-                                                                <div className="w-full aspect-video rounded-3xl bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-200 group-hover:border-indigo-200 transition-all relative overflow-hidden shadow-inner">
-                                                                    {responses[q.id]?.annotatedPhoto ? (
-                                                                        <img src={responses[q.id].annotatedPhoto} className="w-full h-full object-contain" alt="Annotated" />
-                                                                    ) : responses[q.id]?.photo ? (
-                                                                        <img src={responses[q.id].photo} className="w-full h-full object-contain" alt="Captured" />
-                                                                    ) : (
-                                                                        <Camera size={24} className="text-gray-300 group-hover:text-indigo-400" />
-                                                                    )}
-                                                                    {(isEditMode || inspection.status === 'DRAFT') && (
-                                                                        <input 
-                                                                            type="file" 
-                                                                            accept="image/*"
-                                                                            capture="environment"
-                                                                            onChange={(e) => handlePhotoUpload(q.id, e.target.files[0])}
-                                                                            className="absolute inset-0 opacity-0 cursor-pointer" 
-                                                                        />
-                                                                    )}
-                                                                </div>
-                                                                {responses[q.id]?.photo && (
-                                                                    <div className="flex flex-col gap-2">
-                                                                        <button 
-                                                                            onClick={() => setAnnotationModal({ isOpen: true, questionId: q.id, photoUrl: responses[q.id].photo })}
-                                                                            className="w-full py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md flex items-center justify-center gap-2"
-                                                                        >
-                                                                            <Edit3 size={12} /> {responses[q.id]?.annotatedPhoto ? 'Edit Markings' : 'Draw / Mark Photo'}
-                                                                        </button>
-                                                                        <input 
-                                                                            type="text"
-                                                                            placeholder="Add photo text note..."
-                                                                            value={responses[q.id]?.annotation || ''}
-                                                                            readOnly={!isEditMode && inspection.status !== 'DRAFT'}
-                                                                            onChange={(e) => handleAnnotationChange(q.id, e.target.value)}
-                                                                            className="text-[10px] font-bold p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                                                                        />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-6 align-top min-w-[220px] w-[220px]">
-                                                            <textarea
-                                                                placeholder="Add detailed item notes..."
-                                                                value={responses[q.id]?.notes || ''}
-                                                                readOnly={!isEditMode && inspection.status !== 'DRAFT'}
-                                                                onChange={(e) => handleNoteChange(q.id, e.target.value)}
-                                                                rows={5}
-                                                                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all resize-y placeholder:text-gray-300 leading-relaxed"
-                                                            />
-                                                        </td>
-                                                        <td className="px-8 py-6 align-top text-right">
-                                                            {responses[q.id]?.ticketCreated ? (
-                                                                <div className="flex items-center justify-between gap-2 text-green-600 font-black text-[10px] uppercase bg-green-50 p-3 rounded-xl border border-green-100">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <CheckCircle2 size={14} /> Ticket Created
-                                                                    </div>
-                                                                    {(isEditMode || inspection.status === 'DRAFT') && (
-                                                                        <button 
-                                                                            onClick={() => handleDeleteTicket(q.id, responses[q.id].ticketId)}
-                                                                            className="text-red-400 hover:text-red-600 transition-colors"
-                                                                            title="Delete Ticket"
-                                                                        >
-                                                                            <Trash2 size={14} />
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <button 
-                                                                    onClick={() => handleCreateTicketClick(q)}
-                                                                    disabled={ticketLoading[q.id] || (!isEditMode && inspection.status !== 'DRAFT')}
-                                                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 rounded-xl text-[10px] font-black text-gray-600 uppercase hover:bg-white border border-transparent hover:border-gray-200 transition-all shadow-sm group/btn disabled:opacity-50"
-                                                                >
-                                                                    {ticketLoading[q.id] ? (
-                                                                        <Loader2 size={14} className="animate-spin" />
-                                                                    ) : (
-                                                                        <Plus size={14} className="group-hover/btn:rotate-90 transition-transform" />
-                                                                    )}
-                                                                    {ticketLoading[q.id] ? 'Creating...' : 'Create Ticket'}
-                                                                </button>
-                                                            )}
-                                                        </td>
+                                    {/* Responsive Items Container */}
+                                    <div className="p-0">
+                                        {/* Desktop Table View (lg and above) */}
+                                        <div className="hidden xl:block overflow-x-auto">
+                                            <table className="w-full text-left border-collapse min-w-full">
+                                                <thead>
+                                                    <tr className="bg-white border-b border-gray-100 text-[11px] font-black text-gray-400 uppercase tracking-widest">
+                                                        <th className="px-8 py-5 min-w-[200px]">Item / Question</th>
+                                                        <th className="px-8 py-5 min-w-[150px]">Condition</th>
+                                                        <th className="px-8 py-5 min-w-[200px]">Photos & Annotation</th>
+                                                        <th className="px-8 py-5 min-w-[220px]">Notes</th>
+                                                        <th className="px-8 py-5 min-w-[120px] text-right">Ticket</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50">
+                                                    {room.questions?.map((q) => (
+                                                        <QuestionRow 
+                                                            key={q.id} 
+                                                            q={q} 
+                                                            responses={responses} 
+                                                            isEditMode={isEditMode} 
+                                                            inspection={inspection}
+                                                            series={series}
+                                                            activeSeries={activeSeries}
+                                                            setActiveSeries={setActiveSeries}
+                                                            handleConditionChange={handleConditionChange}
+                                                            handlePhotoUpload={handlePhotoUpload}
+                                                            setAnnotationModal={setAnnotationModal}
+                                                            handleAnnotationChange={handleAnnotationChange}
+                                                            handleNoteChange={handleNoteChange}
+                                                            handleCreateTicketClick={handleCreateTicketClick}
+                                                            handleDeleteTicket={handleDeleteTicket}
+                                                            ticketLoading={ticketLoading}
+                                                        />
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* Tablet/Mobile Card View (Below xl) */}
+                                        <div className="xl:hidden flex flex-col divide-y divide-gray-100">
+                                            {room.questions?.map((q) => (
+                                                <QuestionCard 
+                                                    key={q.id} 
+                                                    q={q} 
+                                                    responses={responses} 
+                                                    isEditMode={isEditMode} 
+                                                    inspection={inspection}
+                                                    series={series}
+                                                    activeSeries={activeSeries}
+                                                    setActiveSeries={setActiveSeries}
+                                                    handleConditionChange={handleConditionChange}
+                                                    handlePhotoUpload={handlePhotoUpload}
+                                                    setAnnotationModal={setAnnotationModal}
+                                                    handleAnnotationChange={handleAnnotationChange}
+                                                    handleNoteChange={handleNoteChange}
+                                                    handleCreateTicketClick={handleCreateTicketClick}
+                                                    handleDeleteTicket={handleDeleteTicket}
+                                                    ticketLoading={ticketLoading}
+                                                />
+                                            ))}
+                                        </div>
                                     </div>
                                 </section>
                             ))}
@@ -827,6 +705,206 @@ const InspectionForm = () => {
         </MainLayout>
     );
 };
+
+const QuestionRow = ({ q, responses, isEditMode, inspection, series, activeSeries, setActiveSeries, handleConditionChange, handlePhotoUpload, setAnnotationModal, handleAnnotationChange, handleNoteChange, handleCreateTicketClick, handleDeleteTicket, ticketLoading }) => (
+    <tr className="hover:bg-gray-50/30 transition-colors group">
+        <td className="px-8 py-6 align-top">
+            <h4 className="font-black text-gray-900 text-base mb-1">{q.text}</h4>
+            <span className="text-[10px] font-black text-gray-300 uppercase tracking-tighter">Operational Check</span>
+        </td>
+        <td className="px-8 py-6 align-top">
+            <ConditionSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} series={series} activeSeries={activeSeries} setActiveSeries={setActiveSeries} handleConditionChange={handleConditionChange} />
+        </td>
+        <td className="px-8 py-6 align-top">
+            <PhotoSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} handlePhotoUpload={handlePhotoUpload} setAnnotationModal={setAnnotationModal} handleAnnotationChange={handleAnnotationChange} />
+        </td>
+        <td className="px-6 py-6 align-top min-w-[220px] w-[220px]">
+            <textarea
+                placeholder="Add detailed item notes..."
+                value={responses[q.id]?.notes || ''}
+                readOnly={!isEditMode && inspection.status !== 'DRAFT'}
+                onChange={(e) => handleNoteChange(q.id, e.target.value)}
+                rows={5}
+                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all resize-y placeholder:text-gray-300 leading-relaxed"
+            />
+        </td>
+        <td className="px-8 py-6 align-top text-right">
+            <TicketStatus q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} ticketLoading={ticketLoading} handleCreateTicketClick={handleCreateTicketClick} handleDeleteTicket={handleDeleteTicket} />
+        </td>
+    </tr>
+);
+
+const QuestionCard = ({ q, responses, isEditMode, inspection, series, activeSeries, setActiveSeries, handleConditionChange, handlePhotoUpload, setAnnotationModal, handleAnnotationChange, handleNoteChange, handleCreateTicketClick, handleDeleteTicket, ticketLoading }) => (
+    <div className="p-5 md:p-8 flex flex-col gap-6 hover:bg-indigo-50/20 transition-all">
+        <div className="flex justify-between items-start">
+            <div>
+                <h4 className="font-black text-gray-900 text-lg md:text-xl tracking-tight mb-1">{q.text}</h4>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Touch to record condition</span>
+            </div>
+            <TicketStatus q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} ticketLoading={ticketLoading} handleCreateTicketClick={handleCreateTicketClick} handleDeleteTicket={handleDeleteTicket} />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex flex-col gap-4">
+                <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Condition</label>
+                <ConditionSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} series={series} activeSeries={activeSeries} setActiveSeries={setActiveSeries} handleConditionChange={handleConditionChange} />
+                
+                <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mt-2">Notes</label>
+                <textarea
+                    placeholder="Add detailed item notes..."
+                    value={responses[q.id]?.notes || ''}
+                    readOnly={!isEditMode && inspection.status !== 'DRAFT'}
+                    onChange={(e) => handleNoteChange(q.id, e.target.value)}
+                    rows={3}
+                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                />
+            </div>
+            
+            <div className="flex flex-col gap-4">
+                <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Photo Evidence</label>
+                <PhotoSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} handlePhotoUpload={handlePhotoUpload} setAnnotationModal={setAnnotationModal} handleAnnotationChange={handleAnnotationChange} />
+            </div>
+        </div>
+    </div>
+);
+
+const ConditionSelector = ({ q, responses, isEditMode, inspection, series, activeSeries, setActiveSeries, handleConditionChange }) => (
+    <div className="flex flex-col gap-2">
+        {q.type === 'DROPDOWN' ? (
+            <select
+                value={responses[q.id]?.status || ''}
+                disabled={!isEditMode && inspection.status !== 'DRAFT'}
+                onChange={(e) => handleConditionChange(q.id, e.target.value)}
+                className="w-full px-4 py-3 bg-white border border-gray-100 rounded-xl text-xs font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+            >
+                <option value="">Select Option...</option>
+                {(q.options || '').split(',').map(opt => (
+                    <option key={opt.trim()} value={opt.trim()}>{opt.trim()}</option>
+                ))}
+            </select>
+        ) : q.type === 'YES_NO' ? (
+            <div className="flex flex-wrap gap-2">
+                {['Yes', 'No'].map(choice => (
+                    <ConditionToggle
+                        key={choice}
+                        label={choice}
+                        active={responses[q.id]?.status === choice}
+                        color={choice === 'Yes' ? 'text-green-600' : 'text-red-600'}
+                        dot={choice === 'Yes' ? 'bg-green-500' : 'bg-red-500'}
+                        onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, choice)}
+                        disabled={!isEditMode && inspection.status !== 'DRAFT'}
+                    />
+                ))}
+            </div>
+        ) : (
+            <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-1 mb-1">
+                    {series.map(s => (
+                        <button 
+                            key={s.id}
+                            onClick={() => setActiveSeries(prev => ({ ...prev, [q.id]: s.id }))}
+                            className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeSeries[q.id] === s.id ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                        >
+                            {s.name}
+                        </button>
+                    ))}
+                    <button 
+                        onClick={() => setActiveSeries(prev => ({ ...prev, [q.id]: null }))}
+                        className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${!activeSeries[q.id] ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                    >
+                        Template
+                    </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    {(activeSeries[q.id] 
+                        ? (series.find(s => s.id === activeSeries[q.id])?.responses || [])
+                        : (inspection.template?.structure?.responseChoices || [
+                            { label: 'Good', color: 'green' },
+                            { label: 'Fair', color: 'orange' },
+                            { label: 'Poor', color: 'red' }
+                        ]).filter(choice => !q.selectedChoices || q.selectedChoices.length === 0 || q.selectedChoices.includes(choice.label))
+                    ).map(choice => (
+                        <ConditionToggle
+                            key={choice.label}
+                            label={choice.label}
+                            active={responses[q.id]?.status === choice.label}
+                            color={`text-${choice.color}-600`}
+                            dot={`bg-${choice.color}-500`}
+                            onClick={() => (isEditMode || inspection.status === 'DRAFT') && handleConditionChange(q.id, choice.label)}
+                            disabled={!isEditMode && inspection.status !== 'DRAFT'}
+                        />
+                    ))}
+                </div>
+            </div>
+        )}
+    </div>
+);
+
+const PhotoSelector = ({ q, responses, isEditMode, inspection, handlePhotoUpload, setAnnotationModal, handleAnnotationChange }) => (
+    <div className="flex flex-col gap-3">
+        <div className="w-full aspect-video rounded-3xl bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-200 group-hover:border-indigo-200 transition-all relative overflow-hidden shadow-inner">
+            {responses[q.id]?.annotatedPhoto ? (
+                <img src={responses[q.id].annotatedPhoto} className="w-full h-full object-contain" alt="Annotated" />
+            ) : responses[q.id]?.photo ? (
+                <img src={responses[q.id].photo} className="w-full h-full object-contain" alt="Captured" />
+            ) : (
+                <Camera size={24} className="text-gray-300 group-hover:text-indigo-400" />
+            )}
+            {(isEditMode || inspection.status === 'DRAFT') && (
+                <input 
+                    type="file" 
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => handlePhotoUpload(q.id, e.target.files[0])}
+                    className="absolute inset-0 opacity-0 cursor-pointer" 
+                />
+            )}
+        </div>
+        {responses[q.id]?.photo && (
+            <div className="flex flex-col gap-2">
+                <button 
+                    onClick={() => setAnnotationModal({ isOpen: true, questionId: q.id, photoUrl: responses[q.id].photo })}
+                    className="w-full py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                    <Edit3 size={12} /> {responses[q.id]?.annotatedPhoto ? 'Edit Markings' : 'Draw / Mark Photo'}
+                </button>
+                <input 
+                    type="text"
+                    placeholder="Add photo text note..."
+                    value={responses[q.id]?.annotation || ''}
+                    readOnly={!isEditMode && inspection.status !== 'DRAFT'}
+                    onChange={(e) => handleAnnotationChange(q.id, e.target.value)}
+                    className="text-[10px] font-bold p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                />
+            </div>
+        )}
+    </div>
+);
+
+const TicketStatus = ({ q, responses, isEditMode, inspection, ticketLoading, handleCreateTicketClick, handleDeleteTicket }) => (
+    <div className="flex flex-col gap-1 items-end">
+        {responses[q.id]?.ticketCreated ? (
+            <div className="flex items-center justify-between gap-2 text-green-600 font-black text-[9px] uppercase bg-green-50 p-2 rounded-lg border border-green-100">
+                <div className="flex items-center gap-2">
+                    <CheckCircle2 size={12} /> Ticket OK
+                </div>
+                {(isEditMode || inspection.status === 'DRAFT') && (
+                    <button onClick={() => handleDeleteTicket(q.id, responses[q.id].ticketId)} className="text-red-400 hover:text-red-600">
+                        <Trash2 size={12} />
+                    </button>
+                )}
+            </div>
+        ) : (
+            <button 
+                onClick={() => handleCreateTicketClick(q)}
+                disabled={ticketLoading[q.id] || (!isEditMode && inspection.status !== 'DRAFT')}
+                className="px-3 py-2 bg-gray-50 rounded-lg text-[9px] font-black text-gray-500 uppercase hover:bg-white border border-transparent hover:border-gray-200 transition-all disabled:opacity-50"
+            >
+                {ticketLoading[q.id] ? '...' : '+ Create Ticket'}
+            </button>
+        )}
+    </div>
+);
 
 const ConditionToggle = ({ label, active, color, dot, onClick, disabled }) => (
     <button 
