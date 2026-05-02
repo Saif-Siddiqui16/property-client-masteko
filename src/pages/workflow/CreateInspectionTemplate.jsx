@@ -166,7 +166,7 @@ const CreateInspectionTemplate = () => {
                         </button>
                         <div>
                             <h1 className="text-3xl font-black text-gray-900 tracking-tighter">{id ? 'Edit Template' : 'New Template'}</h1>
-                            <p className="text-gray-500 text-sm font-medium">{id ? 'Update your existing checklist' : 'Design your room-by-room inspection checklist'}</p>
+                            <p className="text-gray-500 text-sm font-medium">{id ? 'Update your existing checklist' : 'Create a room-by-room checklist for inspections'}</p>
                         </div>
                     </div>
                     <button 
@@ -201,12 +201,13 @@ const CreateInspectionTemplate = () => {
                                 >
                                     <option value="MOVE_IN">Move-In Inspection</option>
                                     <option value="MOVE_OUT">Move-Out Inspection</option>
+                                    <option value="VISUAL">Visual Inspection</option>
                                 </select>
                             </div>
                         </div>
 
                         <div className="space-y-3">
-                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Response Options (e.g. Yes/No or Good/Fair/Poor)</label>
+                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Condition Buttons (Visible on App)</label>
                             <div className="flex flex-wrap gap-3">
                                 {formData.responseChoices.map((choice, idx) => (
                                     <div key={idx} className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 group">
@@ -302,13 +303,13 @@ const CreateInspectionTemplate = () => {
                                             />
                                             <div className="flex flex-col gap-2 min-w-[150px]">
                                                 <div className="flex items-center justify-between px-1">
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase">Response Type</label>
+                                                    <label className="text-[9px] font-black text-gray-400 uppercase">Button Type</label>
                                                     <button 
                                                         onClick={() => navigate('/admin/workflow/response-groups')}
                                                         className="text-[9px] font-black text-indigo-500 hover:text-indigo-700 uppercase flex items-center gap-1"
-                                                        title="Manage Custom Groups"
+                                                        title="Customize Button Sets (e.g. Good/Fair/Poor)"
                                                     >
-                                                        <Settings2 size={10} /> Manage Groups
+                                                        <Settings2 size={10} /> Manage Button Sets
                                                     </button>
                                                 </div>
                                                 <select 
@@ -328,17 +329,17 @@ const CreateInspectionTemplate = () => {
                                                     className="px-4 py-3 bg-gray-50 border border-transparent rounded-xl text-xs font-black text-gray-500 outline-none w-full"
                                                 >
                                                     <optgroup label="Template Defaults">
-                                                        <option value="GLOBAL">Template Buttons</option>
-                                                        <option value="YES_NO">YES/NO (Standard)</option>
+                                                        <option value="GLOBAL">Standard Buttons</option>
+                                                        <option value="YES_NO">YES / NO</option>
+                                                        <option value="TEXT">Comment Box Only</option>
                                                     </optgroup>
-                                                    <optgroup label="Custom Groups / Series">
+                                                    <optgroup label="Manageable Button Sets">
                                                         {series.map(s => (
                                                             <option key={s.id} value={`SERIES_${s.id}`}>{s.name}</option>
                                                         ))}
                                                     </optgroup>
                                                     <optgroup label="Direct Input">
                                                         <option value="DROPDOWN">Custom Dropdown</option>
-                                                        <option value="TEXT">Text Input</option>
                                                         <option value="RATING">1-5 Rating</option>
                                                     </optgroup>
                                                 </select>
@@ -395,7 +396,7 @@ const CreateInspectionTemplate = () => {
                                         className="flex items-center gap-2 px-4 py-3 text-indigo-600 hover:bg-indigo-50 rounded-xl text-xs font-black transition-all w-full justify-center border-2 border-dashed border-indigo-100"
                                     >
                                         <PlusCircle size={16} />
-                                        Add Question to {room.name}
+                                        Add Item to {room.name}
                                     </button>
                                 </div>
                             </div>

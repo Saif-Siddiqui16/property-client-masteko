@@ -57,6 +57,12 @@ const getModuleDisplayName = (name, t) => {
     'Shuttle': t('sidebar.shuttle'),
     'Maintenance': t('sidebar.maintenance'),
     'Tickets': t('sidebar.tickets'),
+    'Inspections': t('sidebar.inspections'),
+    'Inspection List': `↳ ${t('sidebar.inspection_list')}`,
+    'Inspection Templates': `↳ ${t('sidebar.templates')}`,
+    'Unit Preparation': t('sidebar.unit_prep'),
+    'Move-Out': t('sidebar.move_out'),
+    'Move-In': t('sidebar.move_in'),
     'Settings': t('sidebar.team')
   };
   return map[name] || name;
@@ -77,10 +83,14 @@ const MODULES = [
   'Email Hub', 'Send Email', 'Email Templates', 'Sent Emails',
   'Maintenance',
   'Tickets',
+  'Inspections', 'Inspection List', 'Inspection Templates',
+  'Unit Preparation',
+  'Move-Out',
+  'Move-In',
   'Settings'
 ];
 
-const PARENTS = ['Dashboard', 'Properties', 'Tenants', 'Payments', 'Accounting', 'Communication', 'Email Hub'];
+const PARENTS = ['Dashboard', 'Properties', 'Tenants', 'Payments', 'Accounting', 'Communication', 'Email Hub', 'Inspections'];
 
 const sortPermissions = (perms) => {
     return [...(perms || [])].sort((a, b) => {

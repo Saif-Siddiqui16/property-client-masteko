@@ -21,13 +21,14 @@ const NewInspectionWizard = () => {
     const location = useLocation();
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
-        type: 'Move-In',
+        type: 'MOVE_IN',
         templateId: '',
         unitId: '',
         leaseId: '',
         propertyId: '',
         inspectorId: '1',
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        time: ''
     });
     const [loading, setLoading] = useState(false);
     const [units, setUnits] = useState([]);
@@ -65,10 +66,14 @@ const NewInspectionWizard = () => {
                     if (target) {
                         setFormData(prev => ({
                             ...prev,
-                            type: location.state.type || (location.state.moveInId ? 'Move-In' : 'Move-Out'),
+                            type: location.state.type || (location.state.moveInId ? 'MOVE_IN' : 'MOVE_OUT'),
                             unitId: target.unitId.toString(),
                             propertyId: target.unit?.propertyId?.toString() || '',
-                            leaseId: target.leaseId?.toString() || ''
+                            leaseId: target.leaseId?.toString() || '',
+                            date: location.state.type === 'VISUAL' ? 
+                                  (location.state.visualDate ? String(location.state.visualDate).substring(0, 10) : prev.date) :
+                                  (location.state.finalDate ? String(location.state.finalDate).substring(0, 10) : prev.date),
+                            time: location.state.type === 'VISUAL' ? (location.state.visualTime || '') : (location.state.finalTime || '')
                         }));
                     }
                 }
@@ -76,6 +81,23 @@ const NewInspectionWizard = () => {
         };
         fetchData();
     }, [location.state]);
+
+    // Handle dynamic date/time switching when type changes
+    useEffect(() => {
+        if (location.state?.visualDate || location.state?.finalDate) {
+            setFormData(prev => {
+                const isVisual = prev.type === 'VISUAL';
+                const targetDate = isVisual ? location.state.visualDate : location.state.finalDate;
+                const targetTime = isVisual ? location.state.visualTime : location.state.finalTime;
+                
+                return {
+                    ...prev,
+                    date: targetDate ? String(targetDate).substring(0, 10) : prev.date,
+                    time: targetTime || ''
+                };
+            });
+        }
+    }, [formData.type, location.state]);
 
     const steps = [
         { id: 1, label: 'Basic Info', icon: FileText },
@@ -108,7 +130,8 @@ const NewInspectionWizard = () => {
                 templateId: parseInt(formData.templateId),
                 unitId: parseInt(formData.unitId),
                 leaseId: formData.leaseId ? parseInt(formData.leaseId) : null,
-                date: formData.date
+                date: formData.date,
+                time: formData.time
             });
 
             if (res.data.success) {
@@ -179,9 +202,9 @@ const NewInspectionWizard = () => {
                                         value={formData.type}
                                         onChange={(e) => setFormData({...formData, type: e.target.value})}
                                     >
-                                        <option value="Move-Out">Move-Out</option>
-                                        <option value="Visual">Visual Walkthrough</option>
-                                        <option value="Move-In">Move-In</option>
+                                        <option value="MOVE_OUT">Move-Out</option>
+                                        <option value="VISUAL">Visual Walkthrough</option>
+                                        <option value="MOVE_IN">Move-In</option>
                                     </select>
                                 </InputGroup>
 
@@ -194,6 +217,17 @@ const NewInspectionWizard = () => {
                                             onChange={(e) => setFormData({...formData, date: e.target.value})}
                                         />
                                         <Calendar size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                                    </div>
+                                </InputGroup>
+
+                                <InputGroup label="Scheduled Time">
+                                    <div className="relative">
+                                        <input 
+                                            type="time" 
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all" 
+                                            value={formData.time}
+                                            onChange={(e) => setFormData({...formData, time: e.target.value})}
+                                        />
                                     </div>
                                 </InputGroup>
 

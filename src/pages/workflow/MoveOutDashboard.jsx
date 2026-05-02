@@ -23,6 +23,9 @@ const MoveOutDashboard = () => {
     const navigate = useNavigate();
     const [moveOuts, setMoveOuts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedMoveOut, setSelectedMoveOut] = useState(null);
+    const [showScheduleModal, setShowScheduleModal] = useState(false);
+    const [scheduleType, setScheduleType] = useState('VISUAL'); // 'VISUAL' or 'FINAL'
     const [stats, setStats] = useState({
         upcoming: 0,
         confirmed: 0,
@@ -53,10 +56,11 @@ const MoveOutDashboard = () => {
     const calculateStats = (data) => {
         const s = { upcoming: 0, confirmed: 0, scheduled: 0, inProgress: 0, ready: 0, completed: 0 };
         data.forEach(item => {
+            const hasBothStarted = item.visualInspectionId && item.finalInspectionId;
             if (item.status === 'PENDING') s.upcoming++;
             else if (item.status === 'CONFIRMED') s.confirmed++;
-            else if (item.status === 'VISUAL_INSPECTION_SCHEDULED' || item.status === 'FINAL_INSPECTION_SCHEDULED') s.scheduled++;
-            else if (item.status === 'INSPECTION_IN_PROGRESS') s.inProgress++;
+            else if (item.status.includes('SCHEDULED') && !hasBothStarted) s.scheduled++;
+            else if (item.status === 'INSPECTION_IN_PROGRESS' || hasBothStarted) s.inProgress++;
             else if (item.status === 'INSPECTIONS_COMPLETED') s.ready++;
             else if (item.status === 'COMPLETED') s.completed++;
         });
@@ -65,9 +69,10 @@ const MoveOutDashboard = () => {
 
     const safeDate = (dateStr) => {
         if (!dateStr) return null;
-        // Extracts YYYY-MM-DD and sets to noon to avoid timezone shifts
+        // Extracts YYYY-MM-DD and parses as local calendar date
         const datePart = String(dateStr).substring(0, 10);
-        return new Date(datePart + 'T12:00:00');
+        const [y, m, d] = datePart.split('-').map(Number);
+        return new Date(y, m - 1, d);
     };
 
     const handleExport = async () => {
@@ -82,6 +87,31 @@ const MoveOutDashboard = () => {
             link.remove();
         } catch (error) {
             alert('Failed to export PDF: ' + error.message);
+        }
+    };
+
+    const handleSchedule = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const date = formData.get('date');
+        const time = formData.get('time');
+
+        try {
+            const endpoint = scheduleType === 'VISUAL' 
+                ? `/api/admin/workflow/move-out/${selectedMoveOut.id}/confirm`
+                : `/api/admin/workflow/move-out/${selectedMoveOut.id}/schedule-final`;
+            
+            const payload = scheduleType === 'VISUAL' 
+                ? { visualDate: date, visualTime: time }
+                : { finalDate: date, finalTime: time };
+
+            const res = await api.put(endpoint, payload);
+            if (res.data.success) {
+                setShowScheduleModal(false);
+                fetchMoveOuts();
+            }
+        } catch (error) {
+            alert("Failed to schedule: " + error.message);
         }
     };
 
@@ -176,9 +206,46 @@ const MoveOutDashboard = () => {
                     <div className="flex flex-col gap-1 py-1 px-0.5">
                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
                             <Calendar size={10} className="text-indigo-400" />
-                            {format(safeDate(item.targetDate) || new Date(), 'MMM d, yyyy')}
+                            Target: {format(safeDate(item.targetDate) || new Date(), 'MMM d, yyyy')}
                         </div>
-                        <div className="flex items-center gap-1.5 text-[10px] font-black">
+                        
+                        {/* Inspection Status Tags */}
+                        {(item.status.includes('SCHEDULED') || item.status === 'INSPECTION_IN_PROGRESS') && (
+                            <div className="mt-1 flex flex-col gap-1 bg-gray-50/50 p-2 rounded-xl border border-gray-50">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Visual Inspection</span>
+                                    {(() => {
+                                        const insp = item.inspections?.find(i => i.id === item.visualInspectionId);
+                                        if (insp?.status === 'COMPLETED') {
+                                            return <span className="bg-green-100 text-green-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">✅ Completed ({format(safeDate(item.visualDate), 'MMM d')})</span>;
+                                        } else if (item.visualInspectionId) {
+                                            return <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ Started ({format(safeDate(item.visualDate), 'MMM d')}{item.visualTime ? ` @ ${item.visualTime}` : ''})</span>;
+                                        } else if (item.visualDate) {
+                                            return <span className="bg-orange-100 text-orange-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">📅 TO-DO ({format(safeDate(item.visualDate), 'MMM d')}{item.visualTime ? ` @ ${item.visualTime}` : ''})</span>;
+                                        } else {
+                                            return <span className="bg-gray-100 text-gray-400 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ REMAINING</span>;
+                                        }
+                                    })()}
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Move-Out Inspection</span>
+                                    {(() => {
+                                        const insp = item.inspections?.find(i => i.id === item.finalInspectionId);
+                                        if (insp?.status === 'COMPLETED') {
+                                            return <span className="bg-green-100 text-green-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">✅ Completed ({format(safeDate(item.finalDate), 'MMM d')})</span>;
+                                        } else if (item.finalInspectionId) {
+                                            return <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ Started ({format(safeDate(item.finalDate), 'MMM d')}{item.finalTime ? ` @ ${item.finalTime}` : ''})</span>;
+                                        } else if (item.finalDate) {
+                                            return <span className="bg-orange-100 text-orange-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">📅 TO-DO ({format(safeDate(item.finalDate), 'MMM d')}{item.finalTime ? ` @ ${item.finalTime}` : ''})</span>;
+                                        } else {
+                                            return <span className="bg-gray-100 text-gray-400 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ REMAINING</span>;
+                                        }
+                                    })()}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-1.5 text-[10px] font-black mt-1">
                             <Clock size={10} className={item.urgency === 'OVERDUE' ? 'text-red-400' : 'text-orange-400'} />
                             <span className={item.urgency === 'OVERDUE' ? 'text-red-500' : 'text-gray-400'}>
                                 {Math.abs(item.daysRemaining)} {item.daysRemaining < 0 ? 'days overdue' : 'days left'}
@@ -190,42 +257,70 @@ const MoveOutDashboard = () => {
                         <button 
                             onClick={async (e) => {
                                 e.stopPropagation();
-                                const activeInspection = item.inspections?.find(i => i.status === 'DRAFT');
                                 if (item.status === 'PENDING') {
-                                    try {
-                                        const res = await api.put(`/api/admin/workflow/move-out/${item.id}/confirm`);
-                                        if (res.data.success) fetchMoveOuts();
-                                    } catch (e) {
-                                        alert("Error confirming: " + e.message);
+                                    // Rule 2.2: Simple confirmation of move-out
+                                    if (window.confirm("Confirm that this tenant is moving out?")) {
+                                        try {
+                                            const res = await api.put(`/api/admin/workflow/move-out/${item.id}/confirm`, {});
+                                            if (res.data.success) fetchMoveOuts();
+                                        } catch (e) {
+                                            alert("Error confirming: " + e.message);
+                                        }
                                     }
-                                    handleStatusUpdate(item.id, 'CONFIRMED');
-                                } else if (item.status === 'CONFIRMED') {
-                                    navigate('/admin/workflow/inspections/new', { 
-                                        state: { 
-                                            moveOutId: item.id,
-                                            unitId: item.unitId,
-                                            leaseId: item.leaseId,
-                                            type: 'VISUAL'
-                                        } 
-                                    });
-                                } else if (activeInspection) {
+                                    return;
+                                }
+
+                                // If any inspection is missing, priority is to START it
+                                if (item.status === 'CONFIRMED') {
+                                    setScheduleType('VISUAL');
+                                    setSelectedMoveOut(item);
+                                    setShowScheduleModal(true);
+                                    return;
+                                }
+
+                                if (item.status.includes('SCHEDULED')) {
+                                    if (!item.finalDate) {
+                                        setScheduleType('FINAL');
+                                        setSelectedMoveOut(item);
+                                        setShowScheduleModal(true);
+                                        return;
+                                    }
+
+                                    // If scheduled but not started, prioritize STARTING it
+                                    if (!item.visualInspectionId || !item.finalInspectionId) {
+                                        const nextType = item.visualInspectionId ? 'MOVE_OUT' : 'VISUAL';
+                                        navigate('/admin/workflow/inspections/new', { 
+                                            state: { 
+                                                moveOutId: item.id,
+                                                unitId: item.unitId,
+                                                leaseId: item.leaseId,
+                                                type: nextType,
+                                                visualDate: item.visualDate,
+                                                visualTime: item.visualTime,
+                                                finalDate: item.finalDate,
+                                                finalTime: item.finalTime
+                                            } 
+                                        });
+                                        return;
+                                    }
+                                }
+
+                                // If both are started, THEN allow continuing
+                                const activeInspection = item.inspections?.find(i => i.status === 'DRAFT' || i.status === 'IN_PROGRESS');
+                                if (activeInspection) {
                                     navigate(`/admin/workflow/inspections/${activeInspection.id}/form`);
-                                } else if (item.status === 'INSPECTIONS_COMPLETED') {
-                                    try {
-                                        const res = await api.put(`/api/admin/workflow/move-out/${item.id}/complete`);
-                                        if (res.data.success) fetchMoveOuts();
-                                    } catch (e) {
-                                        alert("Error completing: " + e.message);
+                                    return;
+                                }
+
+                                if (item.status === 'INSPECTIONS_COMPLETED') {
+                                    if (window.confirm("Confirm all inspections are complete and move unit to Preparation?")) {
+                                        try {
+                                            const res = await api.put(`/api/admin/workflow/move-out/${item.id}/complete`);
+                                            if (res.data.success) fetchMoveOuts();
+                                        } catch (e) {
+                                            alert("Error completing: " + (e.response?.data?.message || e.message));
+                                        }
                                     }
-                                } else {
-                                    navigate('/admin/workflow/inspections/new', { 
-                                        state: { 
-                                            moveOutId: item.id,
-                                            unitId: item.unitId,
-                                            leaseId: item.leaseId,
-                                            type: item.inspections?.some(i => i.template?.type === 'VISUAL') ? 'MOVE_OUT' : 'VISUAL'
-                                        } 
-                                    });
                                 }
                             }}
                             className="w-full flex items-center justify-between p-1.5 rounded-xl bg-gray-50 hover:bg-indigo-50 transition-colors border border-transparent hover:border-indigo-100"
@@ -233,10 +328,14 @@ const MoveOutDashboard = () => {
                             <div className="flex items-center gap-1.5">
                                 <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
                                 <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">
-                                    {item.status === 'PENDING' ? 'CONFIRM' : 
-                                     item.status === 'CONFIRMED' ? 'SCHEDULE' :
-                                     item.inspections?.some(i => i.status === 'DRAFT') ? 'START' :
-                                     item.status === 'INSPECTIONS_COMPLETED' ? 'FINISH' : 'SCHEDULE'}
+                                    {item.status === 'PENDING' ? 'CONFIRM MOVE-OUT' : 
+                                     item.status === 'CONFIRMED' ? 'SCHEDULE VISUAL' :
+                                     item.status.includes('SCHEDULED') && !item.finalDate ? 'SCHEDULE FINAL' :
+                                     item.status.includes('SCHEDULED') && !item.visualInspectionId ? 'START VISUAL' :
+                                     item.status.includes('SCHEDULED') && !item.finalInspectionId ? 'START FINAL' :
+                                     item.inspections?.some(i => i.status === 'DRAFT' || i.status === 'IN_PROGRESS') ? 'CONTINUE INSPECTION' :
+                                     item.status === 'INSPECTION_IN_PROGRESS' ? 'CONTINUE' :
+                                     item.status === 'INSPECTIONS_COMPLETED' ? 'FINALIZE' : 'VIEW'}
                                 </span>
                             </div>
                             <ArrowRight size={12} className="text-gray-400" />
@@ -346,7 +445,7 @@ const MoveOutDashboard = () => {
                     icon={Clock} 
                     color="bg-yellow-100 text-yellow-600" 
                     count={stats.scheduled} 
-                    items={moveOuts.filter(m => m.status.includes('SCHEDULED'))}
+                    items={moveOuts.filter(m => m.status.includes('SCHEDULED') && !(m.visualInspectionId && m.finalInspectionId))}
                 />
                 <Column 
                     title="Inspection In Progress" 
@@ -354,7 +453,7 @@ const MoveOutDashboard = () => {
                     icon={PlayCircle} 
                     color="bg-purple-100 text-purple-600" 
                     count={stats.inProgress} 
-                    items={moveOuts.filter(m => m.status === 'INSPECTION_IN_PROGRESS')}
+                    items={moveOuts.filter(m => m.status === 'INSPECTION_IN_PROGRESS' || (m.visualInspectionId && m.finalInspectionId))}
                 />
                 <Column 
                     title="Ready for Completion" 
@@ -365,6 +464,77 @@ const MoveOutDashboard = () => {
                     items={moveOuts.filter(m => m.status === 'INSPECTIONS_COMPLETED')}
                 />
             </div>
+
+            {/* Schedule Modal */}
+            {showScheduleModal && (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200 border border-gray-100 overflow-hidden">
+                        <form onSubmit={handleSchedule}>
+                            <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                                <div>
+                                    <h2 className="text-xl font-black text-gray-900 tracking-tight">
+                                        Schedule {scheduleType === 'VISUAL' ? 'Visual' : 'Move-Out'} Inspection
+                                    </h2>
+                                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mt-1">
+                                        Unit {selectedMoveOut?.unit?.unitNumber} • {selectedMoveOut?.lease?.tenant?.name}
+                                    </p>
+                                </div>
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowScheduleModal(false)}
+                                    className="p-2 hover:bg-white rounded-full transition-colors text-gray-400 hover:text-gray-900"
+                                >
+                                    <MoreVertical size={20} className="rotate-45" />
+                                </button>
+                            </div>
+                            
+                            <div className="p-8 flex flex-col gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Date</label>
+                                    <div className="relative">
+                                        <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" />
+                                        <input 
+                                            required
+                                            type="date" 
+                                            name="date"
+                                            className="w-full pl-12 pr-6 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Time</label>
+                                    <div className="relative">
+                                        <Clock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-500" />
+                                        <input 
+                                            required
+                                            type="time" 
+                                            name="time"
+                                            className="w-full pl-12 pr-6 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-6 bg-gray-50/50 flex gap-3">
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowScheduleModal(false)}
+                                    className="flex-1 py-3.5 px-6 rounded-2xl text-sm font-black text-gray-500 hover:bg-white transition-all uppercase tracking-widest border border-transparent hover:border-gray-100"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit"
+                                    className="flex-[2] py-3.5 px-6 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-95 uppercase tracking-widest"
+                                >
+                                    Confirm Appointment
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
             </div>
         </MainLayout>
     );

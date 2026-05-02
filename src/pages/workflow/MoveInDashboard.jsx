@@ -15,7 +15,9 @@ import {
     Hammer,
     User,
     ChevronRight,
-    Unlock
+    Unlock,
+    Trash2,
+    XCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { MainLayout } from '../../layouts/MainLayout';
@@ -150,6 +152,18 @@ const MoveInDashboard = () => {
         }
     };
 
+    const handleCancelMoveIn = async (id) => {
+        if (!window.confirm("Are you sure you want to cancel this move-in? This will remove it from the dashboard.")) return;
+        try {
+            const res = await api.put(`/api/admin/workflow/move-in/${id}/cancel`);
+            if (res.data.success) {
+                fetchMoveIns();
+            }
+        } catch (error) {
+            alert('Failed to cancel move-in: ' + error.message);
+        }
+    };
+
     const handleToggleRequirement = async (moveInId, requirement, currentStatus) => {
         try {
             const res = await api.put(`/api/admin/workflow/move-in/${moveInId}/requirement`, {
@@ -202,8 +216,14 @@ const MoveInDashboard = () => {
                 className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer group relative"
                 onClick={handleAction}
             >
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreVertical size={14} className="text-gray-400" />
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); handleCancelMoveIn(item.id); }}
+                        className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg transition-colors"
+                        title="Cancel Move-In"
+                    >
+                        <Trash2 size={14} />
+                    </button>
                 </div>
 
                 <div className="flex flex-col gap-2">
@@ -238,24 +258,34 @@ const MoveInDashboard = () => {
                             className={`w-full flex items-center justify-between p-2 rounded-lg transition-all border ${
                                 item.status === 'INSPECTION_COMPLETED' 
                                     ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm' 
-                                    : 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
-                            } ${loading ? 'opacity-50' : 'hover:brightness-110 active:scale-95'}`}
+                                    : isBlocked ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                            } ${loading || isBlocked ? 'cursor-not-allowed opacity-70' : 'hover:brightness-110 active:scale-95'}`}
                         >
                             <div className="flex items-center gap-2">
-                                {item.status === 'INSPECTION_COMPLETED' ? <CheckCircle2 size={14} /> : <Unlock size={14} />}
+                                {item.status === 'INSPECTION_COMPLETED' ? <CheckCircle2 size={14} /> : isBlocked ? <Lock size={14} /> : <Unlock size={14} />}
                                 <span className="text-[9px] font-black uppercase tracking-wider">
-                                    {isBlocked ? 'In Preparation' : 
-                                     item.status === 'REQUIREMENTS_PENDING' ? 'Admin Override' :
+                                    {isBlocked ? 'Prep In Progress' : 
+                                     item.status === 'REQUIREMENTS_PENDING' ? 'Override & Continue' :
                                      item.status === 'READY_FOR_MOVE_IN' ? 'Start Inspection' :
-                                     item.status === 'INSPECTION_COMPLETED' ? 'Approve Move-In' : 'Process'}
+                                     item.status === 'INSPECTION_COMPLETED' ? 'Finalize Move-In' : 'Process'}
                                 </span>
                             </div>
-                            <ChevronRight size={12} />
+                            {!isBlocked && <ChevronRight size={12} />}
                         </div>
                     </div>
 
                     {item.requirements && (
                         <div className="grid grid-cols-2 gap-x-2 gap-y-2 pt-1.5 mt-0.5 border-t border-gray-50">
+                            <Requirement 
+                                badge="Ready" 
+                                status={item.unit.unit_ready_completed || item.unit.ready_for_leasing} 
+                                label={item.unit.unit_ready_completed ? 'Unit Ready' : 'Prep Pending'}
+                            />
+                            <Requirement 
+                                badge="Repairs" 
+                                status={item.status !== 'BLOCKED_IN_PREPARATION'} 
+                                label={item.status === 'BLOCKED_IN_PREPARATION' ? 'Tasks Open' : 'Clear'}
+                            />
                             <Requirement 
                                 badge="Rent" 
                                 status={item.requirements.rent} 
@@ -272,7 +302,7 @@ const MoveInDashboard = () => {
                                 onClick={(e) => { e.stopPropagation(); handleToggleRequirement(item.id, 'Insurance', item.requirements.insurance); }}
                             />
                             <Requirement 
-                                badge="Signed" 
+                                badge="Lease" 
                                 status={!!item.leaseId} 
                             />
                         </div>
@@ -282,23 +312,46 @@ const MoveInDashboard = () => {
         );
     };
 
-    const Requirement = ({ badge, status, onClick }) => (
-        <div 
-            onClick={onClick}
-            className={`flex items-center gap-1.5 p-1 rounded-md transition-all ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
-        >
-            {status ? (
-                <div className="bg-emerald-500 rounded-full p-0.5">
-                    <CheckCircle2 size={10} className="text-white" />
+    const Requirement = ({ badge, status, label, onClick }) => {
+        const isNotRequired = status === 'NOT_REQUIRED';
+        const isPaid = status === 'PAID' || status === true;
+        const isMissing = status === 'MISSING' || status === false;
+
+        return (
+            <div 
+                onClick={onClick}
+                className={`flex items-center gap-1.5 p-1 rounded-md transition-all ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+            >
+                {isPaid ? (
+                    <div className="bg-emerald-500 rounded-full p-0.5 shadow-sm">
+                        <CheckCircle2 size={10} className="text-white" />
+                    </div>
+                ) : isNotRequired ? (
+                    <div className="bg-gray-300 rounded-full p-0.5 shadow-sm">
+                        <CheckCircle2 size={10} className="text-white" />
+                    </div>
+                ) : (
+                    <div className="bg-red-500 rounded-full p-0.5 shadow-sm">
+                        <AlertCircle size={10} className="text-white" />
+                    </div>
+                )}
+                <div className="flex flex-col">
+                    <span className={`text-[9px] font-black uppercase tracking-wider ${
+                        isPaid ? 'text-gray-400' : 
+                        isNotRequired ? 'text-gray-300' : 
+                        'text-red-600'
+                    }`}>
+                        {badge}
+                    </span>
+                    {label && (
+                        <span className={`text-[8px] font-bold leading-none ${isPaid ? 'text-gray-600' : 'text-red-500'}`}>
+                            {label}
+                        </span>
+                    )}
                 </div>
-            ) : (
-                <div className="bg-red-500 rounded-full p-0.5">
-                    <AlertCircle size={10} className="text-white" />
-                </div>
-            )}
-            <span className={`text-[10px] font-bold uppercase tracking-tight ${status ? 'text-gray-700' : 'text-red-500'}`}>{badge}</span>
-        </div>
-    );
+            </div>
+        );
+    };
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading Dashboard...</div>;
 

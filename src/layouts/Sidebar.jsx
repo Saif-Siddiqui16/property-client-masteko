@@ -169,25 +169,29 @@ const NAV_ITEMS = [
   {
     icon: ClipboardList,
     label: "Inspections",
+    tKey: "sidebar.inspections",
     path: "/admin/workflow/inspections",
     children: [
-      { label: "Inspection List", path: "/admin/workflow/inspections" },
-      { label: "Templates", path: "/admin/workflow/templates" }
+      { label: "Inspection List", tKey: "sidebar.inspection_list", path: "/admin/workflow/inspections" },
+      { label: "Inspection Templates", tKey: "sidebar.templates", path: "/admin/workflow/templates" }
     ]
   },
   {
     icon: Hammer,
     label: "Unit Preparation",
+    tKey: "sidebar.unit_prep",
     path: "/admin/workflow/unit-prep"
   },
   {
     icon: Clock,
     label: "Move-Out",
+    tKey: "sidebar.move_out",
     path: "/admin/workflow/move-out"
   },
   {
     icon: Home,
     label: "Move-In",
+    tKey: "sidebar.move_in",
     path: "/admin/workflow/move-in"
   },
   {
@@ -392,6 +396,12 @@ export const Sidebar = ({ isOpen, onClose }) => {
               'Sent Emails': 'Sent Emails',
               'Maintenance': 'Maintenance',
               'Tickets': 'Tickets',
+              'Inspections': 'Inspections',
+              'Inspection List': 'Inspection List',
+              'Inspection Templates': 'Inspection Templates',
+              'Unit Preparation': 'Unit Preparation',
+              'Move-Out': 'Move-Out',
+              'Move-In': 'Move-In',
               'Team Access Control': 'Settings',
               'Settings': 'Settings'
             };
