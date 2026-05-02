@@ -57,12 +57,12 @@ const MoveOutDashboard = () => {
         const s = { upcoming: 0, confirmed: 0, scheduled: 0, inProgress: 0, ready: 0, completed: 0 };
         data.forEach(item => {
             const hasBothStarted = item.visualInspectionId && item.finalInspectionId;
-            if (item.status === 'PENDING') s.upcoming++;
-            else if (item.status === 'CONFIRMED') s.confirmed++;
-            else if (item.status.includes('SCHEDULED') && !hasBothStarted) s.scheduled++;
-            else if (item.status === 'INSPECTION_IN_PROGRESS' || hasBothStarted) s.inProgress++;
+            if (item.status === 'COMPLETED') s.completed++;
             else if (item.status === 'INSPECTIONS_COMPLETED') s.ready++;
-            else if (item.status === 'COMPLETED') s.completed++;
+            else if (item.status === 'INSPECTION_IN_PROGRESS' || hasBothStarted) s.inProgress++;
+            else if (item.status === 'PENDING') s.upcoming++;
+            else if (item.status === 'CONFIRMED') s.confirmed++;
+            else if (item.status.includes('SCHEDULED')) s.scheduled++;
         });
         setStats(s);
     };
@@ -445,7 +445,7 @@ const MoveOutDashboard = () => {
                     icon={Clock} 
                     color="bg-yellow-100 text-yellow-600" 
                     count={stats.scheduled} 
-                    items={moveOuts.filter(m => m.status.includes('SCHEDULED') && !(m.visualInspectionId && m.finalInspectionId))}
+                    items={moveOuts.filter(m => m.status.includes('SCHEDULED') && !(m.visualInspectionId && m.finalInspectionId) && m.status !== 'COMPLETED' && m.status !== 'CANCELLED')}
                 />
                 <Column 
                     title="Inspection In Progress" 
@@ -453,7 +453,7 @@ const MoveOutDashboard = () => {
                     icon={PlayCircle} 
                     color="bg-purple-100 text-purple-600" 
                     count={stats.inProgress} 
-                    items={moveOuts.filter(m => m.status === 'INSPECTION_IN_PROGRESS' || (m.visualInspectionId && m.finalInspectionId))}
+                    items={moveOuts.filter(m => (m.status === 'INSPECTION_IN_PROGRESS' || (m.visualInspectionId && m.finalInspectionId)) && m.status !== 'COMPLETED' && m.status !== 'CANCELLED' && m.status !== 'INSPECTIONS_COMPLETED')}
                 />
                 <Column 
                     title="Ready for Completion" 
@@ -461,7 +461,7 @@ const MoveOutDashboard = () => {
                     icon={CheckSquare} 
                     color="bg-green-100 text-green-600" 
                     count={stats.ready} 
-                    items={moveOuts.filter(m => m.status === 'INSPECTIONS_COMPLETED')}
+                    items={moveOuts.filter(m => m.status === 'INSPECTIONS_COMPLETED' && m.status !== 'COMPLETED')}
                 />
             </div>
 

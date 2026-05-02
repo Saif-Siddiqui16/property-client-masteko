@@ -8,7 +8,8 @@ const TicketCreationModal = ({ isOpen, onClose, onSubmit, initialData }) => {
         priority: 'High',
         category: 'MAINTENANCE',
         type: 'REPAIR',
-        blockingStatus: 'NON_BLOCKING',
+        blockingStatus: 'MOVE_OUT',
+        isRequired: true,
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     });
 
@@ -78,14 +79,41 @@ const TicketCreationModal = ({ isOpen, onClose, onSubmit, initialData }) => {
                             <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Handover Blocking Status</label>
                             <select 
                                 value={formData.blockingStatus}
-                                onChange={(e) => setFormData({...formData, blockingStatus: e.target.value})}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setFormData({
+                                        ...formData, 
+                                        blockingStatus: val,
+                                        isRequired: val !== 'NON_BLOCKING'
+                                    });
+                                }}
                                 className={`w-full px-5 py-4 border rounded-2xl text-sm font-bold outline-none focus:ring-4 transition-all ${formData.blockingStatus !== 'NON_BLOCKING' ? 'bg-red-50 border-red-100 text-red-600 focus:ring-red-500/10' : 'bg-gray-50 border-gray-100 text-gray-700 focus:ring-orange-500/10'}`}
                             >
-                                <option value="NON_BLOCKING">Non-Blocking (Minor)</option>
-                                <option value="MOVE_IN">Blocks Move-In</option>
-                                <option value="MOVE_OUT">Blocks Move-Out</option>
-                                <option value="BOTH">Blocks Both</option>
+                                <option value="NON_BLOCKING">Non-Blocking (Minor Issue)</option>
+                                <option value="MOVE_IN">Blocks Move-In Only</option>
+                                <option value="MOVE_OUT">Blocks Move-Out Only</option>
+                                <option value="BOTH">Blocks Both (Critical)</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 p-6 bg-gray-50 rounded-[32px] border border-gray-100">
+                        <div className="flex items-center h-5">
+                            <input
+                                id="isRequired"
+                                type="checkbox"
+                                checked={formData.isRequired}
+                                onChange={(e) => setFormData({ ...formData, isRequired: e.target.checked })}
+                                className="w-6 h-6 text-orange-600 border-gray-300 rounded-lg focus:ring-orange-500 transition-all cursor-pointer"
+                            />
+                        </div>
+                        <div className="ml-3">
+                            <label htmlFor="isRequired" className="text-xs font-black text-gray-900 uppercase tracking-tight cursor-pointer">
+                                Mark as Required Ticket
+                            </label>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">
+                                Required tickets {formData.isRequired ? 'WILL BLOCK' : 'WILL NOT BLOCK'} the move-out progression.
+                            </p>
                         </div>
                     </div>
 

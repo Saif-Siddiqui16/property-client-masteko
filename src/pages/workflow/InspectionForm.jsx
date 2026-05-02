@@ -550,9 +550,12 @@ const InspectionForm = () => {
                                         {tickets.map(t => (
                                             <div key={t.id} className="bg-white p-6 rounded-3xl border border-orange-100 shadow-sm flex flex-col gap-3 group/ticket hover:shadow-md transition-all">
                                                 <div className="flex justify-between items-start">
-                                                    <div className="flex gap-2">
-                                                        <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest bg-orange-50 px-2 py-0.5 rounded border border-orange-100">{t.category}</span>
-                                                        <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{t.priority}</span>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest bg-orange-50 px-2 py-0.5 rounded border border-orange-100">{t.category || 'MAINTENANCE'}</span>
+                                                        <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">{t.source || 'INSPECTION'}</span>
+                                                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${t.isRequired ? 'text-red-600 bg-red-50 border-red-100' : 'text-green-600 bg-green-50 border-green-100'}`}>
+                                                            Required: {t.isRequired ? 'Yes (Blocks)' : 'No'}
+                                                        </span>
                                                     </div>
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-[9px] font-black text-gray-300 uppercase">#{t.id}</span>

@@ -219,7 +219,15 @@ export const Tickets = () => {
                                 className="grid grid-cols-[1fr_1.5fr_1.2fr_1.2fr_1fr_1fr_0.5fr] px-6 py-4 items-center hover:bg-slate-50/80 transition-all duration-200"
                             >
                                 <span className="text-sm font-medium text-indigo-600">{ticket.id}</span>
-                                <span className="text-sm text-slate-700 font-medium truncate pr-4">{ticket.subject}</span>
+                                <div className="flex flex-col pr-4 overflow-hidden">
+                                    <span className="text-sm text-slate-700 font-medium truncate">{ticket.subject}</span>
+                                    {ticket.isRequired && (
+                                        <span className="flex items-center gap-1 text-[10px] font-bold text-rose-600 uppercase tracking-tight mt-0.5">
+                                            <AlertTriangle size={10} />
+                                            Blocking Readiness
+                                        </span>
+                                    )}
+                                </div>
                                 <button
                                     onClick={() => {
                                         setViewingTenantDetails(ticket.tenantDetails || { name: ticket.tenant });
@@ -304,9 +312,17 @@ export const Tickets = () => {
 
                                 <div>
                                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Subject</label>
-                                    <p className="text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 mt-1">
-                                        {selectedTicket.subject}
-                                    </p>
+                                    <div className="flex items-center gap-3 mt-1">
+                                        <p className="text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 flex-1 font-medium">
+                                            {selectedTicket.subject}
+                                        </p>
+                                        {selectedTicket.isRequired && (
+                                            <div className="flex flex-col items-center gap-1 bg-rose-50 border border-rose-100 p-2 rounded-lg min-w-[100px]">
+                                                <AlertTriangle size={16} className="text-rose-600" />
+                                                <span className="text-[10px] font-black text-rose-700 uppercase tracking-tighter text-center leading-none">Blocking<br/>Readiness</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div>
