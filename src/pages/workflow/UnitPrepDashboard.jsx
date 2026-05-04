@@ -121,64 +121,68 @@ const UnitPrepDashboard = () => {
     );
 
     const Card = ({ item, columnTitle }) => (
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 hover:shadow-2xl transition-all group relative overflow-hidden">
-            <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
+        <div className="bg-white p-5 rounded-2xl shadow-md border border-gray-100 hover:shadow-lg transition-all group relative flex flex-col gap-4 mb-4">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                    <span className="bg-amber-50 text-amber-600 text-[9px] font-black px-2 py-0.5 rounded-full uppercase border border-amber-100">Priority</span>
+                    <span className="bg-red-50 text-red-500 text-[9px] font-black px-2 py-0.5 rounded-full uppercase border border-red-100">Prioritized</span>
+                </div>
+                <MoreVertical size={16} className="text-gray-400" />
+            </div>
+
+            <div className="py-1">
+                <h4 className="font-black text-indigo-600 text-xl leading-tight tracking-tighter">
+                    {item.name || item.unitNumber || `Unit #${item.id}`}
+                </h4>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
+                    <span>{item.unitType || 'Unit'}</span>
+                    <span className="text-gray-300">•</span>
+                    <span>
+                        {item.leases?.[0]?.tenant?.name || 
+                         item.moveOuts?.[0]?.lease?.tenant?.name || 
+                         'Vacant'}
+                    </span>
+                </div>
+            </div>
+
+            <div className="bg-gray-50/50 p-2.5 rounded-xl border border-gray-50">
+                <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Repair Status</span>
+                    <span className={`text-[10px] font-black uppercase ${item.hasRequiredTickets ? 'text-red-500' : 'text-green-600'}`}>
+                        {item.hasRequiredTickets ? `${item.requiredTicketsCount} Blocking` : 'No Blocks'}
+                    </span>
+                </div>
+                {item.tentative_move_in_date && (
                     <div className="flex items-center gap-1.5">
-                        <span className="bg-amber-100 text-amber-600 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Priority</span>
-                        <span className="bg-red-50 text-red-500 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Prioritized</span>
-                    </div>
-                    <MoreVertical size={16} className="text-gray-300" />
-                </div>
-
-                <div>
-                    <h4 className="font-black text-gray-900 text-lg leading-tight tracking-tighter">{item.unitNumber}</h4>
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
-                        <span>{item.unitType || 'Unit'}</span>
-                        <span className="text-gray-300">•</span>
-                        <span>{item.leases?.[0]?.tenant?.name || item.reserved_by_user?.name || 'Vacant'}</span>
-                    </div>
-                </div>
-
-                <div className="bg-gray-50/50 p-2.5 rounded-xl border border-gray-50">
-                    <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Open Tickets</span>
-                        <span className={`text-[10px] font-black uppercase ${item.hasRequiredTickets ? 'text-red-500' : 'text-gray-900'}`}>
-                            {item.totalOpenTickets} ({item.requiredTicketsCount} Req)
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span className="text-[11px] font-bold text-gray-600">
+                            Move-in: {format(new Date(item.tentative_move_in_date), 'MMM dd')}
                         </span>
                     </div>
-                    {item.tentative_move_in_date && (
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                            <span className="text-[11px] font-bold text-gray-600">
-                                Move-in: {format(new Date(item.tentative_move_in_date), 'MMM dd')}
-                            </span>
-                        </div>
-                    )}
-                </div>
-
-                <button
-                    onClick={() => {
-                        const stages = ['PENDING_TICKETS', 'READY_FOR_CLEANING', 'CLEANING_IN_PROGRESS', 'CLEANING_COMPLETED', 'UNIT_READY'];
-                        const currentIndex = stages.indexOf(item.current_stage);
-                        if (currentIndex < stages.length - 1) {
-                            updateStage(item.id, stages[currentIndex + 1]);
-                        }
-                    }}
-                    className={`w-full py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2
-                    ${item.hasRequiredTickets ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
-                            columnTitle.includes('Deficiencies') ? 'bg-indigo-600 text-white hover:bg-indigo-700' :
-                                columnTitle.includes('Ready for Cleaning') ? 'bg-amber-600 text-white hover:bg-amber-700' :
-                                    columnTitle.includes('Progress') ? 'bg-blue-600 text-white hover:bg-blue-700' :
-                                        'bg-green-600 text-white hover:bg-green-700'}`}>
-                    {item.hasRequiredTickets ? 'Blocked by Tickets' :
-                        item.current_stage === 'PENDING_TICKETS' ? 'Move to Cleaning' :
-                            item.current_stage === 'READY_FOR_CLEANING' ? 'Start Cleaning' :
-                                item.current_stage === 'CLEANING_IN_PROGRESS' ? 'Complete Cleaning' :
-                                    item.current_stage === 'CLEANING_COMPLETED' ? 'Mark Unit Ready' : 'Unit Ready'}
-                    <ArrowRight size={14} />
-                </button>
+                )}
             </div>
+
+            <button
+                onClick={() => {
+                    const stages = ['PENDING_TICKETS', 'READY_FOR_CLEANING', 'CLEANING_IN_PROGRESS', 'CLEANING_COMPLETED', 'UNIT_READY'];
+                    const currentIndex = stages.indexOf(item.current_stage);
+                    if (currentIndex < stages.length - 1) {
+                        updateStage(item.id, stages[currentIndex + 1]);
+                    }
+                }}
+                className={`w-full py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2
+                ${item.hasRequiredTickets ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                        columnTitle.includes('Deficiencies') ? 'bg-indigo-600 text-white hover:bg-indigo-700' :
+                            columnTitle.includes('Ready for Cleaning') ? 'bg-amber-600 text-white hover:bg-amber-700' :
+                                columnTitle.includes('Progress') ? 'bg-blue-600 text-white hover:bg-blue-700' :
+                                    'bg-green-600 text-white hover:bg-green-700'}`}>
+                {item.hasRequiredTickets ? 'Blocked by Tickets' :
+                    item.current_stage === 'PENDING_TICKETS' ? 'Move to Cleaning' :
+                        item.current_stage === 'READY_FOR_CLEANING' ? 'Start Cleaning' :
+                            item.current_stage === 'CLEANING_IN_PROGRESS' ? 'Complete Cleaning' :
+                                item.current_stage === 'CLEANING_COMPLETED' ? 'Mark Unit Ready' : 'Unit Ready'}
+                <ArrowRight size={14} />
+            </button>
         </div>
     );
 
@@ -227,7 +231,7 @@ const UnitPrepDashboard = () => {
                 <div className="grid grid-cols-6 gap-4 mb-10">
                     <StatCard icon={Calendar} label="Upcoming Move-Outs" sublabel="Next 30 Days" value={stats.upcomingMoveOuts} color="text-blue-600" bg="bg-blue-50" />
                     <StatCard icon={CheckSquare} label="Confirmed Move-Outs" sublabel="Next 30 Days" value={stats.confirmedMoveOuts} color="text-orange-600" bg="bg-orange-50" />
-                    <StatCard icon={Clock} label="Inspections Scheduled" sublabel="Next 30 Days" value={stats.inspectionsScheduled} color="text-purple-600" bg="bg-purple-50" />
+                    <StatCard icon={Sparkles} label="In Cleaning" sublabel="Awaiting Clean" value={stats.cleaningTotal || 0} color="text-purple-600" bg="bg-purple-50" />
                     <StatCard icon={Hammer} label="In Repair" sublabel="Maintenance active" value={stats.inRepair} color="text-red-600" bg="bg-red-50" />
                     <StatCard icon={CheckCircle2} label="Cleaning Done" sublabel="Awaiting Ready" value={stats.readyForCompletion} color="text-green-600" bg="bg-green-50" />
                     <StatCard icon={Sparkles} label="Units Ready" sublabel="Units Ready" value={stats.unitsReady} color="text-indigo-600" bg="bg-indigo-50" />
@@ -263,8 +267,10 @@ const UnitPrepDashboard = () => {
                 {/* Kanban Columns */}
                 {(() => {
                     const filtered = prepUnits.filter(u => {
-                        const matchesSearch = u.unitNumber?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                           u.leases?.[0]?.tenant?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+                        const nameToSearch = (u.name || u.unitNumber || '').toLowerCase();
+                        const tenantToSearch = (u.leases?.[0]?.tenant?.name || u.moveOuts?.[0]?.lease?.tenant?.name || '').toLowerCase();
+                        const matchesSearch = nameToSearch.includes(searchTerm.toLowerCase()) || 
+                                           tenantToSearch.includes(searchTerm.toLowerCase());
                         const matchesBuilding = buildingFilter === 'All' || u.property?.name === buildingFilter;
                         return matchesSearch && matchesBuilding;
                     });

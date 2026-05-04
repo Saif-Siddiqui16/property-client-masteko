@@ -24,6 +24,12 @@ const InspectionList = () => {
     const navigate = useNavigate();
     const [inspections, setInspections] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [pagination, setPagination] = useState({
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0
+    });
     const [filters, setFilters] = useState({
         type: 'All',
         status: 'All',
@@ -36,11 +42,12 @@ const InspectionList = () => {
 
     useEffect(() => {
         fetchInspections();
-    }, []);
+    }, [pagination.page]);
 
     const fetchInspections = async () => {
         try {
-            const res = await api.get('/api/admin/workflow/inspections');
+            setLoading(true);
+            const res = await api.get(`/api/admin/workflow/inspections?page=${pagination.page}&limit=${pagination.limit}`);
             if (res.data.success) {
                 const mappedData = res.data.data.map(insp => ({
                     id: insp.id,
@@ -54,6 +61,13 @@ const InspectionList = () => {
                     tickets: insp.tickets?.length || 0
                 }));
                 setInspections(mappedData);
+                if (res.data.pagination) {
+                    setPagination(prev => ({
+                        ...prev,
+                        total: res.data.pagination.total,
+                        totalPages: res.data.pagination.totalPages
+                    }));
+                }
             }
         } catch (error) {
             console.error('Error fetching inspections:', error);
@@ -232,15 +246,53 @@ const InspectionList = () => {
                 </table>
             </div>
 
-            {/* Pagination Mock */}
+            {/* Dynamic Pagination */}
             <div className="mt-8 flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400">Showing {inspections.length > 0 ? 1 : 0} to {inspections.length} of {inspections.length} inspections</span>
+                <span className="text-xs font-bold text-gray-400">
+                    Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} inspections
+                </span>
                 <div className="flex items-center gap-2">
-                    <button className="p-2 bg-gray-50 rounded-xl border border-gray-100 text-gray-400"><ChevronRight size={16} className="rotate-180" /></button>
-                    <button className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded-xl text-xs font-black">1</button>
-                    <button className="w-8 h-8 flex items-center justify-center bg-white text-gray-500 rounded-xl text-xs font-black hover:bg-gray-50">2</button>
-                    <button className="w-8 h-8 flex items-center justify-center bg-white text-gray-500 rounded-xl text-xs font-black hover:bg-gray-50">3</button>
-                    <button className="p-2 bg-gray-50 rounded-xl border border-gray-100 text-gray-400"><ChevronRight size={16} /></button>
+                    <button 
+                        onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                        disabled={pagination.page === 1}
+                        className={`p-2 rounded-xl border border-gray-100 ${pagination.page === 1 ? 'text-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-400 hover:bg-white transition-colors'}`}
+                    >
+                        <ChevronRight size={16} className="rotate-180" />
+                    </button>
+                    
+                    {[...Array(pagination.totalPages)].map((_, i) => {
+                        const pageNum = i + 1;
+                        // Only show current page, 1, total, and pages around current
+                        if (
+                            pageNum === 1 || 
+                            pageNum === pagination.totalPages || 
+                            (pageNum >= pagination.page - 1 && pageNum <= pagination.page + 1)
+                        ) {
+                            return (
+                                <button 
+                                    key={pageNum}
+                                    onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
+                                    className={`w-8 h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all ${pagination.page === pageNum ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-transparent hover:border-gray-100'}`}
+                                >
+                                    {pageNum}
+                                </button>
+                            );
+                        } else if (
+                            pageNum === pagination.page - 2 || 
+                            pageNum === pagination.page + 2
+                        ) {
+                            return <span key={pageNum} className="text-gray-400 text-xs px-1">...</span>;
+                        }
+                        return null;
+                    })}
+
+                    <button 
+                        onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
+                        disabled={pagination.page === pagination.totalPages}
+                        className={`p-2 rounded-xl border border-gray-100 ${pagination.page === pagination.totalPages ? 'text-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-400 hover:bg-white transition-colors'}`}
+                    >
+                        <ChevronRight size={16} />
+                    </button>
                 </div>
             </div>
             </div>

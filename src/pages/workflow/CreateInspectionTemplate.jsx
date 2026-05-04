@@ -7,7 +7,8 @@ import {
     Save, 
     Layout, 
     GripVertical,
-    PlusCircle
+    PlusCircle,
+    Settings2
 } from 'lucide-react';
 import { MainLayout } from '../../layouts/MainLayout';
 import api from '../../api/client';
@@ -16,6 +17,7 @@ const CreateInspectionTemplate = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const [loading, setLoading] = useState(false);
+    const [series, setSeries] = useState([]);
     const [formData, setFormData] = useState({
         name: '',
         type: 'MOVE_OUT',
@@ -29,17 +31,29 @@ const CreateInspectionTemplate = () => {
                 id: Date.now(), 
                 name: 'Kitchen', 
                 questions: [
-                    { id: Date.now() + 1, text: 'Is the countertop clean?', type: 'GLOBAL' }
+                    { id: Date.now() + 1, text: 'Is the countertop clean?', type: 'GLOBAL', selectedChoices: [] }
                 ] 
             }
         ]
     });
 
     useEffect(() => {
+        fetchSeries();
         if (id) {
             fetchTemplate();
         }
     }, [id]);
+
+    const fetchSeries = async () => {
+        try {
+            const res = await api.get('/api/admin/workflow/response-series');
+            if (res.data.success) {
+                setSeries(res.data.data.filter(s => s.isActive));
+            }
+        } catch (error) {
+            console.error('Fetch series error:', error);
+        }
+    };
 
     const fetchTemplate = async () => {
         try {
@@ -152,7 +166,7 @@ const CreateInspectionTemplate = () => {
                         </button>
                         <div>
                             <h1 className="text-3xl font-black text-gray-900 tracking-tighter">{id ? 'Edit Template' : 'New Template'}</h1>
-                            <p className="text-gray-500 text-sm font-medium">{id ? 'Update your existing checklist' : 'Design your room-by-room inspection checklist'}</p>
+                            <p className="text-gray-500 text-sm font-medium">{id ? 'Update your existing checklist' : 'Create a room-by-room checklist for inspections'}</p>
                         </div>
                     </div>
                     <button 
@@ -187,12 +201,13 @@ const CreateInspectionTemplate = () => {
                                 >
                                     <option value="MOVE_IN">Move-In Inspection</option>
                                     <option value="MOVE_OUT">Move-Out Inspection</option>
+                                    <option value="VISUAL">Visual Inspection</option>
                                 </select>
                             </div>
                         </div>
 
                         <div className="space-y-3">
-                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Response Options (e.g. Yes/No or Good/Fair/Poor)</label>
+                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Condition Buttons (Visible on App)</label>
                             <div className="flex flex-wrap gap-3">
                                 {formData.responseChoices.map((choice, idx) => (
                                     <div key={idx} className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 group">
@@ -219,6 +234,15 @@ const CreateInspectionTemplate = () => {
                                             <option value="orange">Orange</option>
                                             <option value="red">Red</option>
                                             <option value="blue">Blue</option>
+                                            <option value="indigo">Indigo</option>
+                                            <option value="purple">Purple</option>
+                                            <option value="pink">Pink</option>
+                                            <option value="cyan">Cyan</option>
+                                            <option value="teal">Teal</option>
+                                            <option value="emerald">Emerald</option>
+                                            <option value="amber">Amber</option>
+                                            <option value="rose">Rose</option>
+                                            <option value="slate">Slate</option>
                                             <option value="gray">Gray</option>
                                         </select>
                                         <button 
@@ -278,21 +302,73 @@ const CreateInspectionTemplate = () => {
                                                 className="flex-1 px-4 py-3 bg-gray-50 border border-transparent rounded-xl text-sm font-bold outline-none focus:bg-white focus:border-gray-200 transition-all"
                                             />
                                             <div className="flex flex-col gap-2 min-w-[150px]">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <label className="text-[9px] font-black text-gray-400 uppercase">Button Type</label>
+                                                    <button 
+                                                        onClick={() => navigate('/admin/workflow/response-groups')}
+                                                        className="text-[9px] font-black text-indigo-500 hover:text-indigo-700 uppercase flex items-center gap-1"
+                                                        title="Customize Button Sets (e.g. Good/Fair/Poor)"
+                                                    >
+                                                        <Settings2 size={10} /> Manage Button Sets
+                                                    </button>
+                                                </div>
                                                 <select 
                                                     value={q.type}
                                                     onChange={(e) => {
+                                                        const val = e.target.value;
                                                         const newRooms = [...formData.rooms];
-                                                        newRooms[index].questions[qIndex].type = e.target.value;
+                                                        if (val.startsWith('SERIES_')) {
+                                                            newRooms[index].questions[qIndex].type = 'SERIES';
+                                                            newRooms[index].questions[qIndex].seriesId = parseInt(val.replace('SERIES_', ''));
+                                                        } else {
+                                                            newRooms[index].questions[qIndex].type = val;
+                                                            newRooms[index].questions[qIndex].seriesId = null;
+                                                        }
                                                         setFormData({ ...formData, rooms: newRooms });
                                                     }}
                                                     className="px-4 py-3 bg-gray-50 border border-transparent rounded-xl text-xs font-black text-gray-500 outline-none w-full"
                                                 >
-                                                    <option value="GLOBAL">Template Buttons</option>
-                                                    <option value="YES_NO">YES/NO (Standard)</option>
-                                                    <option value="DROPDOWN">Custom Dropdown</option>
-                                                    <option value="TEXT">Text Input</option>
-                                                    <option value="RATING">1-5 Rating</option>
+                                                    <optgroup label="Template Defaults">
+                                                        <option value="GLOBAL">Standard Buttons</option>
+                                                        <option value="YES_NO">YES / NO</option>
+                                                        <option value="TEXT">Comment Box Only</option>
+                                                    </optgroup>
+                                                    <optgroup label="Manageable Button Sets">
+                                                        {series.map(s => (
+                                                            <option key={s.id} value={`SERIES_${s.id}`}>{s.name}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                    <optgroup label="Direct Input">
+                                                        <option value="DROPDOWN">Custom Dropdown</option>
+                                                        <option value="RATING">1-5 Rating</option>
+                                                    </optgroup>
                                                 </select>
+
+                                                {q.type === 'GLOBAL' && (
+                                                    <div className="p-2 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+                                                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2 px-1">Visible Choices</p>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {formData.responseChoices.map((choice) => (
+                                                                <button
+                                                                    key={choice.label}
+                                                                    onClick={() => {
+                                                                        const newRooms = [...formData.rooms];
+                                                                        const selected = q.selectedChoices || [];
+                                                                        const isSelected = selected.includes(choice.label);
+                                                                        newRooms[index].questions[qIndex].selectedChoices = isSelected
+                                                                            ? selected.filter(l => l !== choice.label)
+                                                                            : [...selected, choice.label];
+                                                                        setFormData({ ...formData, rooms: newRooms });
+                                                                    }}
+                                                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${(!q.selectedChoices || q.selectedChoices.length === 0 || q.selectedChoices.includes(choice.label)) ? 'bg-indigo-600 text-white' : 'bg-white text-gray-400 border border-indigo-100'}`}
+                                                                >
+                                                                    {choice.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-[8px] text-indigo-300 mt-2 px-1 font-medium">Empty = Show All</p>
+                                                    </div>
+                                                )}
                                                 {q.type === 'DROPDOWN' && (
                                                     <input 
                                                         type="text"
@@ -320,7 +396,7 @@ const CreateInspectionTemplate = () => {
                                         className="flex items-center gap-2 px-4 py-3 text-indigo-600 hover:bg-indigo-50 rounded-xl text-xs font-black transition-all w-full justify-center border-2 border-dashed border-indigo-100"
                                     >
                                         <PlusCircle size={16} />
-                                        Add Question to {room.name}
+                                        Add Item to {room.name}
                                     </button>
                                 </div>
                             </div>

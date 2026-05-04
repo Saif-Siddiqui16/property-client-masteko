@@ -69,7 +69,7 @@ export const LeaseFormBedroom = () => {
         if (buildingId) {
             try {
                 // Fetch units for this building
-                const res = await api.get(`/api/admin/units?propertyId=${buildingId}&limit=1000`);
+                const res = await api.get(`/api/admin/units?propertyId=${buildingId}&limit=1000&showInactive=true`);
                 const allUnits = Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
 
                 // Improved filtering for Bedroom-wise Lease:
