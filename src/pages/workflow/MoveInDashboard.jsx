@@ -189,22 +189,32 @@ const MoveInDashboard = () => {
     const Card = ({ item }) => {
         const handleAction = (e) => {
             e.stopPropagation();
+            
+            // Priority 1: Inspections
+            if (item.status === 'INSPECTION_IN_PROGRESS' && item.inspectionId) {
+                navigate(`/admin/workflow/inspections/${item.inspectionId}/form`);
+                return;
+            }
+            if (item.status === 'INSPECTION_COMPLETED') {
+                handleCompleteMoveIn(item.id);
+                return;
+            }
+            if (item.status === 'READY_FOR_MOVE_IN') {
+                navigate('/admin/workflow/inspections/new', { state: { moveInId: item.id } });
+                return;
+            }
+
+            // Priority 2: Blocked/Prep
             if (item.status === 'PENDING' || item.status.includes('BLOCKED')) {
-                // If blocked, maybe just show a note or guide to Unit Prep
                 if (item.status.includes('PREPARATION')) {
                     navigate('/admin/workflow/unit-prep');
                 } else if (item.status.includes('CONSTRUCTION')) {
                     navigate('/unit-readiness');
                 } else {
-                    // Try to advance it if possible
                     handleToggleRequirement(item.id, 'Process', true);
                 }
             } else if (item.status === 'REQUIREMENTS_PENDING') {
                 handleOverride(item.id);
-            } else if (item.status === 'READY_FOR_MOVE_IN') {
-                navigate('/admin/workflow/inspections/new', { state: { moveInId: item.id } });
-            } else if (item.status === 'INSPECTION_COMPLETED') {
-                handleCompleteMoveIn(item.id);
             }
         };
 
@@ -258,7 +268,9 @@ const MoveInDashboard = () => {
                             className={`w-full flex items-center justify-between p-2 rounded-lg transition-all border ${
                                 item.status === 'INSPECTION_COMPLETED' 
                                     ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm' 
-                                    : isBlocked ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                                    : item.status === 'INSPECTION_IN_PROGRESS'
+                                        ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
+                                        : isBlocked ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
                             } ${loading || isBlocked ? 'cursor-not-allowed opacity-70' : 'hover:brightness-110 active:scale-95'}`}
                         >
                             <div className="flex items-center gap-2">
@@ -267,6 +279,7 @@ const MoveInDashboard = () => {
                                     {isBlocked ? 'Prep In Progress' : 
                                      item.status === 'REQUIREMENTS_PENDING' ? 'Override & Continue' :
                                      item.status === 'READY_FOR_MOVE_IN' ? 'Start Inspection' :
+                                     item.status === 'INSPECTION_IN_PROGRESS' ? 'Continue Inspection' :
                                      item.status === 'INSPECTION_COMPLETED' ? 'Finalize Move-In' : 'Process'}
                                 </span>
                             </div>
@@ -282,9 +295,9 @@ const MoveInDashboard = () => {
                                 label={item.unit.unit_ready_completed ? 'Unit Ready' : 'Prep Pending'}
                             />
                             <Requirement 
-                                badge="Repairs" 
-                                status={item.status !== 'BLOCKED_IN_PREPARATION'} 
-                                label={item.status === 'BLOCKED_IN_PREPARATION' ? 'Tasks Open' : 'Clear'}
+                                 badge="Repairs" 
+                                 status={item.requirements.repairs} 
+                                 label={item.requirements.repairs ? 'Clear' : 'Tasks Open'}
                             />
                             <Requirement 
                                 badge="Rent" 
@@ -451,7 +464,7 @@ const MoveInDashboard = () => {
                     icon={Search} 
                     color="bg-yellow-100 text-yellow-600" 
                     count={stats.readyInspection} 
-                    items={moveIns.filter(m => m.status === 'READY_FOR_MOVE_IN')}
+                    items={moveIns.filter(m => m.status === 'READY_FOR_MOVE_IN' || m.status === 'INSPECTION_IN_PROGRESS')}
                 />
                 <Column 
                     title="Inspection Completed" 

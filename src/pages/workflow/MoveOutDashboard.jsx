@@ -204,7 +204,7 @@ const MoveOutDashboard = () => {
                     </div>
 
                     <div className="flex flex-col gap-1 py-1 px-0.5">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+                        <div className="flex items-center gap-1.5 text-xs font-black text-gray-400">
                             <Calendar size={10} className="text-indigo-400" />
                             Target: {format(safeDate(item.targetDate) || new Date(), 'MMM d, yyyy')}
                         </div>
@@ -213,32 +213,32 @@ const MoveOutDashboard = () => {
                         {(item.status.includes('SCHEDULED') || item.status === 'INSPECTION_IN_PROGRESS') && (
                             <div className="mt-1 flex flex-col gap-1 bg-gray-50/50 p-2 rounded-xl border border-gray-50">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Visual Inspection</span>
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Visual Inspection</span>
                                     {(() => {
                                         const insp = item.inspections?.find(i => i.id === item.visualInspectionId);
                                         if (insp?.status === 'COMPLETED') {
-                                            return <span className="bg-green-100 text-green-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">✅ Completed ({format(safeDate(item.visualDate), 'MMM d')})</span>;
+                                            return <span className="bg-green-100 text-green-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">✅ Completed ({format(safeDate(item.visualDate), 'MMM d')})</span>;
                                         } else if (item.visualInspectionId) {
-                                            return <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ Started ({format(safeDate(item.visualDate), 'MMM d')}{item.visualTime ? ` @ ${item.visualTime}` : ''})</span>;
+                                            return <span className="bg-blue-100 text-blue-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ Started ({format(safeDate(item.visualDate), 'MMM d')}{item.visualTime ? ` @ ${item.visualTime}` : ''})</span>;
                                         } else if (item.visualDate) {
-                                            return <span className="bg-orange-100 text-orange-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">📅 TO-DO ({format(safeDate(item.visualDate), 'MMM d')}{item.visualTime ? ` @ ${item.visualTime}` : ''})</span>;
+                                            return <span className="bg-orange-100 text-orange-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">📅 TO-DO ({format(safeDate(item.visualDate), 'MMM d')}{item.visualTime ? ` @ ${item.visualTime}` : ''})</span>;
                                         } else {
-                                            return <span className="bg-gray-100 text-gray-400 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ REMAINING</span>;
+                                            return <span className="bg-gray-100 text-gray-400 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ REMAINING</span>;
                                         }
                                     })()}
                                 </div>
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Move-Out Inspection</span>
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Move-Out Inspection</span>
                                     {(() => {
                                         const insp = item.inspections?.find(i => i.id === item.finalInspectionId);
                                         if (insp?.status === 'COMPLETED') {
-                                            return <span className="bg-green-100 text-green-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">✅ Completed ({format(safeDate(item.finalDate), 'MMM d')})</span>;
+                                            return <span className="bg-green-100 text-green-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">✅ Completed ({format(safeDate(item.finalDate), 'MMM d')})</span>;
                                         } else if (item.finalInspectionId) {
-                                            return <span className="bg-blue-100 text-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ Started ({format(safeDate(item.finalDate), 'MMM d')}{item.finalTime ? ` @ ${item.finalTime}` : ''})</span>;
+                                            return <span className="bg-blue-100 text-blue-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ Started ({format(safeDate(item.finalDate), 'MMM d')}{item.finalTime ? ` @ ${item.finalTime}` : ''})</span>;
                                         } else if (item.finalDate) {
-                                            return <span className="bg-orange-100 text-orange-600 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">📅 TO-DO ({format(safeDate(item.finalDate), 'MMM d')}{item.finalTime ? ` @ ${item.finalTime}` : ''})</span>;
+                                            return <span className="bg-orange-100 text-orange-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">📅 TO-DO ({format(safeDate(item.finalDate), 'MMM d')}{item.finalTime ? ` @ ${item.finalTime}` : ''})</span>;
                                         } else {
-                                            return <span className="bg-gray-100 text-gray-400 text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ REMAINING</span>;
+                                            return <span className="bg-gray-100 text-gray-400 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ REMAINING</span>;
                                         }
                                     })()}
                                 </div>
@@ -440,8 +440,8 @@ const MoveOutDashboard = () => {
                     items={moveOuts.filter(m => m.status === 'CONFIRMED')}
                 />
                 <Column 
-                    title="Inspections Scheduled" 
-                    subtitle="Action needed"
+                    title="Move-Out Inspection Remaining" 
+                    subtitle="Final scheduled"
                     icon={Clock} 
                     color="bg-yellow-100 text-yellow-600" 
                     count={stats.scheduled} 

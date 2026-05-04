@@ -59,10 +59,12 @@ const NewInspectionWizard = () => {
 
                 // Auto-fill from location state
                 if (location.state?.moveInId || location.state?.moveOutId || location.state?.unitId) {
-                    const stateUnitId = location.state.unitId || 
-                                       moveInUnits.find(u => u.id === location.state.moveInId)?.unitId;
+                    const target = moveInUnits.find(u => 
+                        (location.state.moveInId && u.moveInId === parseInt(location.state.moveInId)) ||
+                        (location.state.moveOutId && u.moveOutId === parseInt(location.state.moveOutId)) ||
+                        (location.state.unitId && u.unitId === parseInt(location.state.unitId))
+                    );
                     
-                    const target = moveInUnits.find(u => u.unitId === parseInt(stateUnitId));
                     if (target) {
                         setFormData(prev => ({
                             ...prev,
@@ -130,12 +132,14 @@ const NewInspectionWizard = () => {
                 templateId: parseInt(formData.templateId),
                 unitId: parseInt(formData.unitId),
                 leaseId: formData.leaseId ? parseInt(formData.leaseId) : null,
+                inspectorId: formData.inspectorId ? parseInt(formData.inspectorId) : null,
                 date: formData.date,
                 time: formData.time
             });
 
             if (res.data.success) {
-                navigate(`/admin/workflow/inspections/${res.data.data.id}/form`);
+                const targetDashboard = formData.type === 'MOVE_IN' ? 'move-in' : 'move-out';
+                navigate(`/admin/workflow/${targetDashboard}`);
             }
         } catch (error) {
             alert('Failed to create inspection: ' + (error.response?.data?.message || error.message));
@@ -256,14 +260,11 @@ const NewInspectionWizard = () => {
                                         <option value="">{formData.propertyId ? 'Select Unit' : 'Please select building first'}</option>
                                         {formData.propertyId && units
                                             .filter(u => u.unit?.propertyId?.toString() === formData.propertyId)
-                                            .map(u => {
-                                                const displayName = u.lease?.tenant?.name || u.unit?.reserved_by_user?.name || 'Prospect';
-                                                return (
-                                                    <option key={u.id} value={u.unitId}>
-                                                        {u.unit?.unitNumber} - {displayName}
-                                                    </option>
-                                                );
-                                            })
+                                            .map(u => (
+                                                <option key={u.id} value={u.unitId}>
+                                                    {u.unitNumber}
+                                                </option>
+                                            ))
                                         }
                                     </select>
                                 </InputGroup>
@@ -276,7 +277,9 @@ const NewInspectionWizard = () => {
                                     >
                                         <option value="">Select Inspector</option>
                                         {inspectors.map(i => (
-                                            <option key={i.id} value={i.id}>{i.firstName} {i.lastName}</option>
+                                            <option key={i.id} value={i.id.toString()}>
+                                                {i.name || `${i.firstName || ''} ${i.lastName || ''}`.trim() || `Staff #${i.id}`}
+                                            </option>
                                         ))}
                                         {inspectors.length === 0 && <option value="1">Admin User</option>}
                                     </select>
@@ -287,7 +290,8 @@ const NewInspectionWizard = () => {
                                         {(() => {
                                             const selectedUnit = units.find(u => u.unitId === parseInt(formData.unitId));
                                             if (!selectedUnit) return 'Select a unit first';
-                                            return selectedUnit.lease?.tenant?.name || 
+                                            return selectedUnit.tenantName || 
+                                                   selectedUnit.lease?.tenant?.name || 
                                                    selectedUnit.unit?.reserved_by_user?.name || 
                                                    'No tenant/prospect linked';
                                         })()}

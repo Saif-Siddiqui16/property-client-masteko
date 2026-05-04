@@ -7,11 +7,28 @@ const PhotoAnnotationModal = ({ isOpen, onClose, photoUrl, onSave }) => {
     const [strokeColor, setStrokeColor] = useState('#ff0000');
     const [strokeWidth, setStrokeWidth] = useState(4);
 
+    const [loading, setLoading] = useState(true);
+
+    // Reset loading state whenever a new photo is opened
+    React.useEffect(() => {
+        if (isOpen) {
+            setLoading(true);
+            // Safety fallback: if image doesn't load in 3s, show the canvas anyway
+            const timer = setTimeout(() => setLoading(false), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen, photoUrl]);
+
     if (!isOpen) return null;
 
     const handleSave = async () => {
-        const data = await canvasRef.current.exportImage('png');
-        onSave(data);
+        try {
+            const data = await canvasRef.current.exportImage('png');
+            onSave(data);
+        } catch (err) {
+            console.error('Save failed:', err);
+            alert('Failed to save annotation. Please try again.');
+        }
     };
 
     return (
@@ -28,6 +45,12 @@ const PhotoAnnotationModal = ({ isOpen, onClose, photoUrl, onSave }) => {
                 </div>
 
                 <div className="flex-1 relative bg-gray-100 overflow-hidden flex items-center justify-center">
+                    {loading && (
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-100/50 backdrop-blur-sm">
+                            <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
+                            <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Loading Photo...</p>
+                        </div>
+                    )}
                     <div className="relative w-full h-full flex items-center justify-center p-8">
                         <div className="relative shadow-2xl rounded-3xl overflow-hidden border-8 border-white bg-white w-full h-full">
                             <ReactSketchCanvas
@@ -36,7 +59,8 @@ const PhotoAnnotationModal = ({ isOpen, onClose, photoUrl, onSave }) => {
                                 strokeWidth={strokeWidth}
                                 canvasColor="transparent"
                                 backgroundImage={photoUrl}
-                                preserveBackgroundImageAspectRatio="contain"
+                                onBackgroundImageLoad={() => setLoading(false)}
+                                preserveBackgroundImageAspectRatio="xMidYMid meet"
                                 style={{ border: 'none', width: '100%', height: '100%' }}
                             />
                         </div>

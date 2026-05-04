@@ -8,14 +8,39 @@ import {
     Layout, 
     GripVertical,
     PlusCircle,
-    Settings2
+    Settings2,
+    ChevronDown,
+    ChevronUp,
+    Copy
 } from 'lucide-react';
 import { MainLayout } from '../../layouts/MainLayout';
 import api from '../../api/client';
+import {
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const CreateInspectionTemplate = () => {
     const navigate = useNavigate();
     const { id } = useParams();
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
     const [loading, setLoading] = useState(false);
     const [series, setSeries] = useState([]);
     const [formData, setFormData] = useState({
@@ -81,8 +106,35 @@ const CreateInspectionTemplate = () => {
     const addRoom = () => {
         setFormData({
             ...formData,
-            rooms: [...formData.rooms, { id: Date.now(), name: 'New Room', questions: [] }]
+            rooms: [...formData.rooms, { id: Date.now(), name: 'New Room', questions: [], isCollapsed: false }]
         });
+    };
+
+    const toggleRoomCollapse = (roomId) => {
+        setFormData({
+            ...formData,
+            rooms: formData.rooms.map(r => 
+                r.id === roomId ? { ...r, isCollapsed: !r.isCollapsed } : r
+            )
+        });
+    };
+
+    const cloneRoom = (roomIndex) => {
+        const roomToClone = formData.rooms[roomIndex];
+        const newRoom = {
+            ...roomToClone,
+            id: Date.now(),
+            name: `${roomToClone.name} (Copy)`,
+            isCollapsed: false,
+            questions: roomToClone.questions.map((q, idx) => ({
+                ...q,
+                id: Date.now() + idx + 1
+            }))
+        };
+
+        const newRooms = [...formData.rooms];
+        newRooms.splice(roomIndex + 1, 0, newRoom);
+        setFormData({ ...formData, rooms: newRooms });
     };
 
     const removeRoom = (roomId) => {
@@ -123,6 +175,33 @@ const CreateInspectionTemplate = () => {
                 : r
             )
         });
+    };
+
+    const handleDragEndRooms = (event) => {
+        const { active, over } = event;
+        if (active.id !== over.id) {
+            setFormData((prev) => {
+                const oldIndex = prev.rooms.findIndex((r) => r.id === active.id);
+                const newIndex = prev.rooms.findIndex((r) => r.id === over.id);
+                return { ...prev, rooms: arrayMove(prev.rooms, oldIndex, newIndex) };
+            });
+        }
+    };
+
+    const handleDragEndQuestions = (roomId, event) => {
+        const { active, over } = event;
+        if (active.id !== over.id) {
+            setFormData((prev) => {
+                const roomIndex = prev.rooms.findIndex((r) => r.id === roomId);
+                const oldIndex = prev.rooms[roomIndex].questions.findIndex((q) => q.id === active.id);
+                const newIndex = prev.rooms[roomIndex].questions.findIndex((q) => q.id === over.id);
+                const newQuestions = arrayMove(prev.rooms[roomIndex].questions, oldIndex, newIndex);
+                
+                const newRooms = [...prev.rooms];
+                newRooms[roomIndex] = { ...newRooms[roomIndex], questions: newQuestions };
+                return { ...prev, rooms: newRooms };
+            });
+        }
     };
 
     const handleSave = async () => {
@@ -264,144 +343,38 @@ const CreateInspectionTemplate = () => {
                     </div>
 
                     {/* Room Sections */}
-                    <div className="space-y-4">
-                        {formData.rooms.map((room, index) => (
-                            <div key={room.id} className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden group">
-                                <div className="p-6 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-white border border-gray-100 rounded-lg flex items-center justify-center shadow-sm">
-                                            <span className="text-xs font-black text-indigo-600">{index + 1}</span>
-                                        </div>
-                                        <input 
-                                            type="text"
-                                            value={room.name}
-                                            onChange={(e) => {
-                                                const newRooms = [...formData.rooms];
-                                                newRooms[index].name = e.target.value;
-                                                setFormData({ ...formData, rooms: newRooms });
-                                            }}
-                                            className="bg-transparent text-lg font-black text-gray-900 outline-none border-b-2 border-transparent focus:border-indigo-500 transition-all px-1"
-                                        />
-                                    </div>
-                                    <button 
-                                        onClick={() => removeRoom(room.id)}
-                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
-                                </div>
-                                <div className="p-6 space-y-3">
-                                    {room.questions.map((q, qIndex) => (
-                                        <div key={q.id} className="flex items-center gap-3 group/item">
-                                            <GripVertical size={16} className="text-gray-300 cursor-grab active:cursor-grabbing" />
-                                            <input 
-                                                type="text"
-                                                value={q.text}
-                                                onChange={(e) => updateQuestion(room.id, q.id, e.target.value)}
-                                                placeholder="Enter inspection question..."
-                                                className="flex-1 px-4 py-3 bg-gray-50 border border-transparent rounded-xl text-sm font-bold outline-none focus:bg-white focus:border-gray-200 transition-all"
-                                            />
-                                            <div className="flex flex-col gap-2 min-w-[150px]">
-                                                <div className="flex items-center justify-between px-1">
-                                                    <label className="text-[9px] font-black text-gray-400 uppercase">Button Type</label>
-                                                    <button 
-                                                        onClick={() => navigate('/admin/workflow/response-groups')}
-                                                        className="text-[9px] font-black text-indigo-500 hover:text-indigo-700 uppercase flex items-center gap-1"
-                                                        title="Customize Button Sets (e.g. Good/Fair/Poor)"
-                                                    >
-                                                        <Settings2 size={10} /> Manage Button Sets
-                                                    </button>
-                                                </div>
-                                                <select 
-                                                    value={q.type}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        const newRooms = [...formData.rooms];
-                                                        if (val.startsWith('SERIES_')) {
-                                                            newRooms[index].questions[qIndex].type = 'SERIES';
-                                                            newRooms[index].questions[qIndex].seriesId = parseInt(val.replace('SERIES_', ''));
-                                                        } else {
-                                                            newRooms[index].questions[qIndex].type = val;
-                                                            newRooms[index].questions[qIndex].seriesId = null;
-                                                        }
-                                                        setFormData({ ...formData, rooms: newRooms });
-                                                    }}
-                                                    className="px-4 py-3 bg-gray-50 border border-transparent rounded-xl text-xs font-black text-gray-500 outline-none w-full"
-                                                >
-                                                    <optgroup label="Template Defaults">
-                                                        <option value="GLOBAL">Standard Buttons</option>
-                                                        <option value="YES_NO">YES / NO</option>
-                                                        <option value="TEXT">Comment Box Only</option>
-                                                    </optgroup>
-                                                    <optgroup label="Manageable Button Sets">
-                                                        {series.map(s => (
-                                                            <option key={s.id} value={`SERIES_${s.id}`}>{s.name}</option>
-                                                        ))}
-                                                    </optgroup>
-                                                    <optgroup label="Direct Input">
-                                                        <option value="DROPDOWN">Custom Dropdown</option>
-                                                        <option value="RATING">1-5 Rating</option>
-                                                    </optgroup>
-                                                </select>
-
-                                                {q.type === 'GLOBAL' && (
-                                                    <div className="p-2 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
-                                                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2 px-1">Visible Choices</p>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {formData.responseChoices.map((choice) => (
-                                                                <button
-                                                                    key={choice.label}
-                                                                    onClick={() => {
-                                                                        const newRooms = [...formData.rooms];
-                                                                        const selected = q.selectedChoices || [];
-                                                                        const isSelected = selected.includes(choice.label);
-                                                                        newRooms[index].questions[qIndex].selectedChoices = isSelected
-                                                                            ? selected.filter(l => l !== choice.label)
-                                                                            : [...selected, choice.label];
-                                                                        setFormData({ ...formData, rooms: newRooms });
-                                                                    }}
-                                                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${(!q.selectedChoices || q.selectedChoices.length === 0 || q.selectedChoices.includes(choice.label)) ? 'bg-indigo-600 text-white' : 'bg-white text-gray-400 border border-indigo-100'}`}
-                                                                >
-                                                                    {choice.label}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                        <p className="text-[8px] text-indigo-300 mt-2 px-1 font-medium">Empty = Show All</p>
-                                                    </div>
-                                                )}
-                                                {q.type === 'DROPDOWN' && (
-                                                    <input 
-                                                        type="text"
-                                                        placeholder="Options (comma separated)..."
-                                                        value={q.options || ''}
-                                                        onChange={(e) => {
-                                                            const newRooms = [...formData.rooms];
-                                                            newRooms[index].questions[qIndex].options = e.target.value;
-                                                            setFormData({ ...formData, rooms: newRooms });
-                                                        }}
-                                                        className="px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg text-[10px] font-bold outline-none placeholder:text-indigo-300"
-                                                    />
-                                                )}
-                                            </div>
-                                            <button 
-                                                onClick={() => removeQuestion(room.id, q.id)}
-                                                className="p-2 text-gray-300 hover:text-red-500 transition-all"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <button 
-                                        onClick={() => addQuestion(room.id)}
-                                        className="flex items-center gap-2 px-4 py-3 text-indigo-600 hover:bg-indigo-50 rounded-xl text-xs font-black transition-all w-full justify-center border-2 border-dashed border-indigo-100"
-                                    >
-                                        <PlusCircle size={16} />
-                                        Add Item to {room.name}
-                                    </button>
-                                </div>
+                    <DndContext 
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEndRooms}
+                    >
+                        <SortableContext 
+                            items={formData.rooms.map(r => r.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            <div className="space-y-4">
+                                {formData.rooms.map((room, index) => (
+                                    <SortableRoom 
+                                        key={room.id}
+                                        room={room}
+                                        index={index}
+                                        formData={formData}
+                                        setFormData={setFormData}
+                                        series={series}
+                                        navigate={navigate}
+                                        toggleRoomCollapse={toggleRoomCollapse}
+                                        cloneRoom={cloneRoom}
+                                        removeRoom={removeRoom}
+                                        addQuestion={addQuestion}
+                                        updateQuestion={updateQuestion}
+                                        removeQuestion={removeQuestion}
+                                        handleDragEndQuestions={handleDragEndQuestions}
+                                        sensors={sensors}
+                                    />
+                                ))}
                             </div>
-                        ))}
-                    </div>
+                        </SortableContext>
+                    </DndContext>
 
                     {/* Add Room Button */}
                     <button 
@@ -418,3 +391,231 @@ const CreateInspectionTemplate = () => {
 };
 
 export default CreateInspectionTemplate;
+
+const SortableRoom = ({ room, index, formData, setFormData, series, navigate, toggleRoomCollapse, cloneRoom, removeRoom, addQuestion, updateQuestion, removeQuestion, handleDragEndQuestions, sensors }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: room.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 0,
+        opacity: isDragging ? 0.5 : 1
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden group">
+            <div className="p-6 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => toggleRoomCollapse(room.id)}>
+                <div className="flex items-center gap-3">
+                    <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-200 rounded">
+                        <GripVertical size={20} className="text-gray-400" />
+                    </div>
+                    <div className="w-8 h-8 bg-white border border-gray-100 rounded-lg flex items-center justify-center shadow-sm">
+                        <span className="text-xs font-black text-indigo-600">{index + 1}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="text"
+                            value={room.name}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                                const newRooms = [...formData.rooms];
+                                newRooms[index].name = e.target.value;
+                                setFormData({ ...formData, rooms: newRooms });
+                            }}
+                            className="bg-transparent text-lg font-black text-gray-900 outline-none border-b-2 border-transparent focus:border-indigo-500 transition-all px-1"
+                        />
+                        {room.isCollapsed ? <ChevronDown size={18} className="text-gray-400" /> : <ChevronUp size={18} className="text-gray-400" />}
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); cloneRoom(index); }}
+                        className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all"
+                        title="Clone Section"
+                    >
+                        <Copy size={18} />
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); removeRoom(room.id); }}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                        title="Remove Section"
+                    >
+                        <Trash2 size={18} />
+                    </button>
+                </div>
+            </div>
+            {!room.isCollapsed && (
+                <div className="p-6 space-y-3">
+                    <DndContext 
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={(e) => handleDragEndQuestions(room.id, e)}
+                    >
+                        <SortableContext 
+                            items={room.questions.map(q => q.id)}
+                            strategy={verticalListSortingStrategy}
+                        >
+                            <div className="space-y-3">
+                                {room.questions.map((q, qIndex) => (
+                                    <SortableQuestion 
+                                        key={q.id}
+                                        q={q}
+                                        room={room}
+                                        qIndex={qIndex}
+                                        formData={formData}
+                                        setFormData={setFormData}
+                                        series={series}
+                                        navigate={navigate}
+                                        updateQuestion={updateQuestion}
+                                        removeQuestion={removeQuestion}
+                                    />
+                                ))}
+                            </div>
+                        </SortableContext>
+                    </DndContext>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); addQuestion(room.id); }}
+                        className="flex items-center gap-2 px-4 py-3 text-indigo-600 hover:bg-indigo-50 rounded-xl text-xs font-black transition-all w-full justify-center border-2 border-dashed border-indigo-100"
+                    >
+                        <PlusCircle size={16} />
+                        Add Item to {room.name}
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const SortableQuestion = ({ q, room, qIndex, formData, setFormData, series, navigate, updateQuestion, removeQuestion }) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: q.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 0,
+        opacity: isDragging ? 0.5 : 1
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="flex items-center gap-3 group/item bg-white">
+            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded">
+                <GripVertical size={16} className="text-gray-300" />
+            </div>
+            <input 
+                type="text"
+                value={q.text}
+                onChange={(e) => updateQuestion(room.id, q.id, e.target.value)}
+                placeholder="Enter inspection question..."
+                className="flex-1 px-4 py-3 bg-gray-50 border border-transparent rounded-xl text-sm font-bold outline-none focus:bg-white focus:border-gray-200 transition-all"
+            />
+            <div className="flex flex-col gap-2 min-w-[150px]">
+                <div className="flex items-center justify-between px-1">
+                    <label className="text-[9px] font-black text-gray-400 uppercase">Button Type</label>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); navigate('/admin/workflow/response-groups'); }}
+                        className="text-[9px] font-black text-indigo-500 hover:text-indigo-700 uppercase flex items-center gap-1"
+                        title="Customize Button Sets (e.g. Good/Fair/Poor)"
+                    >
+                        <Settings2 size={10} /> Manage Button Sets
+                    </button>
+                </div>
+                <select 
+                    value={q.type === 'SERIES' ? `SERIES_${q.seriesId}` : q.type}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        const newRooms = [...formData.rooms];
+                        const roomIdx = newRooms.findIndex(r => r.id === room.id);
+                        if (val.startsWith('SERIES_')) {
+                            newRooms[roomIdx].questions[qIndex].type = 'SERIES';
+                            newRooms[roomIdx].questions[qIndex].seriesId = parseInt(val.replace('SERIES_', ''));
+                        } else {
+                            newRooms[roomIdx].questions[qIndex].type = val;
+                            newRooms[roomIdx].questions[qIndex].seriesId = null;
+                        }
+                        setFormData({ ...formData, rooms: newRooms });
+                    }}
+                    className="px-4 py-3 bg-gray-50 border border-transparent rounded-xl text-xs font-black text-gray-500 outline-none w-full"
+                >
+                    <optgroup label="Template Defaults">
+                        <option value="GLOBAL">Standard Buttons</option>
+                        <option value="YES_NO">YES / NO</option>
+                        <option value="TEXT">Comment Box Only</option>
+                    </optgroup>
+                    <optgroup label="Manageable Button Sets">
+                        {series.map(s => (
+                            <option key={s.id} value={`SERIES_${s.id}`}>{s.name}</option>
+                        ))}
+                    </optgroup>
+                    <optgroup label="Direct Input">
+                        <option value="DROPDOWN">Custom Dropdown</option>
+                        <option value="RATING">1-5 Rating</option>
+                    </optgroup>
+                </select>
+
+                {q.type === 'GLOBAL' && (
+                    <div className="p-2 bg-indigo-50/50 rounded-xl border border-indigo-100/50" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2 px-1">Visible Choices</p>
+                        <div className="flex flex-wrap gap-2">
+                            {formData.responseChoices.map((choice) => (
+                                <button
+                                    key={choice.label}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const newRooms = [...formData.rooms];
+                                        const roomIdx = newRooms.findIndex(r => r.id === room.id);
+                                        const selected = q.selectedChoices || [];
+                                        const isSelected = selected.includes(choice.label);
+                                        newRooms[roomIdx].questions[qIndex].selectedChoices = isSelected
+                                            ? selected.filter(l => l !== choice.label)
+                                            : [...selected, choice.label];
+                                        setFormData({ ...formData, rooms: newRooms });
+                                    }}
+                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${(!q.selectedChoices || q.selectedChoices.length === 0 || q.selectedChoices.includes(choice.label)) ? 'bg-indigo-600 text-white' : 'bg-white text-gray-400 border border-indigo-100'}`}
+                                >
+                                    {choice.label}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-[8px] text-indigo-300 mt-2 px-1 font-medium">Empty = Show All</p>
+                    </div>
+                )}
+                {q.type === 'DROPDOWN' && (
+                    <input 
+                        type="text"
+                        placeholder="Options (comma separated)..."
+                        onClick={(e) => e.stopPropagation()}
+                        value={q.options || ''}
+                        onChange={(e) => {
+                            const newRooms = [...formData.rooms];
+                            const roomIdx = newRooms.findIndex(r => r.id === room.id);
+                            newRooms[roomIdx].questions[qIndex].options = e.target.value;
+                            setFormData({ ...formData, rooms: newRooms });
+                        }}
+                        className="px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg text-[10px] font-bold outline-none placeholder:text-indigo-300"
+                    />
+                )}
+            </div>
+            <button 
+                onClick={(e) => { e.stopPropagation(); removeQuestion(room.id, q.id); }}
+                className="p-2 text-gray-300 hover:text-red-500 transition-all"
+            >
+                <Trash2 size={16} />
+            </button>
+        </div>
+    );
+};

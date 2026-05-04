@@ -14,9 +14,16 @@ import {
     MoreHorizontal,
     Edit3,
     Trash2,
-    Loader2
+    Loader2,
+    ChevronLeft,
+    MapPin,
+    Calendar,
+    User,
+    Send,
+    Info
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import SignatureCanvas from 'react-signature-canvas';
 import { MainLayout } from '../../layouts/MainLayout';
 
 import api from '../../api/client';
@@ -31,13 +38,14 @@ const InspectionForm = () => {
     const [responses, setResponses] = useState({});
     const [tickets, setTickets] = useState([]);
     const [signature, setSignature] = useState('');
+    const [inspectorSignature, setInspectorSignature] = useState('');
     const [noDeficiency, setNoDeficiency] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
     const [saving, setSaving] = useState(false);
     const [ticketLoading, setTicketLoading] = useState({});
 
     // Modals state
-    const [annotationModal, setAnnotationModal] = useState({ isOpen: false, questionId: null, photoUrl: '' });
+    const [annotationModal, setAnnotationModal] = useState({ isOpen: false, questionId: null, photoUrl: '', photoIndex: null });
     const [ticketModal, setTicketModal] = useState({ isOpen: false, question: null, initialData: null });
 
     // Series/Groups state
@@ -51,6 +59,13 @@ const InspectionForm = () => {
 
     // Refs for scrolling to sections
     const sectionRefs = useRef({});
+
+    // Local Memory for photos (to avoid CORS/loading issues in Annotation tool)
+    const localPhotoCache = useRef(new Map()); // url/base64 -> base64
+
+    // Signature Canvas refs
+    const tenantSigRef = useRef();
+    const inspectorSigRef = useRef();
 
     useEffect(() => {
         fetchInspection();
@@ -75,6 +90,7 @@ const InspectionForm = () => {
                 const data = res.data.data;
                 setInspection(data);
                 setSignature(data.tenantSignature || '');
+                setInspectorSignature(data.inspectorSignature || '');
                 setNoDeficiency(data.noDeficiencyConfirmed || false);
                 setIsEditMode(data.status === 'DRAFT');
                 setTickets(data.tickets || []);
@@ -112,6 +128,7 @@ const InspectionForm = () => {
                         notes: r.notes,
                         annotation: r.annotation,
                         photo: r.photoUrl || r.media?.[0]?.url,
+                        photos: r.media?.length > 0 ? r.media.map(m => m.url) : (r.photoUrl ? [r.photoUrl] : []),
                         annotatedPhoto: r.annotatedPhotoUrl,
                         ticketCreated: !!r.ticketId,
                         ticketId: r.ticketId
@@ -152,26 +169,130 @@ const InspectionForm = () => {
         }));
     };
 
-    const handlePhotoUpload = (questionId, file) => {
+    const handleAnnotationSave = async (annotatedData) => {
+        const { questionId, photoIndex } = annotationModal;
+        
+        try {
+            // Instant Cloud Upload
+            const res = await api.post('/api/admin/workflow/inspections/upload-media', { image: annotatedData });
+            // Handle different potential response structures
+            const cloudinaryUrl = res.data?.url || res.data?.data?.url || res.url;
+
+            setResponses(prev => {
+                const currentResponse = prev[questionId] || {};
+                let currentPhotos = [...(currentResponse.photos || (currentResponse.photo ? [currentResponse.photo] : []))];
+                
+                // If cloud upload succeeded, use it. Otherwise, keep the annotated Base64 as a local fallback.
+                const finalUrl = cloudinaryUrl || annotatedData;
+
+                // Save to local cache for instant editing later
+                if (finalUrl.startsWith('http')) {
+                    localPhotoCache.current.set(finalUrl, annotatedData);
+                }
+
+                if (photoIndex !== null && photoIndex < currentPhotos.length) {
+                    currentPhotos[photoIndex] = finalUrl;
+                } else if (photoIndex !== null) {
+                    currentPhotos.push(finalUrl);
+                }
+
+                return {
+                    ...prev,
+                    [questionId]: { 
+                        ...currentResponse, 
+                        photos: currentPhotos,
+                        photo: currentPhotos[0] || null
+                    }
+                };
+            });
+            setAnnotationModal({ ...annotationModal, isOpen: false });
+        } catch (err) {
+            console.error('Annotation upload failed, falling back to local storage:', err);
+            // Even if upload fails, we save the annotated image locally so it doesn't disappear
+            setResponses(prev => {
+                const currentResponse = prev[questionId] || {};
+                let currentPhotos = [...(currentResponse.photos || (currentResponse.photo ? [currentResponse.photo] : []))];
+                if (photoIndex !== null && photoIndex < currentPhotos.length) {
+                    currentPhotos[photoIndex] = annotatedData;
+                }
+                return { ...prev, [questionId]: { ...currentResponse, photos: currentPhotos, photo: currentPhotos[0] } };
+            });
+            setAnnotationModal({ ...annotationModal, isOpen: false });
+        }
+    };
+
+    const handlePhotoUpload = async (questionId, file) => {
         if (!file) return;
         const reader = new FileReader();
-        reader.onloadend = () => {
-            setResponses(prev => ({
-                ...prev,
-                [questionId]: { ...prev[questionId], photo: reader.result }
-            }));
+        reader.onloadend = async () => {
+            const base64 = reader.result;
+            
+            try {
+                // Instant Cloud Upload
+                const res = await api.post('/api/admin/workflow/inspections/upload-media', { image: base64 });
+                const cloudinaryUrl = res.data?.url || res.data?.data?.url || res.url;
+
+                setResponses(prev => {
+                    const currentResponse = prev[questionId] || {};
+                    let currentPhotos = [...(currentResponse.photos || (currentResponse.photo ? [currentResponse.photo] : []))];
+                    currentPhotos = currentPhotos.filter(p => !!p);
+                    
+                    const finalUrl = cloudinaryUrl || base64;
+                    const newPhotos = [...currentPhotos, finalUrl];
+
+                    // Save to local cache
+                    if (finalUrl.startsWith('http')) {
+                        localPhotoCache.current.set(finalUrl, base64);
+                    }
+                    
+                    return {
+                        ...prev,
+                        [questionId]: { 
+                            ...currentResponse, 
+                            photos: newPhotos,
+                            photo: newPhotos[0] || finalUrl
+                        }
+                    };
+                });
+            } catch (err) {
+                console.error('Photo upload failed, using local version:', err);
+                setResponses(prev => {
+                    const currentResponse = prev[questionId] || {};
+                    let currentPhotos = [...(currentResponse.photos || (currentResponse.photo ? [currentResponse.photo] : []))];
+                    const newPhotos = [...currentPhotos, base64];
+                    return { ...prev, [questionId]: { ...currentResponse, photos: newPhotos, photo: newPhotos[0] } };
+                });
+            }
         };
         reader.readAsDataURL(file);
     };
 
+    const removePhoto = (questionId, index) => {
+        setResponses(prev => {
+            const currentPhotos = [...(prev[questionId]?.photos || [])];
+            currentPhotos.splice(index, 1);
+            return {
+                ...prev,
+                [questionId]: { 
+                    ...prev[questionId], 
+                    photos: currentPhotos,
+                    photo: currentPhotos[0] || null
+                }
+            };
+        });
+    };
+
     const handleCreateTicketClick = (question) => {
         if (!isEditMode && inspection.status !== 'DRAFT') return;
+        const responseValue = responses[question.id]?.status || '';
         setTicketModal({
             isOpen: true,
             question,
             initialData: {
-                title: `DEFICIENCY: ${question.text}`,
-                description: responses[question.id]?.notes || ''
+                title: responseValue ? `${question.text}: ${responseValue}` : question.text,
+                description: responses[question.id]?.notes || '',
+                response: responseValue,
+                photos: responses[question.id]?.photos || []
             }
         });
     };
@@ -183,7 +304,9 @@ const InspectionForm = () => {
             const res = await api.post(`/api/admin/workflow/inspections/${id}/tickets`, {
                 questionId: question.id,
                 questionText: question.text,
+                response: responses[question.id]?.status || '',
                 notes: responses[question.id]?.notes || '',
+                photos: responses[question.id]?.photos || [],
                 ...formData
             });
             if (res.data.success) {
@@ -230,10 +353,6 @@ const InspectionForm = () => {
                 }
             }
         }
-        if (!signature && !noDeficiency) {
-            alert('Please provide a signature or confirm "No Deficiencies".');
-            return false;
-        }
         return true;
     };
 
@@ -253,6 +372,7 @@ const InspectionForm = () => {
                     notes: responses[qId].notes || '',
                     annotation: responses[qId].annotation || '',
                     photo: responses[qId].photo || null,
+                    photos: responses[qId].photos || [],
                     annotatedPhoto: responses[qId].annotatedPhoto || null
                 };
             });
@@ -260,6 +380,7 @@ const InspectionForm = () => {
             const payload = {
                 responses: formattedResponses,
                 signature,
+                inspectorSignature,
                 noDeficiencyConfirmed: noDeficiency
             };
 
@@ -288,55 +409,23 @@ const InspectionForm = () => {
     };
 
     // ── Signature Canvas helpers ──────────────────────────────────
-    const getPos = (e, canvas) => {
-        const rect = canvas.getBoundingClientRect();
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        const src = e.touches ? e.touches[0] : e;
-        return {
-            x: (src.clientX - rect.left) * scaleX,
-            y: (src.clientY - rect.top)  * scaleY
-        };
+
+    const handleSignatureEnd = (type) => {
+        if (type === 'tenant') {
+            setSignature(tenantSigRef.current.toDataURL());
+        } else {
+            setInspectorSignature(inspectorSigRef.current.toDataURL());
+        }
     };
 
-    const startDraw = (e) => {
-        if (!isEditMode && inspection.status !== 'DRAFT') return;
-        e.preventDefault();
-        const canvas = signatureCanvasRef.current;
-        if (!canvas) return;
-        isDrawing.current = true;
-        lastPos.current = getPos(e, canvas);
-    };
-
-    const draw = (e) => {
-        if (!isDrawing.current) return;
-        e.preventDefault();
-        const canvas = signatureCanvasRef.current;
-        const ctx = canvas.getContext('2d');
-        const pos = getPos(e, canvas);
-        ctx.strokeStyle = '#1e1b4b';
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.beginPath();
-        ctx.moveTo(lastPos.current.x, lastPos.current.y);
-        ctx.lineTo(pos.x, pos.y);
-        ctx.stroke();
-        lastPos.current = pos;
-    };
-
-    const stopDraw = (e) => {
-        if (!isDrawing.current) return;
-        isDrawing.current = false;
-        const canvas = signatureCanvasRef.current;
-        setSignature(canvas.toDataURL('image/png'));
-    };
-
-    const clearSignature = () => {
-        const canvas = signatureCanvasRef.current;
-        if (!canvas) return;
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-        setSignature('');
+    const clearSignature = (type) => {
+        if (type === 'tenant') {
+            tenantSigRef.current.clear();
+            setSignature('');
+        } else {
+            inspectorSigRef.current.clear();
+            setInspectorSignature('');
+        }
     };
 
     return (
@@ -409,7 +498,7 @@ const InspectionForm = () => {
 
                 {/* Main Scrollable Content */}
                 <div className="flex-1 p-4 lg:p-12 overflow-y-auto">
-                    <div className="max-w-5xl mx-auto">
+                    <div className="max-w-[1400px] mx-auto">
                         {/* Header Area - Optimized for Tablet */}
                         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-12 gap-6 px-2">
                             <div>
@@ -459,7 +548,7 @@ const InspectionForm = () => {
                                 <section 
                                     key={room.id} 
                                     ref={el => sectionRefs.current[room.id] = el}
-                                    className="bg-white rounded-[40px] shadow-xl border border-gray-100 overflow-hidden scroll-mt-8"
+                                    className="max-w-[1400px] mx-auto bg-white rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden mb-12 scroll-mt-8"
                                 >
                                     <div className="p-8 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
                                         <div>
@@ -480,7 +569,7 @@ const InspectionForm = () => {
                                                     <tr className="bg-white border-b border-gray-100 text-[11px] font-black text-gray-400 uppercase tracking-widest">
                                                         <th className="px-8 py-5 min-w-[200px]">Item / Question</th>
                                                         <th className="px-8 py-5 min-w-[150px]">Condition</th>
-                                                        <th className="px-8 py-5 min-w-[200px]">Photos & Annotation</th>
+                                                        <th className="px-8 py-5 min-w-[320px]">Photos & Annotation</th>
                                                         <th className="px-8 py-5 min-w-[220px]">Notes</th>
                                                         <th className="px-8 py-5 min-w-[120px] text-right">Ticket</th>
                                                     </tr>
@@ -498,7 +587,9 @@ const InspectionForm = () => {
                                                             setActiveSeries={setActiveSeries}
                                                             handleConditionChange={handleConditionChange}
                                                             handlePhotoUpload={handlePhotoUpload}
+                                                            removePhoto={removePhoto}
                                                             setAnnotationModal={setAnnotationModal}
+                                                            localPhotoCache={localPhotoCache}
                                                             handleAnnotationChange={handleAnnotationChange}
                                                             handleNoteChange={handleNoteChange}
                                                             handleCreateTicketClick={handleCreateTicketClick}
@@ -524,7 +615,9 @@ const InspectionForm = () => {
                                                     setActiveSeries={setActiveSeries}
                                                     handleConditionChange={handleConditionChange}
                                                     handlePhotoUpload={handlePhotoUpload}
+                                                    removePhoto={removePhoto}
                                                     setAnnotationModal={setAnnotationModal}
+                                                    localPhotoCache={localPhotoCache}
                                                     handleAnnotationChange={handleAnnotationChange}
                                                     handleNoteChange={handleNoteChange}
                                                     handleCreateTicketClick={handleCreateTicketClick}
@@ -587,94 +680,99 @@ const InspectionForm = () => {
                             {/* Finalize & Signature Section */}
                             <section 
                                 ref={el => sectionRefs.current['finalize'] = el}
-                                className="max-w-4xl mx-auto bg-white rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden mb-20 scroll-mt-8"
+                                className="max-w-[1400px] mx-auto bg-white rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden mb-20 scroll-mt-8"
                             >
                                 <div className="p-10 text-center border-b border-gray-50">
                                     <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Final Confirmation</h2>
                                     <p className="text-gray-500 font-medium">By signing, you confirm the recorded condition is accurate and legally binding.</p>
                                 </div>
                                 
-                                <div className="p-10 flex flex-col gap-8">
-                                    <div className="flex items-center gap-4 p-8 bg-indigo-50 rounded-[32px] border border-indigo-100">
-                                        <input 
-                                            type="checkbox" 
-                                            id="noDeficiency" 
-                                            checked={noDeficiency}
-                                            disabled={!isEditMode && inspection.status !== 'DRAFT'}
-                                            onChange={(e) => setNoDeficiency(e.target.checked)}
-                                            className="w-8 h-8 rounded-xl text-indigo-600 focus:ring-indigo-500 border-indigo-200"
-                                        />
-                                        <label htmlFor="noDeficiency" className="text-sm font-black text-indigo-900 uppercase tracking-tight cursor-pointer">
-                                            I explicitly confirm there are no significant deficiencies found during this handover.
-                                        </label>
-                                    </div>
-
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex items-center justify-between px-2">
-                                            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Tenant Signature</label>
-                                            {(isEditMode || inspection.status === 'DRAFT') && (
-                                                <button
-                                                    onClick={clearSignature}
-                                                    className="flex items-center gap-1.5 text-[10px] font-black text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors"
-                                                >
-                                                    <X size={12} /> Clear
-                                                </button>
-                                            )}
+                                <div className="p-10 space-y-12 bg-gray-50/50">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                        {/* Tenant Signature */}
+                                        <div className="space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                                                    <User size={18} className="text-indigo-600" />
+                                                    Tenant Signature
+                                                </label>
+                                                <span className="text-[10px] font-black text-indigo-600 uppercase bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-100">
+                                                    {inspection.lease?.tenant?.name || 'Tenant Signature Required'}
+                                                </span>
+                                            </div>
+                                            <div className="relative group/sig">
+                                                <div className="absolute inset-0 bg-white rounded-3xl border-2 border-dashed border-gray-200 group-hover:border-indigo-300 transition-colors" />
+                                                <div className="relative bg-white border-2 border-indigo-100 rounded-3xl overflow-hidden shadow-sm">
+                                                    <SignatureCanvas 
+                                                        ref={tenantSigRef}
+                                                        penColor='#1e1b4b'
+                                                        onEnd={() => handleSignatureEnd('tenant')}
+                                                        canvasProps={{
+                                                            className: 'w-full h-48 cursor-crosshair',
+                                                            style: { width: '100%', height: '192px' }
+                                                        }}
+                                                    />
+                                                    <button 
+                                                        onClick={() => clearSignature('tenant')}
+                                                        className="absolute bottom-4 right-4 p-2.5 bg-gray-900/90 text-white rounded-xl shadow-lg active:scale-95 transition-all opacity-0 group-hover/sig:opacity-100"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <div className="relative rounded-[32px] border-2 border-dashed border-gray-200 bg-gray-50 overflow-hidden group hover:border-indigo-300 transition-colors">
-                                            {/* Guide text shown when empty */}
-                                            {!signature && (
-                                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-                                                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-3">
-                                                        <Save size={28} className="text-gray-200" />
-                                                    </div>
-                                                    <p className="text-[11px] font-black text-gray-300 uppercase tracking-widest">Draw signature here</p>
-                                                    <p className="text-[10px] text-gray-300 mt-1">Use finger on tablet - mouse on desktop</p>
+                                        {/* Inspector Signature */}
+                                        <div className="space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                                                    <CheckCircle2 size={18} className="text-indigo-600" />
+                                                    Inspector Signature
+                                                </label>
+                                                <span className="text-[10px] font-black text-emerald-600 uppercase bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-100">
+                                                    {inspection.inspector?.name || 'Inspector Signature'}
+                                                </span>
+                                            </div>
+                                            <div className="relative group/sig-ins">
+                                                <div className="absolute inset-0 bg-white rounded-3xl border-2 border-dashed border-gray-200 group-hover:border-indigo-300 transition-colors" />
+                                                <div className="relative bg-white border-2 border-indigo-100 rounded-3xl overflow-hidden shadow-sm">
+                                                    <SignatureCanvas 
+                                                        ref={inspectorSigRef}
+                                                        penColor='#1e1b4b'
+                                                        onEnd={() => handleSignatureEnd('inspector')}
+                                                        canvasProps={{
+                                                            className: 'w-full h-48 cursor-crosshair',
+                                                            style: { width: '100%', height: '192px' }
+                                                        }}
+                                                    />
+                                                    <button 
+                                                        onClick={() => clearSignature('inspector')}
+                                                        className="absolute bottom-4 right-4 p-2.5 bg-gray-900/90 text-white rounded-xl shadow-lg active:scale-95 transition-all opacity-0 group-hover/sig-ins:opacity-100"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
-                                            )}
-
-                                            {/* If completed and has saved signature (base64 or text) show preview */}
-                                            {signature && !signature.startsWith('data:image') && (
-                                                <div className="h-48 flex items-center justify-center bg-white">
-                                                    <span className="text-5xl font-serif italic text-gray-800 tracking-tighter select-none">{signature}</span>
-                                                </div>
-                                            )}
-
-                                            {/* Canvas — always rendered so ref works; hidden when showing old text sig */}
-                                            <canvas
-                                                ref={signatureCanvasRef}
-                                                width={1200}
-                                                height={300}
-                                                onMouseDown={startDraw}
-                                                onMouseMove={draw}
-                                                onMouseUp={stopDraw}
-                                                onMouseLeave={stopDraw}
-                                                onTouchStart={startDraw}
-                                                onTouchMove={draw}
-                                                onTouchEnd={stopDraw}
-                                                style={{
-                                                    display: signature && !signature.startsWith('data:image') ? 'none' : 'block',
-                                                    touchAction: 'none',
-                                                    cursor: (isEditMode || inspection.status === 'DRAFT') ? 'crosshair' : 'default'
-                                                }}
-                                                className="w-full h-48 rounded-[30px]"
-                                            />
+                                            </div>
                                         </div>
-
-                                        <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest text-center">
-                                            By signing above, you confirm the recorded condition is accurate and legally binding.
-                                        </p>
                                     </div>
 
-                                    <div className="flex items-center gap-4 mt-6">
+                                    <div className="p-8 bg-indigo-600 rounded-[32px] shadow-2xl shadow-indigo-200 flex flex-col md:flex-row items-center justify-between gap-8">
+                                        <div className="flex items-center gap-6">
+                                            <div className="w-16 h-16 bg-white/10 rounded-[24px] flex items-center justify-center border border-white/20 backdrop-blur-sm">
+                                                <Save size={32} className="text-white" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xl font-black text-white tracking-tight">Finalize Evidence</h4>
+                                                <p className="text-indigo-100 text-sm font-medium">Clicking finalize will lock all records and generate the report.</p>
+                                            </div>
+                                        </div>
                                         <button 
                                             onClick={handleFinalize}
                                             disabled={saving || (!isEditMode && inspection.status === 'COMPLETED')}
-                                            className={`flex-1 py-5 rounded-[24px] font-black uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3
-                                                ${(saving || (!isEditMode && inspection.status === 'COMPLETED')) ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100 active:scale-[0.98]'}`}
+                                            className={`px-12 py-5 rounded-[24px] font-black uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-3
+                                                ${(saving || (!isEditMode && inspection.status === 'COMPLETED')) ? 'bg-white/10 text-white/50 cursor-not-allowed shadow-none' : 'bg-white text-indigo-600 hover:bg-indigo-50 active:scale-95 shadow-indigo-900/20'}`}
                                         >
-                                            {saving ? 'Saving...' : inspection.status === 'COMPLETED' ? 'Save Changes (Logged)' : 'Finalize & Close Inspection'}
+                                            {saving ? 'Processing...' : inspection.status === 'COMPLETED' ? 'Save Changes' : 'Finalize & Close'}
                                             <CheckCircle2 size={20} />
                                         </button>
                                     </div>
@@ -690,13 +788,7 @@ const InspectionForm = () => {
                 isOpen={annotationModal.isOpen}
                 onClose={() => setAnnotationModal({ ...annotationModal, isOpen: false })}
                 photoUrl={annotationModal.photoUrl}
-                onSave={(annotatedData) => {
-                    setResponses(prev => ({
-                        ...prev,
-                        [annotationModal.questionId]: { ...prev[annotationModal.questionId], annotatedPhoto: annotatedData }
-                    }));
-                    setAnnotationModal({ ...annotationModal, isOpen: false });
-                }}
+                onSave={handleAnnotationSave}
             />
 
             <TicketCreationModal 
@@ -709,7 +801,7 @@ const InspectionForm = () => {
     );
 };
 
-const QuestionRow = ({ q, responses, isEditMode, inspection, series, activeSeries, setActiveSeries, handleConditionChange, handlePhotoUpload, setAnnotationModal, handleAnnotationChange, handleNoteChange, handleCreateTicketClick, handleDeleteTicket, ticketLoading }) => (
+const QuestionRow = ({ q, responses, isEditMode, inspection, series, activeSeries, setActiveSeries, handleConditionChange, handlePhotoUpload, removePhoto, setAnnotationModal, localPhotoCache, handleAnnotationChange, handleNoteChange, handleCreateTicketClick, handleDeleteTicket, ticketLoading }) => (
     <tr className="hover:bg-gray-50/30 transition-colors group">
         <td className="px-8 py-6 align-top">
             <h4 className="font-black text-gray-900 text-base mb-1">{q.text}</h4>
@@ -719,7 +811,7 @@ const QuestionRow = ({ q, responses, isEditMode, inspection, series, activeSerie
             <ConditionSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} series={series} activeSeries={activeSeries} setActiveSeries={setActiveSeries} handleConditionChange={handleConditionChange} />
         </td>
         <td className="px-8 py-6 align-top">
-            <PhotoSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} handlePhotoUpload={handlePhotoUpload} setAnnotationModal={setAnnotationModal} handleAnnotationChange={handleAnnotationChange} />
+            <PhotoSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} handlePhotoUpload={handlePhotoUpload} removePhoto={removePhoto} setAnnotationModal={setAnnotationModal} localPhotoCache={localPhotoCache} handleAnnotationChange={handleAnnotationChange} />
         </td>
         <td className="px-6 py-6 align-top min-w-[220px] w-[220px]">
             <textarea
@@ -737,7 +829,7 @@ const QuestionRow = ({ q, responses, isEditMode, inspection, series, activeSerie
     </tr>
 );
 
-const QuestionCard = ({ q, responses, isEditMode, inspection, series, activeSeries, setActiveSeries, handleConditionChange, handlePhotoUpload, setAnnotationModal, handleAnnotationChange, handleNoteChange, handleCreateTicketClick, handleDeleteTicket, ticketLoading }) => (
+const QuestionCard = ({ q, responses, isEditMode, inspection, series, activeSeries, setActiveSeries, handleConditionChange, handlePhotoUpload, removePhoto, setAnnotationModal, localPhotoCache, handleAnnotationChange, handleNoteChange, handleCreateTicketClick, handleDeleteTicket, ticketLoading }) => (
     <div className="p-5 md:p-8 flex flex-col gap-6 hover:bg-indigo-50/20 transition-all">
         <div className="flex justify-between items-start">
             <div>
@@ -765,7 +857,7 @@ const QuestionCard = ({ q, responses, isEditMode, inspection, series, activeSeri
             
             <div className="flex flex-col gap-4">
                 <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Photo Evidence</label>
-                <PhotoSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} handlePhotoUpload={handlePhotoUpload} setAnnotationModal={setAnnotationModal} handleAnnotationChange={handleAnnotationChange} />
+                <PhotoSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} handlePhotoUpload={handlePhotoUpload} removePhoto={removePhoto} setAnnotationModal={setAnnotationModal} localPhotoCache={localPhotoCache} handleAnnotationChange={handleAnnotationChange} />
             </div>
         </div>
     </div>
@@ -801,26 +893,9 @@ const ConditionSelector = ({ q, responses, isEditMode, inspection, series, activ
             </div>
         ) : (
             <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap gap-1 mb-1">
-                    {series.map(s => (
-                        <button 
-                            key={s.id}
-                            onClick={() => setActiveSeries(prev => ({ ...prev, [q.id]: s.id }))}
-                            className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeSeries[q.id] === s.id ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                        >
-                            {s.name}
-                        </button>
-                    ))}
-                    <button 
-                        onClick={() => setActiveSeries(prev => ({ ...prev, [q.id]: null }))}
-                        className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${!activeSeries[q.id] ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                    >
-                        Template
-                    </button>
-                </div>
                 <div className="flex flex-wrap gap-2">
-                    {(activeSeries[q.id] 
-                        ? (series.find(s => s.id === activeSeries[q.id])?.responses || [])
+                    {(q.seriesId 
+                        ? (series.find(s => s.id === q.seriesId)?.responses || [])
                         : (inspection.template?.structure?.responseChoices || [
                             { label: 'Good', color: 'green' },
                             { label: 'Fair', color: 'orange' },
@@ -843,46 +918,103 @@ const ConditionSelector = ({ q, responses, isEditMode, inspection, series, activ
     </div>
 );
 
-const PhotoSelector = ({ q, responses, isEditMode, inspection, handlePhotoUpload, setAnnotationModal, handleAnnotationChange }) => (
-    <div className="flex flex-col gap-3">
-        <div className="w-full aspect-video rounded-3xl bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-200 group-hover:border-indigo-200 transition-all relative overflow-hidden shadow-inner">
-            {responses[q.id]?.annotatedPhoto ? (
-                <img src={responses[q.id].annotatedPhoto} className="w-full h-full object-contain" alt="Annotated" />
-            ) : responses[q.id]?.photo ? (
-                <img src={responses[q.id].photo} className="w-full h-full object-contain" alt="Captured" />
-            ) : (
-                <Camera size={24} className="text-gray-300 group-hover:text-indigo-400" />
+const PhotoSelector = ({ q, responses, isEditMode, inspection, handlePhotoUpload, removePhoto, setAnnotationModal, localPhotoCache, handleAnnotationChange }) => {
+    const response = responses[q.id] || {};
+    // Ensure we have a valid array of photos
+    const photos = (response.photos || (response.photo ? [response.photo] : [])).filter(p => !!p);
+    
+    return (
+        <div className="flex flex-col gap-4">
+            {/* Gallery View */}
+            <div className="grid grid-cols-3 gap-3">
+                {photos.map((p, idx) => (
+                    <div key={`${idx}-${p?.substring(0, 20)}`} className="relative aspect-square rounded-2xl bg-gray-100 overflow-hidden border border-gray-100 group/photo shadow-md ring-1 ring-black/5 hover:ring-indigo-500/50 transition-all">
+                        <img 
+                            src={p} 
+                            key={p}
+                            className="w-full h-full object-cover" 
+                            alt={`Evidence ${idx + 1}`}
+                            onError={(e) => {
+                                console.error('Image Load Error:', p);
+                                // Fallback to a placeholder if it really fails
+                                e.target.src = "https://via.placeholder.com/400x400?text=Image+Loading...";
+                            }}
+                        />
+                        
+                        {(isEditMode || inspection.status === 'DRAFT') && (
+                            <div className="absolute inset-0 bg-black/10 transition-all flex flex-col items-center justify-center gap-2 z-[50]">
+                                <div className="flex items-center gap-2">
+                                    <button 
+                                        onClick={() => {
+                                            const source = localPhotoCache.current.get(p) || p;
+                                            setAnnotationModal({ 
+                                                isOpen: true, 
+                                                questionId: q.id, 
+                                                photoUrl: source, 
+                                                photoIndex: idx 
+                                            });
+                                        }}
+                                        className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-2xl active:scale-90 transition-transform flex items-center justify-center cursor-pointer pointer-events-auto"
+                                        title="Edit / Mark Photo"
+                                    >
+                                        <Edit3 size={16} />
+                                    </button>
+                                    <button 
+                                        onClick={() => removePhoto(q.id, idx)}
+                                        className="p-2.5 bg-red-500 text-white rounded-xl shadow-xl active:scale-90 transition-transform flex items-center justify-center"
+                                        title="Remove Photo"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {idx === 0 && (
+                            <div className="absolute bottom-0 inset-x-0 bg-indigo-600/80 backdrop-blur-sm py-0.5 text-center">
+                                <span className="text-[7px] font-black text-white uppercase tracking-widest">Primary</span>
+                            </div>
+                        )}
+                    </div>
+                ))}
+                
+                {/* Upload Button - Limited to 3 */}
+                {(isEditMode || inspection.status === 'DRAFT') && photos.length < 3 && (
+                    <div className="relative aspect-square rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center hover:border-indigo-300 hover:bg-indigo-50/30 transition-all cursor-pointer group/add">
+                        <div className="flex flex-col items-center gap-1">
+                            <Camera size={18} className="text-gray-300 group-hover/add:text-indigo-400" />
+                            <span className="text-[7px] font-black text-gray-300 uppercase tracking-widest">{photos.length}/3</span>
+                        </div>
+                        <input 
+                            type="file" 
+                            accept="image/*"
+                            capture="environment"
+                            onClick={(e) => e.target.value = null}
+                            onChange={(e) => handlePhotoUpload(q.id, e.target.files[0])}
+                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                        />
+                    </div>
+                )}
+            </div>
+
+            {photos.length > 0 && (
+                <div className="flex flex-col gap-2 mt-1">
+                    <input 
+                        type="text"
+                        placeholder="Add photo text note..."
+                        value={responses[q.id]?.annotation || ''}
+                        readOnly={!isEditMode && inspection.status !== 'DRAFT'}
+                        onChange={(e) => handleAnnotationChange(q.id, e.target.value)}
+                        className="text-[10px] font-bold p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                    />
+                </div>
             )}
-            {(isEditMode || inspection.status === 'DRAFT') && (
-                <input 
-                    type="file" 
-                    accept="image/*"
-                    capture="environment"
-                    onChange={(e) => handlePhotoUpload(q.id, e.target.files[0])}
-                    className="absolute inset-0 opacity-0 cursor-pointer" 
-                />
+            {photos.length === 0 && (
+                <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest text-center py-2">No photos captured</p>
             )}
         </div>
-        {responses[q.id]?.photo && (
-            <div className="flex flex-col gap-2">
-                <button 
-                    onClick={() => setAnnotationModal({ isOpen: true, questionId: q.id, photoUrl: responses[q.id].photo })}
-                    className="w-full py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-md flex items-center justify-center gap-2"
-                >
-                    <Edit3 size={12} /> {responses[q.id]?.annotatedPhoto ? 'Edit Markings' : 'Draw / Mark Photo'}
-                </button>
-                <input 
-                    type="text"
-                    placeholder="Add photo text note..."
-                    value={responses[q.id]?.annotation || ''}
-                    readOnly={!isEditMode && inspection.status !== 'DRAFT'}
-                    onChange={(e) => handleAnnotationChange(q.id, e.target.value)}
-                    className="text-[10px] font-bold p-3 bg-gray-50 border border-gray-100 rounded-xl outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                />
-            </div>
-        )}
-    </div>
-);
+    );
+};
 
 const TicketStatus = ({ q, responses, isEditMode, inspection, ticketLoading, handleCreateTicketClick, handleDeleteTicket }) => (
     <div className="flex flex-col gap-1 items-end">
