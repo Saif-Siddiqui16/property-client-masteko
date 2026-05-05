@@ -12,7 +12,8 @@ import {
     Clock, 
     Filter,
     ChevronRight,
-    ClipboardList
+    ClipboardList,
+    Edit2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { MainLayout } from '../../layouts/MainLayout';
@@ -200,7 +201,16 @@ const MoveOutDashboard = () => {
 
                     <div onClick={() => navigate(`/units/${item.unitId}`)} className="cursor-pointer px-0.5">
                         <h4 className="font-black text-gray-900 text-sm leading-tight tracking-tight truncate">Unit {item.unit.unitNumber}</h4>
-                        <p className="text-[11px] font-black text-gray-500 truncate">{item.lease.tenant?.name || 'N/A'}</p>
+                        <div className="flex flex-col">
+                            <p className="text-[11px] font-black text-gray-500 truncate">
+                                {item.lease.tenant?.name || 'N/A'}
+                            </p>
+                            {item.lease.tenant?.phone && (
+                                <p className="text-xs text-blue-600 font-black tracking-tight leading-tight mt-0.5">
+                                    {item.lease.tenant.phone}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex flex-col gap-1 py-1 px-0.5">
@@ -221,7 +231,21 @@ const MoveOutDashboard = () => {
                                         } else if (item.visualInspectionId) {
                                             return <span className="bg-blue-100 text-blue-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ Started ({format(safeDate(item.visualDate), 'MMM d')}{item.visualTime ? ` @ ${item.visualTime}` : ''})</span>;
                                         } else if (item.visualDate) {
-                                            return <span className="bg-orange-100 text-orange-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">📅 TO-DO ({format(safeDate(item.visualDate), 'MMM d')}{item.visualTime ? ` @ ${item.visualTime}` : ''})</span>;
+                                            return (
+                                                <span 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setScheduleType('VISUAL');
+                                                        setSelectedMoveOut(item);
+                                                        setShowScheduleModal(true);
+                                                    }}
+                                                    className="bg-orange-100 text-orange-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter cursor-pointer hover:bg-orange-200 transition-colors flex items-center gap-1"
+                                                    title="Click to reschedule"
+                                                >
+                                                    📅 TO-DO ({format(safeDate(item.visualDate), 'MMM d')}{item.visualTime ? ` @ ${item.visualTime}` : ''})
+                                                    <Edit2 size={8} />
+                                                </span>
+                                            );
                                         } else {
                                             return <span className="bg-gray-100 text-gray-400 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ REMAINING</span>;
                                         }
@@ -236,7 +260,21 @@ const MoveOutDashboard = () => {
                                         } else if (item.finalInspectionId) {
                                             return <span className="bg-blue-100 text-blue-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ Started ({format(safeDate(item.finalDate), 'MMM d')}{item.finalTime ? ` @ ${item.finalTime}` : ''})</span>;
                                         } else if (item.finalDate) {
-                                            return <span className="bg-orange-100 text-orange-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">📅 TO-DO ({format(safeDate(item.finalDate), 'MMM d')}{item.finalTime ? ` @ ${item.finalTime}` : ''})</span>;
+                                            return (
+                                                <span 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setScheduleType('FINAL');
+                                                        setSelectedMoveOut(item);
+                                                        setShowScheduleModal(true);
+                                                    }}
+                                                    className="bg-orange-100 text-orange-600 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter cursor-pointer hover:bg-orange-200 transition-colors flex items-center gap-1"
+                                                    title="Click to reschedule"
+                                                >
+                                                    📅 TO-DO ({format(safeDate(item.finalDate), 'MMM d')}{item.finalTime ? ` @ ${item.finalTime}` : ''})
+                                                    <Edit2 size={8} />
+                                                </span>
+                                            );
                                         } else {
                                             return <span className="bg-gray-100 text-gray-400 text-[10px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">⏳ REMAINING</span>;
                                         }
@@ -497,6 +535,7 @@ const MoveOutDashboard = () => {
                                             required
                                             type="date" 
                                             name="date"
+                                            defaultValue={scheduleType === 'VISUAL' ? (selectedMoveOut?.visualDate ? String(selectedMoveOut.visualDate).substring(0,10) : '') : (selectedMoveOut?.finalDate ? String(selectedMoveOut.finalDate).substring(0,10) : '')}
                                             className="w-full pl-12 pr-6 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
                                         />
                                     </div>
@@ -510,6 +549,7 @@ const MoveOutDashboard = () => {
                                             required
                                             type="time" 
                                             name="time"
+                                            defaultValue={scheduleType === 'VISUAL' ? selectedMoveOut?.visualTime : selectedMoveOut?.finalTime}
                                             className="w-full pl-12 pr-6 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
                                         />
                                     </div>

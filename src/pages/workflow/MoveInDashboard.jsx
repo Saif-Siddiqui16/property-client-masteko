@@ -248,9 +248,16 @@ const MoveInDashboard = () => {
 
                     <div>
                         <h4 className="font-black text-gray-900 text-sm leading-tight">Unit {item.unit.unitNumber}</h4>
-                        <p className="text-xs text-gray-500 font-bold truncate">
-                            {item.lease?.tenant?.name || item.unit?.reserved_by_user?.name || 'Prospect Reservation'}
-                        </p>
+                        <div className="flex flex-col min-w-0">
+                            <p className="text-xs text-gray-500 font-bold truncate">
+                                {item.lease?.tenant?.name || item.unit?.reserved_by_user?.name || 'Prospect Reservation'}
+                            </p>
+                            {(item.lease?.tenant?.phone || item.unit?.reserved_by_user?.phone) && (
+                                <p className="text-xs text-blue-600 font-black tracking-tight leading-tight mt-0.5">
+                                    {item.lease?.tenant?.phone || item.unit?.reserved_by_user?.phone}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 text-[10px] text-gray-500 bg-gray-50 p-1 rounded-lg border border-gray-100/50">
