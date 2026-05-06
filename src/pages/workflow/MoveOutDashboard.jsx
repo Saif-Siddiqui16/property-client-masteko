@@ -116,6 +116,29 @@ const MoveOutDashboard = () => {
         }
     };
 
+    const handleClearSchedule = async () => {
+        if (!window.confirm("Are you sure you want to clear this appointment?")) return;
+        
+        try {
+            const endpoint = scheduleType === 'VISUAL' 
+                ? `/api/admin/workflow/move-out/${selectedMoveOut.id}/confirm`
+                : `/api/admin/workflow/move-out/${selectedMoveOut.id}/schedule-final`;
+            
+            const payload = scheduleType === 'VISUAL' 
+                ? { visualDate: '', visualTime: '' }
+                : { finalDate: '', finalTime: '' };
+
+            const res = await api.put(endpoint, payload);
+            if (res.data.success) {
+                setShowScheduleModal(false);
+                fetchMoveOuts();
+            }
+        } catch (error) {
+            alert("Failed to clear schedule: " + error.message);
+        }
+    };
+
+
     const Column = ({ title, icon: Icon, color, count, items, subtitle }) => (
         <div className="flex-1 min-w-[280px] bg-gray-50/50 rounded-2xl p-3 flex flex-col gap-3">
             <div className="flex items-center justify-between px-1">
@@ -556,20 +579,32 @@ const MoveOutDashboard = () => {
                                 </div>
                             </div>
 
-                            <div className="p-6 bg-gray-50/50 flex gap-3">
-                                <button 
-                                    type="button"
-                                    onClick={() => setShowScheduleModal(false)}
-                                    className="flex-1 py-3.5 px-6 rounded-2xl text-sm font-black text-gray-500 hover:bg-white transition-all uppercase tracking-widest border border-transparent hover:border-gray-100"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit"
-                                    className="flex-[2] py-3.5 px-6 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-95 uppercase tracking-widest"
-                                >
-                                    Confirm Appointment
-                                </button>
+                            <div className="p-6 bg-gray-50/50 flex flex-col gap-3">
+                                <div className="flex gap-3">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowScheduleModal(false)}
+                                        className="flex-1 py-3.5 px-6 rounded-2xl text-sm font-black text-gray-500 hover:bg-white transition-all uppercase tracking-widest border border-transparent hover:border-gray-100"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        className="flex-[2] py-3.5 px-6 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-95 uppercase tracking-widest"
+                                    >
+                                        Confirm Appointment
+                                    </button>
+                                </div>
+                                {((scheduleType === 'VISUAL' && selectedMoveOut?.visualDate) || 
+                                  (scheduleType === 'FINAL' && selectedMoveOut?.finalDate)) && (
+                                    <button 
+                                        type="button"
+                                        onClick={handleClearSchedule}
+                                        className="w-full py-3 px-6 rounded-2xl text-xs font-black text-red-500 hover:bg-red-50 transition-all uppercase tracking-widest border border-transparent hover:border-red-100 mt-2"
+                                    >
+                                        Clear Appointment
+                                    </button>
+                                )}
                             </div>
                         </form>
                     </div>

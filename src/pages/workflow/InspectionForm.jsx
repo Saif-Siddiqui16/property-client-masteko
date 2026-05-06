@@ -431,7 +431,7 @@ const InspectionForm = () => {
     return (
         <MainLayout title="Professional Inspection">
              <style dangerouslySetInnerHTML={{ __html: `
-                @media (max-width: 1180px) {
+                @media (max-width: 1280px) {
                     .inspection-grid {
                         display: flex;
                         flex-direction: column;
@@ -444,10 +444,34 @@ const InspectionForm = () => {
                     .sidebar-nav {
                         display: none !important;
                     }
+                    .main-content-area {
+                        padding: 1rem !important;
+                    }
+                    .header-area {
+                        padding: 0 0.5rem;
+                    }
                 }
                 .tablet-scroll-x {
                     overflow-x: auto;
                     -webkit-overflow-scrolling: touch;
+                    scrollbar-width: none;
+                }
+                .tablet-scroll-x::-webkit-scrollbar {
+                    display: none;
+                }
+                .question-card-tablet {
+                    padding: 1.5rem;
+                    background: white;
+                    border-radius: 1.5rem;
+                    border: 1px solid #f1f5f9;
+                    margin-bottom: 1rem;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+                }
+                .response-btn-active {
+                    border-color: #4f46e5 !important;
+                    background-color: #f5f3ff !important;
+                    color: #4f46e5 !important;
+                    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
                 }
             `}} />
 
@@ -529,13 +553,13 @@ const InspectionForm = () => {
                             )}
                         </div>
 
-                        {/* Horizontal Room Navigator for Tablets/Mobile */}
-                        <div className="xl:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 -mx-4 px-4 py-3 mb-6 tablet-scroll-x flex items-center gap-2">
+                        {/* Horizontal Room Navigator for Tablets/Mobile - Always visible on small screens */}
+                        <div className="lg:hidden sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100 -mx-4 px-4 py-4 mb-8 tablet-scroll-x flex items-center gap-3 shadow-sm">
                             {rooms.map((room, idx) => (
                                 <button
                                     key={room.id}
                                     onClick={() => scrollToSection(room.id)}
-                                    className="whitespace-nowrap px-4 py-2 rounded-xl bg-gray-50 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-gray-100"
+                                    className="whitespace-nowrap px-5 py-2.5 rounded-full bg-white text-[11px] font-black uppercase tracking-widest text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 transition-all border border-gray-200 shadow-sm active:scale-95"
                                 >
                                     {idx + 1}. {room.name}
                                 </button>
@@ -548,7 +572,7 @@ const InspectionForm = () => {
                                 <section 
                                     key={room.id} 
                                     ref={el => sectionRefs.current[room.id] = el}
-                                    className="max-w-[1400px] mx-auto bg-white rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden mb-12 scroll-mt-8"
+                                    className="w-full max-w-[1400px] mx-auto bg-white rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden mb-12 scroll-mt-8"
                                 >
                                     <div className="p-8 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
                                         <div>
@@ -839,25 +863,33 @@ const QuestionCard = ({ q, responses, isEditMode, inspection, series, activeSeri
             <TicketStatus q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} ticketLoading={ticketLoading} handleCreateTicketClick={handleCreateTicketClick} handleDeleteTicket={handleDeleteTicket} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex flex-col gap-4">
-                <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Condition</label>
-                <ConditionSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} series={series} activeSeries={activeSeries} setActiveSeries={setActiveSeries} handleConditionChange={handleConditionChange} />
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+            <div className="flex flex-col gap-5 md:col-span-7">
+                <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Condition</label>
+                    <div className="bg-gray-50/50 p-2 rounded-2xl border border-gray-100/50">
+                        <ConditionSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} series={series} activeSeries={activeSeries} setActiveSeries={setActiveSeries} handleConditionChange={handleConditionChange} />
+                    </div>
+                </div>
                 
-                <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mt-2">Notes</label>
-                <textarea
-                    placeholder="Add detailed item notes..."
-                    value={responses[q.id]?.notes || ''}
-                    readOnly={!isEditMode && inspection.status !== 'DRAFT'}
-                    onChange={(e) => handleNoteChange(q.id, e.target.value)}
-                    rows={3}
-                    className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                />
+                <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Notes</label>
+                    <textarea
+                        placeholder="Add detailed item notes..."
+                        value={responses[q.id]?.notes || ''}
+                        readOnly={!isEditMode && inspection.status !== 'DRAFT'}
+                        onChange={(e) => handleNoteChange(q.id, e.target.value)}
+                        rows={3}
+                        className="w-full p-4 bg-white border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all shadow-sm"
+                    />
+                </div>
             </div>
             
-            <div className="flex flex-col gap-4">
-                <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Photo Evidence</label>
-                <PhotoSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} handlePhotoUpload={handlePhotoUpload} removePhoto={removePhoto} setAnnotationModal={setAnnotationModal} localPhotoCache={localPhotoCache} handleAnnotationChange={handleAnnotationChange} />
+            <div className="flex flex-col gap-2 md:col-span-5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Photo Evidence</label>
+                <div className="h-full min-h-[140px] bg-gray-50/50 p-4 rounded-2xl border border-gray-100/50">
+                    <PhotoSelector q={q} responses={responses} isEditMode={isEditMode} inspection={inspection} handlePhotoUpload={handlePhotoUpload} removePhoto={removePhoto} setAnnotationModal={setAnnotationModal} localPhotoCache={localPhotoCache} handleAnnotationChange={handleAnnotationChange} />
+                </div>
             </div>
         </div>
     </div>
@@ -878,7 +910,7 @@ const ConditionSelector = ({ q, responses, isEditMode, inspection, series, activ
                 ))}
             </select>
         ) : q.type === 'YES_NO' ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-3">
                 {['Yes', 'No'].map(choice => (
                     <ConditionToggle
                         key={choice}
@@ -893,7 +925,7 @@ const ConditionSelector = ({ q, responses, isEditMode, inspection, series, activ
             </div>
         ) : (
             <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-1 gap-2">
                     {(q.seriesId 
                         ? (series.find(s => s.id === q.seriesId)?.responses || [])
                         : (inspection.template?.structure?.responseChoices || [
@@ -1045,12 +1077,12 @@ const ConditionToggle = ({ label, active, color, dot, onClick, disabled }) => (
     <button 
         onClick={onClick} 
         disabled={disabled}
-        className={`flex items-center gap-3 p-2 rounded-xl transition-all text-left ${disabled ? 'cursor-default' : 'hover:bg-white active:scale-95'}`}
+        className={`flex items-center gap-3 p-3 rounded-xl transition-all text-left w-full border ${active ? 'border-indigo-100 bg-white shadow-sm' : 'border-transparent hover:bg-white active:scale-95'} ${disabled ? 'cursor-default' : ''}`}
     >
-        <div className={`w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center ${active ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}`}>
-            {active && <div className={`w-2.5 h-2.5 rounded-full ${dot}`} />}
+        <div className={`w-6 h-6 rounded-full border-2 transition-all flex items-center justify-center shrink-0 ${active ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}`}>
+            {active && <div className={`w-3 h-3 rounded-full ${dot}`} />}
         </div>
-        <span className={`text-[11px] font-black tracking-widest uppercase transition-all ${active ? color : 'text-gray-400'}`}>{label}</span>
+        <span className={`text-[12px] font-black tracking-tight uppercase transition-all ${active ? color : 'text-gray-400'}`}>{label}</span>
     </button>
 );
 
