@@ -162,8 +162,21 @@ const ResponseGroups = () => {
                                                     value={choice.label}
                                                     placeholder="Label..."
                                                     onChange={(e) => {
+                                                        const val = e.target.value;
                                                         const newRes = [...formData.responses];
-                                                        newRes[idx].label = e.target.value;
+                                                        newRes[idx].label = val;
+                                                        
+                                                        // Smart Color Detection
+                                                        const lowerVal = val.toLowerCase();
+                                                        const positiveKeywords = ['yes', 'oui', 'pass', 'good', 'clean', 'functional', 'ok'];
+                                                        const negativeKeywords = ['no', 'non', 'fail', 'poor', 'damaged', 'dirty', 'broken', 'deficiency'];
+                                                        
+                                                        if (positiveKeywords.some(word => lowerVal.includes(word))) {
+                                                            newRes[idx].color = 'green';
+                                                        } else if (negativeKeywords.some(word => lowerVal.includes(word))) {
+                                                            newRes[idx].color = 'red';
+                                                        }
+
                                                         setFormData({ ...formData, responses: newRes });
                                                     }}
                                                 />

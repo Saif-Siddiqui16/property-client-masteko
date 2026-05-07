@@ -45,12 +45,12 @@ const NewInspectionWizard = () => {
                     api.get('/api/admin/properties'),
                     api.get('/api/admin/coworkers')
                 ]);
-                
+
                 const moveInUnits = unitsRes.data.success ? (unitsRes.data.data || unitsRes.data) : [];
                 setUnits(moveInUnits);
 
                 if (templatesRes.data.success) setTemplates(templatesRes.data.data || templatesRes.data);
-                
+
                 const propData = propertiesRes.data.data || propertiesRes.data;
                 setProperties(Array.isArray(propData) ? propData : []);
 
@@ -59,12 +59,12 @@ const NewInspectionWizard = () => {
 
                 // Auto-fill from location state
                 if (location.state?.moveInId || location.state?.moveOutId || location.state?.unitId) {
-                    const target = moveInUnits.find(u => 
+                    const target = moveInUnits.find(u =>
                         (location.state.moveInId && u.moveInId === parseInt(location.state.moveInId)) ||
                         (location.state.moveOutId && u.moveOutId === parseInt(location.state.moveOutId)) ||
                         (location.state.unitId && u.unitId === parseInt(location.state.unitId))
                     );
-                    
+
                     if (target) {
                         setFormData(prev => ({
                             ...prev,
@@ -72,9 +72,9 @@ const NewInspectionWizard = () => {
                             unitId: target.unitId.toString(),
                             propertyId: target.unit?.propertyId?.toString() || '',
                             leaseId: target.leaseId?.toString() || '',
-                            date: location.state.type === 'VISUAL' ? 
-                                  (location.state.visualDate ? String(location.state.visualDate).substring(0, 10) : prev.date) :
-                                  (location.state.finalDate ? String(location.state.finalDate).substring(0, 10) : prev.date),
+                            date: location.state.type === 'VISUAL' ?
+                                (location.state.visualDate ? String(location.state.visualDate).substring(0, 10) : prev.date) :
+                                (location.state.finalDate ? String(location.state.finalDate).substring(0, 10) : prev.date),
                             time: location.state.type === 'VISUAL' ? (location.state.visualTime || '') : (location.state.finalTime || '')
                         }));
                     }
@@ -91,7 +91,7 @@ const NewInspectionWizard = () => {
                 const isVisual = prev.type === 'VISUAL';
                 const targetDate = isVisual ? location.state.visualDate : location.state.finalDate;
                 const targetTime = isVisual ? location.state.visualTime : location.state.finalTime;
-                
+
                 return {
                     ...prev,
                     date: targetDate ? String(targetDate).substring(0, 10) : prev.date,
@@ -201,10 +201,10 @@ const NewInspectionWizard = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                                 <InputGroup label="Inspection Type" required>
-                                    <select 
+                                    <select
                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
                                         value={formData.type}
-                                        onChange={(e) => setFormData({...formData, type: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                                     >
                                         <option value="MOVE_OUT">Move-Out</option>
                                         <option value="VISUAL">Visual Walkthrough</option>
@@ -214,11 +214,11 @@ const NewInspectionWizard = () => {
 
                                 <InputGroup label="Scheduled Date" required>
                                     <div className="relative">
-                                        <input 
-                                            type="date" 
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all" 
+                                        <input
+                                            type="date"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
                                             value={formData.date}
-                                            onChange={(e) => setFormData({...formData, date: e.target.value})}
+                                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                                         />
                                         <Calendar size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                                     </div>
@@ -226,11 +226,11 @@ const NewInspectionWizard = () => {
 
                                 <InputGroup label="Scheduled Time">
                                     <div className="relative">
-                                        <input 
-                                            type="time" 
-                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all" 
+                                        <input
+                                            type="time"
+                                            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
                                             value={formData.time}
-                                            onChange={(e) => setFormData({...formData, time: e.target.value})}
+                                            onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                                         />
                                     </div>
                                 </InputGroup>
@@ -270,10 +270,10 @@ const NewInspectionWizard = () => {
                                 </InputGroup>
 
                                 <InputGroup label="Inspector" required>
-                                    <select 
+                                    <select
                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
                                         value={formData.inspectorId}
-                                        onChange={(e) => setFormData({...formData, inspectorId: e.target.value})}
+                                        onChange={(e) => setFormData({ ...formData, inspectorId: e.target.value })}
                                     >
                                         <option value="">Select Inspector</option>
                                         {inspectors.map(i => (
@@ -290,10 +290,10 @@ const NewInspectionWizard = () => {
                                         {(() => {
                                             const selectedUnit = units.find(u => u.unitId === parseInt(formData.unitId));
                                             if (!selectedUnit) return 'Select a unit first';
-                                            return selectedUnit.tenantName || 
-                                                   selectedUnit.lease?.tenant?.name || 
-                                                   selectedUnit.unit?.reserved_by_user?.name || 
-                                                   'No tenant/prospect linked';
+                                            return selectedUnit.tenantName ||
+                                                selectedUnit.lease?.tenant?.name ||
+                                                selectedUnit.unit?.reserved_by_user?.name ||
+                                                'No tenant/prospect linked';
                                         })()}
                                     </div>
                                 </InputGroup>
@@ -328,7 +328,7 @@ const NewInspectionWizard = () => {
                                 {templates.map(t => {
                                     const roomCount = t.structure?.rooms?.length || 0;
                                     const itemCount = t.structure?.rooms?.reduce((acc, r) => acc + (r.questions?.length || 0), 0) || 0;
-                                    
+
                                     return (
                                         <TemplateCard
                                             key={t.id}
@@ -363,7 +363,7 @@ const NewInspectionWizard = () => {
                                 onClick={handleNext}
                                 className="px-10 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-black shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2"
                             >
-                                {step === 3 ? 'Finish & Create' : 'Next'}
+                                {step === 3 ? 'Create & Start Inspection' : 'Next'}
                                 <ArrowRight size={18} />
                             </button>
                         </div>

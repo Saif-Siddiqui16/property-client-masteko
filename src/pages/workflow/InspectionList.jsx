@@ -161,9 +161,10 @@ const InspectionList = () => {
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-                <table className="w-full text-left border-collapse">
+            {/* Table container with horizontal scroll for tablet/mobile */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-x-auto">
+                <div className="min-w-[1000px]">
+                    <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="bg-gray-50/50 border-b border-gray-100 text-[11px] font-black text-gray-400 uppercase tracking-widest">
                             <th className="px-6 py-4">Inspection Type</th>
@@ -244,6 +245,7 @@ const InspectionList = () => {
                         ))}
                     </tbody>
                 </table>
+                </div>
             </div>
 
             {/* Dynamic Pagination */}

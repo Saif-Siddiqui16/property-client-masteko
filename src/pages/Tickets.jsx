@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import { Button } from '../components/Button';
-import { Search, Eye, Filter, CheckCircle, Clock, AlertTriangle, X, Plus, User, Building, Home, ChevronDown, Trash2, Edit2 } from 'lucide-react';
+import { Search, Eye, Filter, CheckCircle, Clock, AlertTriangle, X, Plus, User, Building, Home, ChevronDown, Trash2, Edit2, Play, Camera } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
@@ -30,6 +30,7 @@ export const Tickets = () => {
     const [buildings, setBuildings] = useState([]);
     const [tenants, setTenants] = useState([]);
     const [selectedBuildingId, setSelectedBuildingId] = useState('');
+    const [loadingTenants, setLoadingTenants] = useState(false);
     const [search, setSearch] = useState('');
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -68,10 +69,12 @@ export const Tickets = () => {
     };
 
     const fetchTenants = async (buildingId) => {
+        setLoadingTenants(true);
         try {
             const res = await api.get(`/api/admin/tenants?propertyId=${buildingId}&limit=1000`);
             setTenants(res.data?.data || res.data || []);
         } catch (e) { console.error(e); }
+        finally { setLoadingTenants(false); }
     };
 
     const filteredTickets = tickets.filter(t =>
@@ -220,22 +223,34 @@ export const Tickets = () => {
                             >
                                 <span className="text-sm font-medium text-indigo-600">{ticket.id}</span>
                                 <div className="flex flex-col pr-4 overflow-hidden">
-                                    <span className="text-sm text-slate-700 font-medium truncate">{ticket.subject}</span>
-                                    {ticket.isRequired && (
-                                        <span className="flex items-center gap-1 text-[10px] font-bold text-rose-600 uppercase tracking-tight mt-0.5">
-                                            <AlertTriangle size={10} />
-                                            Blocking Readiness
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-slate-700 font-medium truncate">{ticket.subject}</span>
+                                        {ticket.isRequired && (
+                                            <span className="px-1.5 py-0.5 rounded bg-red-50 text-[8px] font-black text-red-600 uppercase border border-red-100">Required</span>
+                                        )}
+                                        {ticket.attachments && ticket.attachments.length > 0 && (
+                                            <div className="flex items-center gap-1 text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100" title={`${ticket.attachments.length} attachments`}>
+                                                <Camera size={10} />
+                                                <span className="text-[10px] font-bold">{ticket.attachments.length}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-start gap-1">
+                                    <button
+                                        onClick={() => {
+                                            setViewingTenantDetails(ticket.tenantDetails || { name: ticket.tenant });
+                                        }}
+                                        className="text-sm text-indigo-600 font-semibold hover:underline text-left w-fit"
+                                    >
+                                        {ticket.tenant}
+                                    </button>
+                                    {ticket.userRole !== 'TENANT' && (
+                                        <span className="text-[9px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 uppercase tracking-tighter">
+                                            Staff / Inspector
                                         </span>
                                     )}
                                 </div>
-                                <button
-                                    onClick={() => {
-                                        setViewingTenantDetails(ticket.tenantDetails || { name: ticket.tenant });
-                                    }}
-                                    className="text-sm text-indigo-600 font-semibold hover:underline text-left w-fit"
-                                >
-                                    {ticket.tenant}
-                                </button>
                                 <span className="text-sm text-slate-500">{ticket.unit}</span>
 
                                 <span>
@@ -301,7 +316,9 @@ export const Tickets = () => {
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tenant</label>
+                                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                                            {selectedTicket.userRole === 'TENANT' ? 'Tenant' : 'Assigned Person'}
+                                        </label>
                                         <p className="font-medium text-slate-700">{selectedTicket.tenant}</p>
                                     </div>
                                     <div>
@@ -309,6 +326,16 @@ export const Tickets = () => {
                                         <p className="font-medium text-slate-700">{selectedTicket.unit}</p>
                                     </div>
                                 </div>
+
+                                {selectedTicket.inspectorName !== 'N/A' && (
+                                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Reported By</label>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <User size={14} className="text-slate-400" />
+                                            <p className="text-sm font-bold text-slate-700">{selectedTicket.inspectorName} (Inspector)</p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div>
                                     <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Subject</label>
@@ -445,13 +472,14 @@ export const Tickets = () => {
                                     <div className="relative">
                                         <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                         <select
+                                            key={`${editingTicket?.dbId || 'new'}-${selectedBuildingId}-${tenants.length}`}
                                             name="tenantId"
                                             required={selectedBuildingId !== 'all'}
                                             defaultValue={editingTicket?.tenantId}
-                                            disabled={!selectedBuildingId || selectedBuildingId === 'all'}
+                                            disabled={loadingTenants || !selectedBuildingId || selectedBuildingId === 'all'}
                                             className="w-full pl-12 pr-10 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 bg-white appearance-none text-slate-800 font-medium disabled:opacity-50"
                                         >
-                                            <option value="">{selectedBuildingId === 'all' ? 'Not Applicable' : 'Select Tenant'}</option>
+                                            <option value="">{loadingTenants ? 'Fetching tenants...' : (selectedBuildingId === 'all' ? 'Not Applicable' : 'Select Tenant')}</option>
                                             {selectedBuildingId !== 'all' && tenants.map(t => (
                                                 <option key={t.id} value={t.id}>{t.name} ({t.unit})</option>
                                             ))}
@@ -515,6 +543,35 @@ export const Tickets = () => {
                                         />
                                     </div>
                                 </div>
+
+                                {editingTicket?.attachments && editingTicket.attachments.length > 0 && (
+                                    <div className="space-y-1.5 pt-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Existing Attachments</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {editingTicket.attachments.map((att, idx) => (
+                                                <a 
+                                                    key={idx} 
+                                                    href={att.url} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer" 
+                                                    className="relative group rounded-xl overflow-hidden border border-slate-200 h-20 bg-slate-50 flex items-center justify-center"
+                                                >
+                                                    {att.type === 'image' || att.url.match(/\.(jpg|jpeg|png|webp|gif)/i) ? (
+                                                        <img src={att.url} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                                    ) : (
+                                                        <div className="flex flex-col items-center gap-1">
+                                                            <Play size={20} className="text-indigo-500" />
+                                                            <span className="text-[8px] font-bold text-slate-400 uppercase">Video</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <Eye size={16} className="text-white" />
+                                                    </div>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex gap-3 mt-8">

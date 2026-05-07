@@ -412,14 +412,14 @@ const SortableRoom = ({ room, index, formData, setFormData, series, navigate, to
     return (
         <div ref={setNodeRef} style={style} className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden group">
             <div className="p-6 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => toggleRoomCollapse(room.id)}>
-                <div className="flex items-center gap-3">
-                    <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-200 rounded">
+                <div className="flex-1 flex items-center gap-3 overflow-hidden mr-4">
+                    <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-200 rounded shrink-0">
                         <GripVertical size={20} className="text-gray-400" />
                     </div>
-                    <div className="w-8 h-8 bg-white border border-gray-100 rounded-lg flex items-center justify-center shadow-sm">
+                    <div className="w-8 h-8 bg-white border border-gray-100 rounded-lg flex items-center justify-center shadow-sm shrink-0">
                         <span className="text-xs font-black text-indigo-600">{index + 1}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
                         <input 
                             type="text"
                             value={room.name}
@@ -429,12 +429,14 @@ const SortableRoom = ({ room, index, formData, setFormData, series, navigate, to
                                 newRooms[index].name = e.target.value;
                                 setFormData({ ...formData, rooms: newRooms });
                             }}
-                            className="bg-transparent text-lg font-black text-gray-900 outline-none border-b-2 border-transparent focus:border-indigo-500 transition-all px-1"
+                            className="w-full bg-transparent text-lg font-black text-gray-900 outline-none border-b-2 border-transparent focus:border-indigo-500 transition-all px-1"
                         />
-                        {room.isCollapsed ? <ChevronDown size={18} className="text-gray-400" /> : <ChevronUp size={18} className="text-gray-400" />}
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <div className="p-2 text-gray-400 transition-transform duration-300">
+                        {room.isCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                    </div>
                     <button 
                         onClick={(e) => { e.stopPropagation(); cloneRoom(index); }}
                         className="p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all"

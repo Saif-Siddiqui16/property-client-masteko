@@ -203,7 +203,10 @@ const InspectionOverview = () => {
                                         <TicketStat icon={Clock} label="Open Tickets" value={inspection.tickets?.filter(t => t.status === 'Open').length || 0} color="bg-orange-50 text-orange-600" />
                                         <TicketStat icon={CheckCircle2} label="Resolved Tickets" value={inspection.tickets?.filter(t => t.status === 'Resolved').length || 0} color="bg-green-50 text-green-600" />
                                     </div>
-                                    <button className="w-full mt-8 py-3 rounded-2xl bg-gray-50 text-[11px] font-black text-gray-500 uppercase tracking-widest hover:bg-gray-100 transition-all border border-gray-100 shadow-inner">
+                                    <button 
+                                        onClick={() => navigate('/tickets')}
+                                        className="w-full mt-8 py-3 rounded-2xl bg-gray-50 text-[11px] font-black text-gray-500 uppercase tracking-widest hover:bg-gray-100 transition-all border border-gray-100 shadow-inner"
+                                    >
                                         View All Tickets
                                     </button>
                                 </div>
