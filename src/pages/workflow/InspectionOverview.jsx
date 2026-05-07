@@ -100,23 +100,25 @@ const InspectionOverview = () => {
                         <button className="p-2.5 bg-white rounded-2xl border border-gray-100 text-gray-400 hover:text-gray-900 transition-colors shadow-sm">
                             <MoreHorizontal size={18} />
                         </button>
-                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 hidden group-hover/more:block z-50">
-                            <button 
-                                onClick={async () => {
-                                    if (window.confirm('Are you sure you want to delete this inspection? This cannot be undone.')) {
-                                        try {
-                                            await api.delete(`/api/admin/workflow/inspections/${id}`);
-                                            navigate('/admin/workflow/inspections');
-                                        } catch (e) {
-                                            alert('Failed to delete: ' + (e.response?.data?.message || e.message));
+                        <div className="absolute right-0 top-full pt-2 w-48 hidden group-hover/more:block z-50">
+                            <div className="bg-white rounded-xl shadow-xl border border-gray-100 py-2">
+                                <button 
+                                    onClick={async () => {
+                                        if (window.confirm('Are you sure you want to delete this inspection? This cannot be undone.')) {
+                                            try {
+                                                await api.delete(`/api/admin/workflow/inspections/${id}`);
+                                                navigate('/admin/workflow/inspections');
+                                            } catch (e) {
+                                                alert('Failed to delete: ' + (e.response?.data?.message || e.message));
+                                            }
                                         }
-                                    }
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold flex items-center gap-2"
-                            >
-                                <XCircle size={16} />
-                                Delete Inspection
-                            </button>
+                                    }}
+                                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold flex items-center gap-2"
+                                >
+                                    <XCircle size={16} />
+                                    Delete Inspection
+                                </button>
+                            </div>
                         </div>
                     </div>
                     {inspection.status !== 'COMPLETED' && (
