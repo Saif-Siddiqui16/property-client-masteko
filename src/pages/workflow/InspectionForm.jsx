@@ -726,22 +726,32 @@ const InspectionForm = () => {
                                             </div>
                                             <div className="relative group/sig">
                                                 <div className="absolute inset-0 bg-white rounded-3xl border-2 border-dashed border-gray-200 group-hover:border-indigo-300 transition-colors" />
-                                                <div className="relative bg-white border-2 border-indigo-100 rounded-3xl overflow-hidden shadow-sm">
-                                                    <SignatureCanvas 
-                                                        ref={tenantSigRef}
-                                                        penColor='#1e1b4b'
-                                                        onEnd={() => handleSignatureEnd('tenant')}
-                                                        canvasProps={{
-                                                            className: 'w-full h-48 cursor-crosshair',
-                                                            style: { width: '100%', height: '192px' }
-                                                        }}
-                                                    />
-                                                    <button 
-                                                        onClick={() => clearSignature('tenant')}
-                                                        className="absolute bottom-4 right-4 p-2.5 bg-gray-900/90 text-white rounded-xl shadow-lg active:scale-95 transition-all opacity-0 group-hover/sig:opacity-100"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                <div className="relative bg-white border-2 border-indigo-100 rounded-3xl overflow-hidden shadow-sm h-48 flex items-center justify-center">
+                                                    {(signature && !isEditMode && inspection.status === 'COMPLETED') ? (
+                                                        <img 
+                                                            src={signature} 
+                                                            className="max-w-full max-h-full object-contain p-4" 
+                                                            alt="Tenant Signature" 
+                                                        />
+                                                    ) : (
+                                                        <>
+                                                            <SignatureCanvas 
+                                                                ref={tenantSigRef}
+                                                                penColor='#1e1b4b'
+                                                                onEnd={() => handleSignatureEnd('tenant')}
+                                                                canvasProps={{
+                                                                    className: 'w-full h-48 cursor-crosshair',
+                                                                    style: { width: '100%', height: '192px' }
+                                                                }}
+                                                            />
+                                                            <button 
+                                                                onClick={() => clearSignature('tenant')}
+                                                                className="absolute bottom-4 right-4 p-2.5 bg-gray-900/90 text-white rounded-xl shadow-lg active:scale-95 transition-all opacity-0 group-hover/sig:opacity-100"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -759,22 +769,32 @@ const InspectionForm = () => {
                                             </div>
                                             <div className="relative group/sig-ins">
                                                 <div className="absolute inset-0 bg-white rounded-3xl border-2 border-dashed border-gray-200 group-hover:border-indigo-300 transition-colors" />
-                                                <div className="relative bg-white border-2 border-indigo-100 rounded-3xl overflow-hidden shadow-sm">
-                                                    <SignatureCanvas 
-                                                        ref={inspectorSigRef}
-                                                        penColor='#1e1b4b'
-                                                        onEnd={() => handleSignatureEnd('inspector')}
-                                                        canvasProps={{
-                                                            className: 'w-full h-48 cursor-crosshair',
-                                                            style: { width: '100%', height: '192px' }
-                                                        }}
-                                                    />
-                                                    <button 
-                                                        onClick={() => clearSignature('inspector')}
-                                                        className="absolute bottom-4 right-4 p-2.5 bg-gray-900/90 text-white rounded-xl shadow-lg active:scale-95 transition-all opacity-0 group-hover/sig-ins:opacity-100"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                <div className="relative bg-white border-2 border-indigo-100 rounded-3xl overflow-hidden shadow-sm h-48 flex items-center justify-center">
+                                                    {(inspectorSignature && !isEditMode && inspection.status === 'COMPLETED') ? (
+                                                        <img 
+                                                            src={inspectorSignature} 
+                                                            className="max-w-full max-h-full object-contain p-4" 
+                                                            alt="Inspector Signature" 
+                                                        />
+                                                    ) : (
+                                                        <>
+                                                            <SignatureCanvas 
+                                                                ref={inspectorSigRef}
+                                                                penColor='#1e1b4b'
+                                                                onEnd={() => handleSignatureEnd('inspector')}
+                                                                canvasProps={{
+                                                                    className: 'w-full h-48 cursor-crosshair',
+                                                                    style: { width: '100%', height: '192px' }
+                                                                }}
+                                                            />
+                                                            <button 
+                                                                onClick={() => clearSignature('inspector')}
+                                                                className="absolute bottom-4 right-4 p-2.5 bg-gray-900/90 text-white rounded-xl shadow-lg active:scale-95 transition-all opacity-0 group-hover/sig-ins:opacity-100"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

@@ -115,189 +115,207 @@ const InspectionList = () => {
 
     return (
         <MainLayout title="Inspection List">
-            <div className="p-0 bg-transparent min-h-screen">
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Inspections</h1>
-                    <p className="text-gray-500 text-sm font-medium">Manage and track property inspections across all units</p>
-                </div>
-                <div className="flex items-center gap-3">
+            <div className="p-4 sm:p-0 bg-transparent min-h-screen">
+                {/* Responsive Header */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tighter">Inspections</h1>
+                        <p className="text-gray-500 text-sm font-medium">Manage and track property inspections across all units</p>
+                    </div>
                     <button 
                         onClick={() => navigate('/admin/workflow/inspections/new')}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 sm:py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all active:scale-95"
                     >
                         <Plus size={18} />
                         New Inspection
                     </button>
                 </div>
-            </div>
 
-            {/* Filters Bar */}
-            <div className="flex flex-wrap items-center gap-4 mb-8 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm">
-                <FilterGroup label="Inspection Type" value={filters.type} options={uniqueTypes} onChange={(val) => setFilters({...filters, type: val})} />
-                <FilterGroup label="Status" value={filters.status} options={uniqueStatuses} onChange={(val) => setFilters({...filters, status: val})} />
-                <FilterGroup label="Unit / Bedroom" value={filters.unit} options={uniqueUnits} onChange={(val) => setFilters({...filters, unit: val})} />
-                <FilterGroup label="Inspector" value={filters.inspector} options={uniqueInspectors} onChange={(val) => setFilters({...filters, inspector: val})} />
-                
-                <div className="flex-1 min-w-[200px] relative">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input 
-                        type="text" 
-                        placeholder="Search inspections..." 
-                        value={filters.search}
-                        onChange={(e) => setFilters({...filters, search: e.target.value})}
-                        className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                    />
+                {/* Filters Bar - Scrollable on Mobile */}
+                <div className="flex items-center gap-4 mb-8 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm overflow-x-auto no-scrollbar">
+                    <div className="flex items-center gap-4 min-w-max">
+                        <FilterGroup label="Type" value={filters.type} options={uniqueTypes} onChange={(val) => setFilters({...filters, type: val})} />
+                        <FilterGroup label="Status" value={filters.status} options={uniqueStatuses} onChange={(val) => setFilters({...filters, status: val})} />
+                        <FilterGroup label="Unit" value={filters.unit} options={uniqueUnits} onChange={(val) => setFilters({...filters, unit: val})} />
+                        <FilterGroup label="Inspector" value={filters.inspector} options={uniqueInspectors} onChange={(val) => setFilters({...filters, inspector: val})} />
+                    </div>
+                    
+                    <div className="flex-1 min-w-[200px] relative ml-2">
+                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input 
+                            type="text" 
+                            placeholder="Search..." 
+                            value={filters.search}
+                            onChange={(e) => setFilters({...filters, search: e.target.value})}
+                            className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                        />
+                    </div>
+
+                    <div className="flex items-center gap-2 ml-4 min-w-max">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">My</span>
+                        <button 
+                            onClick={() => setFilters({...filters, myInspections: !filters.myInspections})}
+                            className={`w-10 h-5 rounded-full relative transition-all ${filters.myInspections ? 'bg-indigo-600' : 'bg-gray-200'}`}
+                        >
+                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${filters.myInspections ? 'left-6' : 'left-1'}`} />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2 ml-auto">
-                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">My Inspections</span>
-                    <button 
-                        onClick={() => setFilters({...filters, myInspections: !filters.myInspections})}
-                        className={`w-10 h-5 rounded-full relative transition-all ${filters.myInspections ? 'bg-indigo-600' : 'bg-gray-200'}`}
-                    >
-                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full shadow-sm transition-all ${filters.myInspections ? 'left-6' : 'left-1'}`} />
-                    </button>
+                {/* Table - Hidden on very small screens, scrollable on tablets */}
+                <div className="hidden sm:block bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[900px]">
+                            <thead>
+                                <tr className="bg-gray-50/50 border-b border-gray-100 text-[11px] font-black text-gray-400 uppercase tracking-widest">
+                                    <th className="px-6 py-4">Inspection Type</th>
+                                    <th className="px-6 py-4">Unit</th>
+                                    <th className="px-6 py-4 hidden lg:table-cell">Tenant</th>
+                                    <th className="px-6 py-4 hidden md:table-cell">Date</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4">Signature</th>
+                                    <th className="px-6 py-4 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {filteredInspections.map((insp) => (
+                                    <tr 
+                                        key={insp.id} 
+                                        onClick={() => navigate(`/admin/workflow/inspections/${insp.id}`)}
+                                        className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
+                                    >
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-2 h-2 rounded-full ${insp.type === 'Move-Out' ? 'bg-blue-500' : 'bg-indigo-500'}`} />
+                                                <span className="font-bold text-gray-900">{insp.type}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 font-black text-gray-700">{insp.unit}</td>
+                                        <td className="px-6 py-4 hidden lg:table-cell">
+                                            <div className="flex items-center gap-2 text-sm font-bold text-gray-600">
+                                                <div className="w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center text-[10px] text-indigo-600">
+                                                    {insp.tenant.charAt(0)}
+                                                </div>
+                                                <span className="truncate max-w-[120px]">{insp.tenant}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-bold text-gray-500 hidden md:table-cell">{insp.date}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${getStatusStyle(insp.status)}`}>
+                                                {insp.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase ${getSignatureStyle(insp.signature)}`}>
+                                                {insp.signature}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button 
+                                                    onClick={(e) => { 
+                                                        e.stopPropagation(); 
+                                                        if (insp.status === 'Completed') {
+                                                            navigate(`/admin/workflow/inspections/${insp.id}`);
+                                                        } else {
+                                                            navigate(`/admin/workflow/inspections/${insp.id}/form`);
+                                                        }
+                                                    }}
+                                                    className="px-4 py-2 bg-gray-50 rounded-xl text-[10px] font-black text-gray-700 uppercase hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                >
+                                                    {insp.status === 'Completed' ? 'Report' : 'Open'}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
 
-            {/* Table container with horizontal scroll for tablet/mobile */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-x-auto">
-                <div className="min-w-[1000px]">
-                    <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-gray-50/50 border-b border-gray-100 text-[11px] font-black text-gray-400 uppercase tracking-widest">
-                            <th className="px-6 py-4">Inspection Type</th>
-                            <th className="px-6 py-4">Unit / Bedroom</th>
-                            <th className="px-6 py-4">Tenant</th>
-                            <th className="px-6 py-4">Date</th>
-                            <th className="px-6 py-4">Inspector</th>
-                            <th className="px-6 py-4">Status</th>
-                            <th className="px-6 py-4">Signature</th>
-                            <th className="px-6 py-4">Tickets</th>
-                            <th className="px-6 py-4 text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {filteredInspections.map((insp) => (
-                            <tr 
-                                key={insp.id} 
-                                onClick={() => navigate(`/admin/workflow/inspections/${insp.id}`)}
-                                className="hover:bg-gray-50/50 transition-colors group cursor-pointer"
-                            >
-                                <td className="px-6 py-4">
+                {/* Mobile Card Layout - Shown only on small screens */}
+                <div className="flex flex-col gap-4 sm:hidden">
+                    {filteredInspections.map((insp) => (
+                        <div 
+                            key={insp.id}
+                            onClick={() => navigate(`/admin/workflow/inspections/${insp.id}`)}
+                            className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm active:scale-[0.98] transition-all"
+                        >
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-2">
                                         <div className={`w-2 h-2 rounded-full ${insp.type === 'Move-Out' ? 'bg-blue-500' : 'bg-indigo-500'}`} />
-                                        <span className="font-bold text-gray-900">{insp.type}</span>
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{insp.type}</span>
                                     </div>
-                                </td>
-                                <td className="px-6 py-4 font-black text-gray-700">{insp.unit}</td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2 text-sm font-bold text-gray-600">
-                                        <div className="w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center text-[10px] text-indigo-600">
-                                            {insp.tenant.charAt(0)}
-                                        </div>
-                                        {insp.tenant}
+                                    <h3 className="text-xl font-black text-gray-900 tracking-tight">Unit {insp.unit}</h3>
+                                </div>
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${getStatusStyle(insp.status)}`}>
+                                    {insp.status}
+                                </span>
+                            </div>
+                            
+                            <div className="flex items-center justify-between text-sm font-bold text-gray-500">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-indigo-50 flex items-center justify-center text-[10px] text-indigo-600">
+                                        {insp.tenant.charAt(0)}
                                     </div>
-                                </td>
-                                <td className="px-6 py-4 text-sm font-bold text-gray-500">{insp.date}</td>
-                                <td className="px-6 py-4 text-sm font-bold text-gray-500">{insp.inspector}</td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${getStatusStyle(insp.status)}`}>
-                                        {insp.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase ${getSignatureStyle(insp.signature)}`}>
-                                        {insp.signature}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-center">
-                                    <span className="bg-gray-100 px-2 py-0.5 rounded-md text-xs font-black text-gray-500">
-                                        {insp.tickets}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); navigate(`/admin/workflow/inspections/${insp.id}`); }}
-                                            className="p-2 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-gray-200"
-                                            title="View Overview"
-                                        >
-                                            <Eye size={16} className="text-gray-400" />
-                                        </button>
-                                        <button 
-                                            onClick={(e) => { 
-                                                e.stopPropagation(); 
-                                                if (insp.status === 'Completed') {
-                                                    navigate(`/admin/workflow/inspections/${insp.id}`);
-                                                } else {
-                                                    navigate(`/admin/workflow/inspections/${insp.id}/form`);
-                                                }
-                                            }}
-                                            className="flex items-center gap-1 px-3 py-1.5 bg-gray-50 rounded-xl text-[11px] font-black text-gray-700 uppercase hover:bg-white border border-transparent hover:border-gray-200 transition-all"
-                                        >
-                                            {insp.status === 'Completed' ? 'Report' : 'Open'} <ChevronRight size={14} className="text-gray-400" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                </div>
-            </div>
+                                    {insp.tenant}
+                                </div>
+                                <span>{insp.date}</span>
+                            </div>
 
-            {/* Dynamic Pagination */}
-            <div className="mt-8 flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400">
-                    Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} inspections
-                </span>
-                <div className="flex items-center gap-2">
-                    <button 
-                        onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-                        disabled={pagination.page === 1}
-                        className={`p-2 rounded-xl border border-gray-100 ${pagination.page === 1 ? 'text-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-400 hover:bg-white transition-colors'}`}
-                    >
-                        <ChevronRight size={16} className="rotate-180" />
-                    </button>
-                    
-                    {[...Array(pagination.totalPages)].map((_, i) => {
-                        const pageNum = i + 1;
-                        // Only show current page, 1, total, and pages around current
-                        if (
-                            pageNum === 1 || 
-                            pageNum === pagination.totalPages || 
-                            (pageNum >= pagination.page - 1 && pageNum <= pagination.page + 1)
-                        ) {
-                            return (
-                                <button 
-                                    key={pageNum}
-                                    onClick={() => setPagination(prev => ({ ...prev, page: pageNum }))}
-                                    className={`w-8 h-8 flex items-center justify-center rounded-xl text-xs font-black transition-all ${pagination.page === pageNum ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 hover:bg-gray-50 border border-transparent hover:border-gray-100'}`}
-                                >
-                                    {pageNum}
+                            <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
+                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase ${getSignatureStyle(insp.signature)}`}>
+                                    Signature: {insp.signature}
+                                </span>
+                                <button className="text-indigo-600 font-black text-xs uppercase tracking-widest flex items-center gap-1">
+                                    View Details <ChevronRight size={14} />
                                 </button>
-                            );
-                        } else if (
-                            pageNum === pagination.page - 2 || 
-                            pageNum === pagination.page + 2
-                        ) {
-                            return <span key={pageNum} className="text-gray-400 text-xs px-1">...</span>;
-                        }
-                        return null;
-                    })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
 
-                    <button 
-                        onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
-                        disabled={pagination.page === pagination.totalPages}
-                        className={`p-2 rounded-xl border border-gray-100 ${pagination.page === pagination.totalPages ? 'text-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-400 hover:bg-white transition-colors'}`}
-                    >
-                        <ChevronRight size={16} />
-                    </button>
+                {/* Dynamic Pagination */}
+                <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <span className="text-xs font-bold text-gray-400">
+                        Showing {Math.min(pagination.total, (pagination.page - 1) * pagination.limit + 1)} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                            disabled={pagination.page === 1}
+                            className={`p-2.5 rounded-xl border border-gray-100 ${pagination.page === 1 ? 'text-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-400 hover:bg-white'}`}
+                        >
+                            <ChevronRight size={18} className="rotate-180" />
+                        </button>
+                        <div className="flex gap-1">
+                            {[...Array(pagination.totalPages)].map((_, i) => (
+                                <button 
+                                    key={i}
+                                    onClick={() => setPagination(prev => ({ ...prev, page: i + 1 }))}
+                                    className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-black transition-all ${pagination.page === i + 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white text-gray-500 border border-gray-100'}`}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
+                        </div>
+                        <button 
+                            onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
+                            disabled={pagination.page === pagination.totalPages}
+                            className={`p-2.5 rounded-xl border border-gray-100 ${pagination.page === pagination.totalPages ? 'text-gray-200 cursor-not-allowed' : 'bg-gray-50 text-gray-400 hover:bg-white'}`}
+                        >
+                            <ChevronRight size={18} />
+                        </button>
+                    </div>
                 </div>
             </div>
-            </div>
+            
+            <style dangerouslySetInnerHTML={{ __html: `
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}} />
         </MainLayout>
     );
 };

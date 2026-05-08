@@ -16,6 +16,7 @@
     "clsx": "^2.1.0",
     "date-fns": "^4.1.0",
     "dompurify": "^3.3.3",
+    "fabric": "^5.3.0",
     "i18next": "^25.8.14",
     "i18next-browser-languagedetector": "^8.2.1",
     "lucide-react": "^0.300.0",
