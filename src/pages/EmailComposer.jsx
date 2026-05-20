@@ -48,6 +48,11 @@ const EmailComposer = () => {
     const [tenantPage, setTenantPage] = useState(1);
     const [tenantSearchTerm, setTenantSearchTerm] = useState('');
     const tenantsPerPage = 6; 
+    
+    // Pagination & Search for Residents
+    const [residentPage, setResidentPage] = useState(1);
+    const [residentSearchTerm, setResidentSearchTerm] = useState('');
+    const residentsPerPage = 6;
 
     // Pagination & Search for Buildings
     const [buildingPage, setBuildingPage] = useState(1);
@@ -505,16 +510,18 @@ const EmailComposer = () => {
                                         </div>
                                     </h3>
                                     <div className="grid grid-cols-2 gap-4">
-                                        {tenants.length === 0 && (
+                                        {tenants.filter(t => t.type !== 'RESIDENT').length === 0 && (
                                             <div className="col-span-2 text-center py-10 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100 text-gray-400">
                                                 No tenants were found in the database.
                                             </div>
                                         )}
                                         {(() => {
-                                            const filtered = tenants.filter(t => 
-                                                t.name.toLowerCase().includes(tenantSearchTerm.toLowerCase()) || 
-                                                t.email.toLowerCase().includes(tenantSearchTerm.toLowerCase())
-                                            );
+                                            const filtered = tenants
+                                                .filter(t => t.type !== 'RESIDENT')
+                                                .filter(t => 
+                                                    t.name.toLowerCase().includes(tenantSearchTerm.toLowerCase()) || 
+                                                    t.email.toLowerCase().includes(tenantSearchTerm.toLowerCase())
+                                                );
                                             const paginated = filtered.slice((tenantPage - 1) * tenantsPerPage, tenantPage * tenantsPerPage);
                                             const totalPages = Math.ceil(filtered.length / tenantsPerPage);
                                             
@@ -563,6 +570,88 @@ const EmailComposer = () => {
                                         })()}
                                     </div>
                                 </div>
+
+                                <div className="space-y-6 pt-10 border-t border-gray-100 mt-10">
+                                    <h3 className="text-xl font-bold text-gray-900 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Users className="h-5 w-5 text-indigo-600" />
+                                            Individual Residents
+                                        </div>
+                                        <div className="relative">
+                                            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Search by name..." 
+                                                className="pl-10 pr-4 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-100 placeholder:text-gray-400"
+                                                value={residentSearchTerm}
+                                                onChange={(e) => {
+                                                    setResidentSearchTerm(e.target.value);
+                                                    setResidentPage(1);
+                                                }}
+                                            />
+                                        </div>
+                                    </h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {tenants.filter(t => t.type === 'RESIDENT').length === 0 && (
+                                            <div className="col-span-2 text-center py-10 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100 text-gray-400">
+                                                No residents were found in the database.
+                                            </div>
+                                        )}
+                                        {(() => {
+                                            const filtered = tenants
+                                                .filter(t => t.type === 'RESIDENT')
+                                                .filter(t => 
+                                                    t.name.toLowerCase().includes(residentSearchTerm.toLowerCase()) || 
+                                                    t.email.toLowerCase().includes(residentSearchTerm.toLowerCase())
+                                                );
+                                            const paginated = filtered.slice((residentPage - 1) * residentsPerPage, residentPage * residentsPerPage);
+                                            const totalPages = Math.ceil(filtered.length / residentsPerPage);
+                                            
+                                            return (
+                                                <>
+                                                    {paginated.map(t => (
+                                                        <button
+                                                            key={t.id}
+                                                            onClick={() => toggleIndividualTenant(t.id)}
+                                                            className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                                                                selection.tenantIds.includes(t.id) 
+                                                                ? 'border-indigo-600 bg-indigo-50/50 ring-4 ring-indigo-50' 
+                                                                : 'border-gray-50 bg-gray-50 hover:border-gray-200'
+                                                            }`}
+                                                        >
+                                                            <div className="text-sm font-bold text-gray-800 line-clamp-1">{t.name}</div>
+                                                            <div className="text-[11px] text-gray-400 line-clamp-1">{t.email}</div>
+                                                        </button>
+                                                    ))}
+                                                    
+                                                    {filtered.length > residentsPerPage && (
+                                                        <div className="col-span-2 flex items-center justify-between mt-2 px-2">
+                                                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                                                                Page {residentPage} of {totalPages}
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button 
+                                                                    onClick={() => setResidentPage(p => Math.max(1, p - 1))}
+                                                                    disabled={residentPage === 1}
+                                                                    className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                                >
+                                                                    <ChevronLeft className="h-4 w-4 text-gray-600" />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => setResidentPage(p => Math.min(totalPages, p + 1))}
+                                                                    disabled={residentPage === totalPages}
+                                                                    className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                                >
+                                                                    <ChevronRight className="h-4 w-4 text-gray-600" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
                             </div>
 
                             {/* Right Column: Population Summary */}
@@ -592,9 +681,9 @@ const EmailComposer = () => {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <div className="flex flex-col items-end">
-                                                    <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded">
-                                                        {r.role}
-                                                    </span>
+                                                     <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded">
+                                                         {r.type || r.role}
+                                                     </span>
                                                     <span className="text-[8px] text-gray-400 uppercase mt-0.5">
                                                         {buildings.find(b => String(b.id) === String(r.targetPropertyId))?.name || 'Main Residence'}
                                                     </span>

@@ -124,7 +124,8 @@ const SMSInbox = () => {
         if (!matchesSearch) return false;
         
         if (activeTab === 'ALL') return true;
-        if (activeTab === 'TENANT') return c.role === 'TENANT' || c.role === 'RESIDENT';
+        if (activeTab === 'TENANT') return c.role === 'TENANT';
+        if (activeTab === 'RESIDENT') return c.role === 'RESIDENT';
         if (activeTab === 'COWORKER') return c.role === 'COWORKER';
         if (activeTab === 'OWNER') return c.role === 'OWNER';
         return true;
@@ -159,6 +160,7 @@ const SMSInbox = () => {
                             {[
                                 { id: 'ALL', label: 'All' },
                                 { id: 'TENANT', label: 'Tenants' },
+                                { id: 'RESIDENT', label: 'Residents' },
                                 { id: 'COWORKER', label: 'Team' },
                                 { id: 'OWNER', label: 'Owners' }
                             ].map(tab => (
@@ -219,6 +221,7 @@ const SMSInbox = () => {
                                                     <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ${
                                                         conv.role === 'COWORKER' ? 'bg-emerald-100 text-emerald-600' :
                                                         conv.role === 'OWNER' ? 'bg-amber-100 text-amber-600' :
+                                                        conv.role === 'RESIDENT' ? 'bg-purple-100 text-purple-600' :
                                                         'bg-gray-100 text-gray-500'
                                                     }`}>
                                                         {conv.role === 'COWORKER' ? 'TEAM' : conv.role}
