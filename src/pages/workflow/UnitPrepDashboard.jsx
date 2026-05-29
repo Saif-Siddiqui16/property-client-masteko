@@ -138,9 +138,9 @@ const UnitPrepDashboard = () => {
                     <span>{item.unitType || 'Unit'}</span>
                     <span className="text-gray-300">•</span>
                     <span>
-                        {item.leases?.[0]?.tenant?.name || 
-                         item.moveOuts?.[0]?.lease?.tenant?.name || 
-                         'Vacant'}
+                        {item.leases?.[0]?.tenant?.name ||
+                            item.moveOuts?.[0]?.lease?.tenant?.name ||
+                            'Vacant'}
                     </span>
                 </div>
             </div>
@@ -211,13 +211,13 @@ const UnitPrepDashboard = () => {
                         <p className="text-gray-500 text-sm font-medium">Track units moving toward readiness • Follow your exact workflow</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button 
+                        <button
                             onClick={handleExport}
                             className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 rounded-2xl text-sm font-black text-gray-700 hover:bg-gray-100 transition-colors border border-gray-100"
                         >
                             Export <ChevronRight size={18} className="rotate-90 text-gray-400" />
                         </button>
-                        <button 
+                        <button
                             onClick={() => navigate('/admin/workflow/inspections/new')}
                             className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all active:scale-95"
                         >
@@ -241,7 +241,7 @@ const UnitPrepDashboard = () => {
                 <div className="flex items-center gap-4 mb-8">
                     <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-2xl border border-gray-100">
                         <Filter size={16} className="text-gray-400" />
-                        <select 
+                        <select
                             value={buildingFilter}
                             onChange={(e) => setBuildingFilter(e.target.value)}
                             className="bg-transparent text-xs font-black text-gray-700 outline-none border-none uppercase tracking-wider"
@@ -269,8 +269,8 @@ const UnitPrepDashboard = () => {
                     const filtered = prepUnits.filter(u => {
                         const nameToSearch = (u.name || u.unitNumber || '').toLowerCase();
                         const tenantToSearch = (u.leases?.[0]?.tenant?.name || u.moveOuts?.[0]?.lease?.tenant?.name || '').toLowerCase();
-                        const matchesSearch = nameToSearch.includes(searchTerm.toLowerCase()) || 
-                                           tenantToSearch.includes(searchTerm.toLowerCase());
+                        const matchesSearch = nameToSearch.includes(searchTerm.toLowerCase()) ||
+                            tenantToSearch.includes(searchTerm.toLowerCase());
                         const matchesBuilding = buildingFilter === 'All' || u.property?.name === buildingFilter;
                         return matchesSearch && matchesBuilding;
                     });

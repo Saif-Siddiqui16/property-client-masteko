@@ -18,7 +18,7 @@ import {
 import { format } from 'date-fns';
 import { MainLayout } from '../../layouts/MainLayout';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 
 const MoveOutDashboard = () => {
     const navigate = useNavigate();

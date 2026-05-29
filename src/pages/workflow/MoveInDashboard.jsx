@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/client';
-import { 
-    Calendar, 
-    Lock, 
-    CheckCircle2, 
-    AlertCircle, 
-    ArrowRight, 
-    Filter, 
-    Search, 
+import {
+    Calendar,
+    Lock,
+    CheckCircle2,
+    AlertCircle,
+    ArrowRight,
+    Filter,
+    Search,
     MoreVertical,
     Clock,
     FileCheck,
@@ -58,13 +58,13 @@ const MoveInDashboard = () => {
         const reason = window.prompt("Reason for admin override:");
         if (!reason) return;
         const missing = window.prompt("Missing items (comma separated):");
-        
+
         try {
             const res = await api.post(`/api/admin/workflow/move-in/${id}/override`, {
                 reason,
                 missingItems: missing || ''
             });
-            
+
             if (res.data.success) {
                 alert('Override successful');
                 fetchMoveIns();
@@ -189,7 +189,7 @@ const MoveInDashboard = () => {
     const Card = ({ item }) => {
         const handleAction = (e) => {
             e.stopPropagation();
-            
+
             // Priority 1: Inspections
             if (item.status === 'INSPECTION_IN_PROGRESS' && item.inspectionId) {
                 navigate(`/admin/workflow/inspections/${item.inspectionId}/form`);
@@ -222,12 +222,12 @@ const MoveInDashboard = () => {
         const displayDate = safeDate(item.targetDate);
 
         return (
-            <div 
+            <div
                 className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer group relative"
                 onClick={handleAction}
             >
                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <button 
+                    <button
                         onClick={(e) => { e.stopPropagation(); handleCancelMoveIn(item.id); }}
                         className="p-1.5 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-lg transition-colors"
                         title="Cancel Move-In"
@@ -242,7 +242,7 @@ const MoveInDashboard = () => {
                             <span className="bg-red-100 text-red-600 text-[9px] font-black px-1.5 py-0.5 rounded animate-pulse">PRIORITY</span>
                         )}
                         <span className="bg-indigo-50 text-indigo-600 text-[9px] font-black px-1.5 py-0.5 rounded border border-indigo-100">
-                           {item.unit.property?.name || 'Unit'}
+                            {item.unit.property?.name || 'Unit'}
                         </span>
                     </div>
 
@@ -271,23 +271,22 @@ const MoveInDashboard = () => {
                     </div>
 
                     <div className="pt-1 flex flex-col gap-1.5">
-                        <div 
-                            className={`w-full flex items-center justify-between p-2 rounded-lg transition-all border ${
-                                item.status === 'INSPECTION_COMPLETED' 
-                                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm' 
+                        <div
+                            className={`w-full flex items-center justify-between p-2 rounded-lg transition-all border ${item.status === 'INSPECTION_COMPLETED'
+                                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
                                     : item.status === 'INSPECTION_IN_PROGRESS'
                                         ? 'bg-amber-600 text-white border-amber-500 shadow-sm'
                                         : isBlocked ? 'bg-gray-100 text-gray-400 border-gray-200' : 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
-                            } ${loading || isBlocked ? 'cursor-not-allowed opacity-70' : 'hover:brightness-110 active:scale-95'}`}
+                                } ${loading || isBlocked ? 'cursor-not-allowed opacity-70' : 'hover:brightness-110 active:scale-95'}`}
                         >
                             <div className="flex items-center gap-2">
                                 {item.status === 'INSPECTION_COMPLETED' ? <CheckCircle2 size={14} /> : isBlocked ? <Lock size={14} /> : <Unlock size={14} />}
                                 <span className="text-[9px] font-black uppercase tracking-wider">
-                                    {isBlocked ? 'Prep In Progress' : 
-                                     item.status === 'REQUIREMENTS_PENDING' ? 'Override & Continue' :
-                                     item.status === 'READY_FOR_MOVE_IN' ? 'Start Inspection' :
-                                     item.status === 'INSPECTION_IN_PROGRESS' ? 'Continue Inspection' :
-                                     item.status === 'INSPECTION_COMPLETED' ? 'Finalize Move-In' : 'Process'}
+                                    {isBlocked ? 'Prep In Progress' :
+                                        item.status === 'REQUIREMENTS_PENDING' ? 'Override & Continue' :
+                                            item.status === 'READY_FOR_MOVE_IN' ? 'Start Inspection' :
+                                                item.status === 'INSPECTION_IN_PROGRESS' ? 'Continue Inspection' :
+                                                    item.status === 'INSPECTION_COMPLETED' ? 'Finalize Move-In' : 'Process'}
                                 </span>
                             </div>
                             {!isBlocked && <ChevronRight size={12} />}
@@ -296,34 +295,34 @@ const MoveInDashboard = () => {
 
                     {item.requirements && (
                         <div className="grid grid-cols-2 gap-x-2 gap-y-2 pt-1.5 mt-0.5 border-t border-gray-50">
-                            <Requirement 
-                                badge="Ready" 
-                                status={item.unit.unit_ready_completed || item.unit.ready_for_leasing} 
+                            <Requirement
+                                badge="Ready"
+                                status={item.unit.unit_ready_completed || item.unit.ready_for_leasing}
                                 label={item.unit.unit_ready_completed ? 'Unit Ready' : 'Prep Pending'}
                             />
-                            <Requirement 
-                                 badge="Repairs" 
-                                 status={item.requirements.repairs} 
-                                 label={item.requirements.repairs ? 'Clear' : 'Tasks Open'}
+                            <Requirement
+                                badge="Repairs"
+                                status={item.requirements.repairs}
+                                label={item.requirements.repairs ? 'Clear' : 'Tasks Open'}
                             />
-                            <Requirement 
-                                badge="Rent" 
-                                status={item.requirements.rent} 
+                            <Requirement
+                                badge="Rent"
+                                status={item.requirements.rent}
                                 onClick={(e) => { e.stopPropagation(); handleToggleRequirement(item.id, 'Rent', item.requirements.rent); }}
                             />
-                            <Requirement 
-                                badge="Deposit" 
-                                status={item.requirements.deposit} 
+                            <Requirement
+                                badge="Deposit"
+                                status={item.requirements.deposit}
                                 onClick={(e) => { e.stopPropagation(); handleToggleRequirement(item.id, 'Deposit', item.requirements.deposit); }}
                             />
-                            <Requirement 
-                                badge="Insure" 
-                                status={item.requirements.insurance} 
+                            <Requirement
+                                badge="Insure"
+                                status={item.requirements.insurance}
                                 onClick={(e) => { e.stopPropagation(); handleToggleRequirement(item.id, 'Insurance', item.requirements.insurance); }}
                             />
-                            <Requirement 
-                                badge="Lease" 
-                                status={!!item.leaseId} 
+                            <Requirement
+                                badge="Lease"
+                                status={!!item.leaseId}
                             />
                         </div>
                     )}
@@ -338,7 +337,7 @@ const MoveInDashboard = () => {
         const isMissing = status === 'MISSING' || status === false;
 
         return (
-            <div 
+            <div
                 onClick={onClick}
                 className={`flex items-center gap-1.5 p-1 rounded-md transition-all ${onClick ? 'cursor-pointer hover:bg-gray-50' : ''}`}
             >
@@ -356,11 +355,10 @@ const MoveInDashboard = () => {
                     </div>
                 )}
                 <div className="flex flex-col">
-                    <span className={`text-[9px] font-black uppercase tracking-wider ${
-                        isPaid ? 'text-gray-400' : 
-                        isNotRequired ? 'text-gray-300' : 
-                        'text-red-600'
-                    }`}>
+                    <span className={`text-[9px] font-black uppercase tracking-wider ${isPaid ? 'text-gray-400' :
+                            isNotRequired ? 'text-gray-300' :
+                                'text-red-600'
+                        }`}>
                         {badge}
                     </span>
                     {label && (
@@ -378,110 +376,110 @@ const MoveInDashboard = () => {
     return (
         <MainLayout title="Move-In Dashboard">
             <div className="p-0 bg-transparent min-h-screen">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4 mt-2">
-                <div>
-                    <h1 className="text-xl font-black text-gray-900 tracking-tight">Move-In Dashboard</h1>
-                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Track tenant move-ins • Follow workflow</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={handleExport}
-                        className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-xl text-xs font-black text-gray-600 hover:bg-gray-50 uppercase tracking-widest"
-                    >
-                        Export <ChevronRight size={14} className="rotate-90" />
-                    </button>
-                    <button 
-                        onClick={() => navigate('/admin/workflow/inspections/new')}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 shadow-md uppercase tracking-widest"
-                    >
-                        <Calendar size={14} />
-                        Schedule
-                    </button>
-                </div>
-            </div>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-5 gap-3 mb-6">
-                <StatCard icon={Calendar} label="Upcoming" sublabel="30 Days" value={stats.upcoming} color="text-blue-600" bg="bg-blue-50" />
-                <StatCard icon={Lock} label="Blocked Prep" sublabel="Not ready" value={stats.blockedPrep} color="text-red-600" bg="bg-red-50" />
-                <StatCard icon={FileCheck} label="Blocked Req" sublabel="Action needed" value={stats.blockedReq} color="text-orange-600" bg="bg-orange-50" />
-                <StatCard icon={Search} label="Ready" sublabel="Verified" value={stats.readyInspection} color="text-indigo-600" bg="bg-indigo-50" />
-                <StatCard icon={CheckCircle2} label="Completed" sublabel="Done" value={stats.completed} color="text-green-600" bg="bg-green-50" />
-            </div>
-
-            {/* Filters */}
-            <div className="flex items-center justify-between mb-6 bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
-                        <Filter size={16} className="text-gray-400" />
-                        <select className="bg-transparent text-sm font-semibold outline-none border-none">
-                            <option>All Buildings</option>
-                        </select>
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4 mt-2">
+                    <div>
+                        <h1 className="text-xl font-black text-gray-900 tracking-tight">Move-In Dashboard</h1>
+                        <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Track tenant move-ins • Follow workflow</p>
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
-                        <Calendar size={16} className="text-gray-400" />
-                        <select className="bg-transparent text-sm font-semibold outline-none border-none">
-                            <option>Next 30 Days</option>
-                        </select>
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={handleExport}
+                            className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-xl text-xs font-black text-gray-600 hover:bg-gray-50 uppercase tracking-widest"
+                        >
+                            Export <ChevronRight size={14} className="rotate-90" />
+                        </button>
+                        <button
+                            onClick={() => navigate('/admin/workflow/inspections/new')}
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black hover:bg-indigo-700 shadow-md uppercase tracking-widest"
+                        >
+                            <Calendar size={14} />
+                            Schedule
+                        </button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                        <input 
-                            type="text" 
-                            placeholder="Search units, tenants..." 
-                            className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        />
+                {/* Stats Cards */}
+                <div className="grid grid-cols-5 gap-3 mb-6">
+                    <StatCard icon={Calendar} label="Upcoming" sublabel="30 Days" value={stats.upcoming} color="text-blue-600" bg="bg-blue-50" />
+                    <StatCard icon={Lock} label="Blocked Prep" sublabel="Not ready" value={stats.blockedPrep} color="text-red-600" bg="bg-red-50" />
+                    <StatCard icon={FileCheck} label="Blocked Req" sublabel="Action needed" value={stats.blockedReq} color="text-orange-600" bg="bg-orange-50" />
+                    <StatCard icon={Search} label="Ready" sublabel="Verified" value={stats.readyInspection} color="text-indigo-600" bg="bg-indigo-50" />
+                    <StatCard icon={CheckCircle2} label="Completed" sublabel="Done" value={stats.completed} color="text-green-600" bg="bg-green-50" />
+                </div>
+
+                {/* Filters */}
+                <div className="flex items-center justify-between mb-6 bg-white p-2 rounded-xl border border-gray-100 shadow-sm">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
+                            <Filter size={16} className="text-gray-400" />
+                            <select className="bg-transparent text-sm font-semibold outline-none border-none">
+                                <option>All Buildings</option>
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100">
+                            <Calendar size={16} className="text-gray-400" />
+                            <select className="bg-transparent text-sm font-semibold outline-none border-none">
+                                <option>Next 30 Days</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <div className="relative">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search units, tenants..."
+                                className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Kanban Columns */}
-            <div className="flex gap-6 overflow-x-auto pb-4 h-[calc(100vh-380px)] scrollbar-thin scrollbar-thumb-gray-200">
-                <Column 
-                    title="Upcoming Move-Ins" 
-                    subtitle="Upcoming within 30 days" 
-                    icon={Calendar} 
-                    color="bg-blue-100 text-blue-600" 
-                    count={stats.upcoming} 
-                    items={moveIns.filter(m => m.status === 'PENDING')}
-                />
-                <Column 
-                    title="Blocked - In Preparation" 
-                    subtitle="Lease/Reservation exists but unit is NOT Ready" 
-                    icon={Lock} 
-                    color="bg-red-100 text-red-600" 
-                    count={stats.blockedPrep} 
-                    items={moveIns.filter(m => m.status === 'BLOCKED_IN_PREPARATION' || m.status === 'BLOCKED_IN_CONSTRUCTION')}
-                />
-                <Column 
-                    title="Blocked - Missing Requirements" 
-                    subtitle="Unit Ready but Rent/Deposit/Insurance incomplete" 
-                    icon={FileCheck} 
-                    color="bg-orange-100 text-orange-600" 
-                    count={stats.blockedReq} 
-                    items={moveIns.filter(m => m.status === 'REQUIREMENTS_PENDING')}
-                />
-                <Column 
-                    title="Ready for Move-In Inspection" 
-                    subtitle="Unit Ready + All requirements complete or overridden" 
-                    icon={Search} 
-                    color="bg-yellow-100 text-yellow-600" 
-                    count={stats.readyInspection} 
-                    items={moveIns.filter(m => m.status === 'READY_FOR_MOVE_IN' || m.status === 'INSPECTION_IN_PROGRESS')}
-                />
-                <Column 
-                    title="Inspection Completed" 
-                    subtitle="Inspection done - check deficiencies" 
-                    icon={CheckCircle2} 
-                    color="bg-green-100 text-green-600" 
-                    count={stats.completed} 
-                    items={moveIns.filter(m => m.status === 'INSPECTION_COMPLETED')}
-                />
-            </div>
+                {/* Kanban Columns */}
+                <div className="flex gap-6 overflow-x-auto pb-4 h-[calc(100vh-380px)] scrollbar-thin scrollbar-thumb-gray-200">
+                    <Column
+                        title="Upcoming Move-Ins"
+                        subtitle="Upcoming within 30 days"
+                        icon={Calendar}
+                        color="bg-blue-100 text-blue-600"
+                        count={stats.upcoming}
+                        items={moveIns.filter(m => m.status === 'PENDING')}
+                    />
+                    <Column
+                        title="Blocked - In Preparation"
+                        subtitle="Lease/Reservation exists but unit is NOT Ready"
+                        icon={Lock}
+                        color="bg-red-100 text-red-600"
+                        count={stats.blockedPrep}
+                        items={moveIns.filter(m => m.status === 'BLOCKED_IN_PREPARATION' || m.status === 'BLOCKED_IN_CONSTRUCTION')}
+                    />
+                    <Column
+                        title="Blocked - Missing Requirements"
+                        subtitle="Unit Ready but Rent/Deposit/Insurance incomplete"
+                        icon={FileCheck}
+                        color="bg-orange-100 text-orange-600"
+                        count={stats.blockedReq}
+                        items={moveIns.filter(m => m.status === 'REQUIREMENTS_PENDING')}
+                    />
+                    <Column
+                        title="Ready for Move-In Inspection"
+                        subtitle="Unit Ready + All requirements complete or overridden"
+                        icon={Search}
+                        color="bg-yellow-100 text-yellow-600"
+                        count={stats.readyInspection}
+                        items={moveIns.filter(m => m.status === 'READY_FOR_MOVE_IN' || m.status === 'INSPECTION_IN_PROGRESS')}
+                    />
+                    <Column
+                        title="Inspection Completed"
+                        subtitle="Inspection done - check deficiencies"
+                        icon={CheckCircle2}
+                        color="bg-green-100 text-green-600"
+                        count={stats.completed}
+                        items={moveIns.filter(m => m.status === 'INSPECTION_COMPLETED')}
+                    />
+                </div>
             </div>
         </MainLayout>
     );
