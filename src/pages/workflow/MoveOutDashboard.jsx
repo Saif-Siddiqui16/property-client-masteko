@@ -60,9 +60,9 @@ const MoveOutDashboard = () => {
             const hasBothStarted = item.visualInspectionId && item.finalInspectionId;
             if (item.status === 'COMPLETED') s.completed++;
             else if (item.status === 'INSPECTIONS_COMPLETED') s.ready++;
-            else if (item.status === 'INSPECTION_IN_PROGRESS' || hasBothStarted) s.inProgress++;
             else if (item.status === 'PENDING') s.upcoming++;
             else if (item.status === 'CONFIRMED') s.confirmed++;
+            else if (item.status === 'INSPECTION_IN_PROGRESS' || hasBothStarted) s.inProgress++;
             else if (item.status.includes('SCHEDULED')) s.scheduled++;
         });
         setStats(s);
@@ -514,7 +514,7 @@ const MoveOutDashboard = () => {
                     icon={PlayCircle} 
                     color="bg-purple-100 text-purple-600" 
                     count={stats.inProgress} 
-                    items={moveOuts.filter(m => (m.status === 'INSPECTION_IN_PROGRESS' || (m.visualInspectionId && m.finalInspectionId)) && m.status !== 'COMPLETED' && m.status !== 'CANCELLED' && m.status !== 'INSPECTIONS_COMPLETED')}
+                    items={moveOuts.filter(m => (m.status === 'INSPECTION_IN_PROGRESS' || (m.visualInspectionId && m.finalInspectionId)) && !['COMPLETED', 'CANCELLED', 'INSPECTIONS_COMPLETED', 'PENDING', 'CONFIRMED'].includes(m.status))}
                 />
                 <Column 
                     title="Ready for Completion" 
