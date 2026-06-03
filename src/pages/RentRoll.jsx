@@ -263,7 +263,8 @@ export const RentRoll = () => {
                     {[
                         { label: 'Total Units', value: data.summary.totalUnits, icon: Building, color: 'text-indigo-500' },
                         { label: 'Occupied', value: data.summary.occupiedUnits, icon: KeySquare, color: 'text-emerald-500' },
-                        { label: 'Vacant', value: data.summary.vacantUnits, icon: DoorOpen, color: 'text-red-500' },
+                        { label: 'Vacant Units', value: data.summary.vacantUnits, icon: DoorOpen, color: 'text-red-500' },
+                        { label: 'Vacant Bedrooms', value: data.summary.vacantBedrooms, icon: DoorOpen, color: 'text-amber-500' },
                         { label: 'Total Actual Monthly Rent', value: `$${(data.summary.totalActualMonthlyRent || 0).toLocaleString()}`, icon: Wallet, color: 'text-indigo-600', isLarge: true },
                         { label: 'Total Potential Monthly Rent', value: `$${(data.summary.totalPotentialMonthlyRent || 0).toLocaleString()}`, icon: Wallet, color: 'text-blue-600', isLarge: true },
                         { label: 'Total Vacancy Loss', value: `$${(data.summary.totalVacancyLoss || 0).toLocaleString()}`, icon: AlertCircle, color: 'text-red-500', isLarge: true },

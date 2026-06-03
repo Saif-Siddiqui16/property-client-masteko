@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MainLayout } from '../layouts/MainLayout';
 import { Button } from '../components/Button';
-import { Search, Eye, Filter, CheckCircle, Clock, AlertTriangle, X, Plus, User, Building, Home, ChevronDown, Trash2, Edit2, Play, Camera } from 'lucide-react';
+import { Search, Eye, Filter, CheckCircle, Clock, AlertTriangle, X, Plus, User, Building, Home, ChevronDown, Trash2, Edit2, Play, Camera, Printer } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../api/client';
 import { hasPermission } from '../utils/permissions';
@@ -38,6 +38,9 @@ export const Tickets = () => {
     const [viewingTenantDetails, setViewingTenantDetails] = useState(null);
     const [successMessage, setSuccessMessage] = useState('');
     const [attachments, setAttachments] = useState({});
+    
+    // Print State
+    const [selectedForPrint, setSelectedForPrint] = useState(new Set());
 
     useEffect(() => {
         fetchTickets();
@@ -165,6 +168,96 @@ export const Tickets = () => {
         }
     };
 
+    const allFilteredSelected = filteredTickets.length > 0 && filteredTickets.every(t => selectedForPrint.has(t.id));
+    
+    const toggleSelectAll = () => {
+        if (allFilteredSelected) {
+            setSelectedForPrint(new Set());
+        } else {
+            const newSet = new Set(selectedForPrint);
+            filteredTickets.forEach(t => newSet.add(t.id));
+            setSelectedForPrint(newSet);
+        }
+    };
+
+    const toggleSelect = (id) => {
+        const newSet = new Set(selectedForPrint);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedForPrint(newSet);
+    };
+
+    const handlePrint = () => {
+        const printWindow = window.open('', '', 'width=900,height=800');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Print Tickets</title>
+                    <style>
+                        body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; color: #1e293b; }
+                        h1 { text-align: center; margin-bottom: 24px; color: #0f172a; }
+                        .print-container { display: block; }
+                        .page { page-break-after: always; break-after: page; padding-bottom: 20px; }
+                        .page:last-child { page-break-after: auto; break-after: auto; }
+                        .ticket-card { border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; background: #fff; }
+                        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 12px; }
+                        .badge { padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 1px solid #e2e8f0; }
+                        .priority-High { background: #fef2f2; color: #b91c1c; border-color: #fee2e2; }
+                        .priority-Medium { background: #fffbeb; color: #b45309; border-color: #fef3c7; }
+                        .priority-Low { background: #eff6ff; color: #1d4ed8; border-color: #dbeafe; }
+                        .title { font-weight: 900; font-size: 18px; margin: 0; color: #4f46e5; }
+                        .subject { font-weight: 800; font-size: 15px; margin-bottom: 12px; color: #0f172a; }
+                        .detail { font-size: 13px; margin-bottom: 6px; color: #334155; }
+                        .desc-box { background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 13px; margin-top: 12px; white-space: pre-wrap; border: 1px solid #f1f5f9; }
+                        .date { font-size: 11px; color: #64748b; margin-top: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+                        .images-container { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+                        .images-container img { max-width: 300px; max-height: 300px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: cover; }
+                        @media print {
+                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="print-container">
+                        ${tickets.filter(t => selectedForPrint.has(t.id)).map(ticket => `
+                            <div class="page">
+                                <h1>Maintenance Tickets</h1>
+                                <div class="ticket-card">
+                                    <div class="header">
+                                        <h3 class="title">${ticket.id}</h3>
+                                        <span class="badge priority-${ticket.priority}">${ticket.priority}</span>
+                                    </div>
+                                    <div class="subject">${ticket.subject}</div>
+                                    <div class="detail"><strong>Tenant:</strong> ${ticket.tenant}</div>
+                                    <div class="detail"><strong>Unit:</strong> ${ticket.unit}</div>
+                                    <div class="detail"><strong>Status:</strong> ${ticket.status}</div>
+                                    <div class="desc-box"><strong>Description:</strong><br/>${ticket.desc || 'No description'}</div>
+                                    ${ticket.attachments && ticket.attachments.length > 0 ? `
+                                        <div class="images-container">
+                                            ${ticket.attachments.filter(a => a.type === 'image' || (a.url && a.url.match(/\\.(jpg|jpeg|png|webp|gif)/i))).map(att => `
+                                                <img src="${att.url}" alt="Attachment" />
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+                                    <div class="date"><strong>Reported:</strong> ${ticket.createdAt}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <script>
+                        window.onload = () => {
+                            setTimeout(() => {
+                                window.print();
+                                window.close();
+                            }, 500);
+                        }
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
     return (
         <MainLayout title="Maintenance Tickets">
             <div className="flex flex-col gap-6 relative">
@@ -191,6 +284,12 @@ export const Tickets = () => {
                     </div>
 
                     <div className="flex gap-2">
+                        {selectedForPrint.size > 0 && (
+                            <Button variant="secondary" size="sm" onClick={handlePrint} className="!border-indigo-200 !text-indigo-600 hover:!bg-indigo-50">
+                                <Printer size={16} />
+                                Print ({selectedForPrint.size})
+                            </Button>
+                        )}
                         <Button variant="secondary" size="sm">
                             <Filter size={16} />
                             Filters
@@ -205,7 +304,8 @@ export const Tickets = () => {
                 </section>
 
                 <section className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.08)] overflow-hidden">
-                    <div className="grid grid-cols-[1fr_1.5fr_1.2fr_1.2fr_1fr_1fr_0.5fr] bg-slate-50 border-b border-slate-200 px-6 py-4">
+                    <div className="grid grid-cols-[auto_1fr_1.5fr_1.2fr_1.2fr_1fr_1fr_0.5fr] gap-4 bg-slate-50 border-b border-slate-200 px-6 py-4 items-center">
+                        <input type="checkbox" checked={allFilteredSelected} onChange={toggleSelectAll} className="w-4 h-4 text-indigo-600 rounded border-slate-300 cursor-pointer" />
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Ticket ID</span>
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Subject</span>
                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tenant</span>
@@ -219,8 +319,9 @@ export const Tickets = () => {
                         {filteredTickets.map((ticket, index) => (
                             <div
                                 key={ticket.id}
-                                className="grid grid-cols-[1fr_1.5fr_1.2fr_1.2fr_1fr_1fr_0.5fr] px-6 py-4 items-center hover:bg-slate-50/80 transition-all duration-200"
+                                className="grid grid-cols-[auto_1fr_1.5fr_1.2fr_1.2fr_1fr_1fr_0.5fr] gap-4 px-6 py-4 items-center hover:bg-slate-50/80 transition-all duration-200"
                             >
+                                <input type="checkbox" checked={selectedForPrint.has(ticket.id)} onChange={() => toggleSelect(ticket.id)} className="w-4 h-4 text-indigo-600 rounded border-slate-300 cursor-pointer" />
                                 <span className="text-sm font-medium text-indigo-600">{ticket.id}</span>
                                 <div className="flex flex-col pr-4 overflow-hidden">
                                     <div className="flex items-center gap-2">
