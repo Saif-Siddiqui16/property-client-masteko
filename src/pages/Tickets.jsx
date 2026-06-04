@@ -195,23 +195,22 @@ export const Tickets = () => {
                     <title>Print Tickets</title>
                     <style>
                         body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; color: #1e293b; }
-                        h1 { text-align: center; margin-bottom: 24px; color: #0f172a; }
-                        .print-container { display: block; }
-                        .page { page-break-after: always; break-after: page; padding-bottom: 20px; }
-                        .page:last-child { page-break-after: auto; break-after: auto; }
-                        .ticket-card { border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; background: #fff; }
-                        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 12px; }
+                        h1 { text-align: center; margin-bottom: 24px; color: #0f172a; grid-column: span 2; }
+                        .print-container { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+                        .page { page-break-inside: avoid; break-inside: avoid; }
+                        .ticket-card { border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px; background: #fff; height: 100%; box-sizing: border-box; }
+                        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px; }
                         .badge { padding: 4px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; border: 1px solid #e2e8f0; }
                         .priority-High { background: #fef2f2; color: #b91c1c; border-color: #fee2e2; }
                         .priority-Medium { background: #fffbeb; color: #b45309; border-color: #fef3c7; }
                         .priority-Low { background: #eff6ff; color: #1d4ed8; border-color: #dbeafe; }
-                        .title { font-weight: 900; font-size: 18px; margin: 0; color: #4f46e5; }
-                        .subject { font-weight: 800; font-size: 15px; margin-bottom: 12px; color: #0f172a; }
-                        .detail { font-size: 13px; margin-bottom: 6px; color: #334155; }
-                        .desc-box { background: #f8fafc; padding: 12px; border-radius: 8px; font-size: 13px; margin-top: 12px; white-space: pre-wrap; border: 1px solid #f1f5f9; }
-                        .date { font-size: 11px; color: #64748b; margin-top: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-                        .images-container { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
-                        .images-container img { max-width: 300px; max-height: 300px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: cover; }
+                        .title { font-weight: 900; font-size: 16px; margin: 0; color: #4f46e5; }
+                        .subject { font-weight: 800; font-size: 14px; margin-bottom: 8px; color: #0f172a; }
+                        .detail { font-size: 12px; margin-bottom: 4px; color: #334155; }
+                        .desc-box { background: #f8fafc; padding: 10px; border-radius: 8px; font-size: 12px; margin-top: 8px; white-space: pre-wrap; border: 1px solid #f1f5f9; }
+                        .date { font-size: 10px; color: #64748b; margin-top: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+                        .images-container { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+                        .images-container img { max-width: 100%; max-height: 120px; border-radius: 8px; border: 1px solid #e2e8f0; object-fit: cover; }
                         @media print {
                             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                         }
@@ -219,9 +218,9 @@ export const Tickets = () => {
                 </head>
                 <body>
                     <div class="print-container">
+                        <h1>Maintenance Tickets</h1>
                         ${tickets.filter(t => selectedForPrint.has(t.id)).map(ticket => `
                             <div class="page">
-                                <h1>Maintenance Tickets</h1>
                                 <div class="ticket-card">
                                     <div class="header">
                                         <h3 class="title">${ticket.id}</h3>
